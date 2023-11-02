@@ -70,8 +70,7 @@ def plot_save_bifurcation(beta_list_shallow, last_m_odd_list_shallow, last_m_eve
 
 def plot_save_bifurcation_angle(beta_list_shallow, last_m_odd_list_shallow, last_m_even_list_shallow, Wodd, Weven):
 
-    angle = np.arctan(np.divide(last_m_odd_list_shallow, last_m_even_list_shallow))
-    angle = angle * 180 / np.pi
+    angle = np.rad2deg(np.arctan2(last_m_odd_list_shallow, last_m_even_list_shallow))
     abs_val = np.sqrt(np.square(last_m_odd_list_shallow) + np.square(last_m_even_list_shallow))
     plt.figure()
     plt.plot(beta_list_shallow, angle, label='angle', ls='', marker='o')
@@ -86,7 +85,7 @@ def plot_save_bifurcation_angle(beta_list_shallow, last_m_odd_list_shallow, last
 
 if __name__ == "__main__":
     Wodd = 0.1
-    Weven = -0.6
+    Weven = 0.6
 
     if not os.path.exists(f"imgs/Wodd_{Wodd}_Weven_{Weven}/"):
         os.makedirs(f"imgs/Wodd_{Wodd}_Weven_{Weven}/")
