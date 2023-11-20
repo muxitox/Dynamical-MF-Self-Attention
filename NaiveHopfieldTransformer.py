@@ -23,16 +23,19 @@ class NaiveHopfieldTransformer:
 
             if i % 2 == 0:
                 m = np.tanh(self.beta * self.Wodd * old_m)
-                deriv_beta = self.Wodd * old_m * (1 - m**2)
+                deriv_beta_num = (1 - m**2) * (self.Weven * old_m + self.beta * self.Weven * (1 - old_m**2) * self.Wodd * m)
+                deriv_beta_denom = (1 - (1 - m ** 2) * self.beta * (1 - old_m ** 2) * self.beta * self.Wodd)
+                deriv_beta = deriv_beta_num / deriv_beta_denom
                 m_odd.append(m)
                 deriv_beta_odd.append(deriv_beta)
 
             else:
                 m = np.tanh(self.beta * self.Weven * old_m)
-                deriv_beta = self.Weven * old_m * (1 - m**2)
+                deriv_beta_num = (1 - m**2) * (self.Wodd * old_m + self.beta * self.Wodd * (1 - old_m**2) * self.Weven * m)
+                deriv_beta_denom = (1 - (1 - m**2) * self.beta * (1 - old_m**2) * self.beta * self.Weven)
+                deriv_beta = deriv_beta_num / deriv_beta_denom
                 m_even.append(m)
                 deriv_beta_even.append(deriv_beta)
-
 
             old_m = m
 
@@ -94,41 +97,49 @@ def plot_save_bifurcation_angle(beta_list_shallow, last_m_odd_list_shallow, last
     plt.close()
 
 
-def plot_phase(Wodd, Weven, last_deriv_beta_odd_shallow, last_deriv_beta_even_shallow, beta_list_shallow):
+def plot_phase_analytic(Wodd, Weven, last_deriv_beta_odd_shallow, last_deriv_beta_even_shallow, beta_list_shallow):
     plt.figure()
     plt.plot(beta_list_shallow, last_deriv_beta_odd_shallow, label='grad_even', ls='', marker='o')
     plt.plot(beta_list_shallow, last_deriv_beta_even_shallow, label='grad_odd', ls='', marker='x')
     plt.xlabel('beta')
-    plt.title(f'W_odd={Wodd} W_even={Weven}')
+    plt.title(f'Analytical. W_odd={Wodd} W_even={Weven}')
     plt.legend()
-    plt.savefig(f'imgs/Wodd_{Wodd}_Weven_{Weven}/phase_plane.png')
+    plt.savefig(f'imgs/Wodd_{Wodd}_Weven_{Weven}/phase_plane_analytic.png')
     plt.show()
     plt.close()
 
 
-def plot_phase2(Wodd, Weven, last_m_odd_list_shallow, last_m_even_list_shallow, beta_list_shallow):
+def plot_phase_numeric(Wodd, Weven, last_m_odd_list_shallow, last_m_even_list_shallow, beta_list_shallow):
 
-    last_deriv_beta_odd = np.gradient(last_m_odd_list_shallow, beta_list_shallow)
-    last_deriv_beta_even = np.gradient(last_m_even_list_shallow, beta_list_shallow)
+    last_deriv_beta_odd_0 = np.gradient(last_m_odd_list_shallow[0::2], beta_list_shallow[0::2])
+    last_deriv_beta_odd_1 = np.gradient(last_m_odd_list_shallow[1::2], beta_list_shallow[1::2])
+    last_deriv_beta_even_0 = np.gradient(last_m_even_list_shallow[0::2], beta_list_shallow[0::2])
+    last_deriv_beta_even_1 = np.gradient(last_m_even_list_shallow[1::2], beta_list_shallow[1::2])
+
+    last_deriv_beta_odd = np.append(last_deriv_beta_odd_0, last_deriv_beta_odd_1)
+    last_deriv_beta_even = np.append(last_deriv_beta_even_0, last_deriv_beta_even_1)
+
+    beta_list_shallow_reorder = beta_list_shallow[0::2]
+    beta_list_shallow_reorder.extend(beta_list_shallow[1::2])
 
     plt.figure()
-    plt.plot(beta_list_shallow, last_deriv_beta_odd, label='grad_even', ls='', marker='o')
-    plt.plot(beta_list_shallow, last_deriv_beta_even, label='grad_odd', ls='', marker='x')
+    plt.plot(beta_list_shallow_reorder, last_deriv_beta_odd, label='grad_even', ls='', marker='o')
+    plt.plot(beta_list_shallow_reorder, last_deriv_beta_even, label='grad_odd', ls='', marker='x')
     plt.xlabel('beta')
-    plt.title(f'W_odd={Wodd} W_even={Weven}')
+    plt.title(f'Numerical. W_odd={Wodd} W_even={Weven}')
     plt.legend()
-    plt.savefig(f'imgs/Wodd_{Wodd}_Weven_{Weven}/phase_plane2.png')
+    plt.savefig(f'imgs/Wodd_{Wodd}_Weven_{Weven}/phase_plane_numeric.png')
     plt.show()
     plt.close()
 
 if __name__ == "__main__":
-    Wodd = 0.1
+    Wodd = -0.1
     Weven = 0.6
 
     if not os.path.exists(f"imgs/Wodd_{Wodd}_Weven_{Weven}/"):
         os.makedirs(f"imgs/Wodd_{Wodd}_Weven_{Weven}/")
 
-    beta_list = np.linspace(0,30, 150)
+    beta_list = np.linspace(0,30, 500)
 
     # m0_list = [-1, -0.7, -0.5, -0.3, -0.1, 0, 0.1, 0.3, 0.5, 0.7, 1  ]
     m0_list = [0.1, 0.3, 0.5, 0.7, 1]
@@ -180,8 +191,8 @@ if __name__ == "__main__":
     plot_save_bifurcation(beta_list_shallow, last_m_odd_list_shallow, last_m_even_list_shallow, Wodd, Weven)
     plot_save_bifurcation_angle(beta_list_shallow, last_m_odd_list_shallow, last_m_even_list_shallow, Wodd, Weven)
 
-    plot_phase(Wodd, Weven, last_deriv_beta_odd_shallow, last_deriv_beta_even_shallow, beta_list_shallow)
+    plot_phase_analytic(Wodd, Weven, last_deriv_beta_odd_shallow, last_deriv_beta_even_shallow, beta_list_shallow)
 
     ini_cond_idx = 0
     num_ini_conds = len(m0_list)
-    plot_phase2(Wodd, Weven, last_m_odd_list_shallow[ini_cond_idx::num_ini_conds], last_m_even_list_shallow[ini_cond_idx::num_ini_conds], beta_list_shallow[ini_cond_idx::num_ini_conds])
+    plot_phase_numeric(Wodd, Weven, last_m_odd_list_shallow[ini_cond_idx::num_ini_conds], last_m_even_list_shallow[ini_cond_idx::num_ini_conds], beta_list_shallow[ini_cond_idx::num_ini_conds])
