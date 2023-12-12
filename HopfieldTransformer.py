@@ -42,10 +42,9 @@ class Vocabulary:
 
 class HopfieldTransformer:
 
-    def __init__(self, beta_o, beta_att, x0, num_feat_patterns, embedding_size, vocab):
+    def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512):
         self.beta_o = beta_o
         self.beta_att = beta_att
-        self.x0 = x0
         self.Wo = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
         self.Wv = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
         self.Wq = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
@@ -53,43 +52,42 @@ class HopfieldTransformer:
         self.num_feat_patterns = num_feat_patterns
         self.embedding_size = embedding_size
         self.vocab = vocab
+        self.max_sim_steps = max_sim_steps
 
-        self.x_list=[]
+        self.x_list = np.zeros((max_sim_steps, embedding_size))
 
-    def exp_f(self, x_t, x_tau):
+    def exp_f(self, t, tau):
         accum = 0
 
         for a in range(0, self.num_feat_patterns):
             for i in range(0, self.embedding_size):
                 for j in range(0, self.embedding_size):
-                    accum += x_t[i] * self.Wq[i, a] * self.Wk[j, a] * x_tau[j]
+                    accum += self.x_list[t,i] * self.Wq[i, a] * self.Wk[j, a] * self.x_list[tau,j]
 
         return np.exp(self.beta_att / np.sqrt(self.num_feat_patterns) * accum)
 
     def attention(self, b, t):
         att_b = 0
-        for tau in range(1, t):
+        for tau in range(0, t+1):
             for i in range(0, self.embedding_size):
-                att_b += self.Wv[i,b] * self.x_list[tau][i] * self.exp_f(self.x_list[t][i], self.x_list[tau][i])
+                att_b += self.Wv[i,b] * self.x_list[tau][i] * self.exp_f(t, tau)
 
         Z = 0
-        for tau in range(1, t):
-            Z += self.exp_f(self.x_list[t][i], self.x_list[tau][i])
+        for tau in range(0, t+1):
+            Z += self.exp_f(t, tau)
 
-        return att_b / Z
+        att_b = att_b / Z
+
+        return att_b
 
     def simulate(self, x0_idx, max_steps):
 
-        m_odd = 0
-        m_odd_list = []
-        m_even_list = []
-        deriv_beta_odd = []
-        deriv_beta_even = []
+        x0 = self.vocab.encode(x0_idx)
+        self.x_list[0,:] = x0
 
-        x0 = vocab.vocab_size(x0_idx)
-
-
-        for t in range(1, max_steps):
+        for t in range(0, max_steps):
+            for b in range(0, self.embedding_size):
+                self.attention(b, t)
 
 
 
@@ -113,12 +111,19 @@ if __name__ == "__main__":
 
     beta_list_shallow = []
 
-    embedding_size = 5
+    embedding_size = 10
     vocab_size = 2**embedding_size
     vocab = Vocabulary(vocab_size, embedding_size)
     vocab.initialize()
-    print()
 
+    beta = 1
+    beta_o = beta
+    beta_att = beta
+    x0_idx = 1
+    num_feat_patterns = 10
+    max_sim_steps = 512
+    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
+    HT.simulate(x0_idx, max_steps=max_sim_steps)
     # for beta in beta_list:
     #
     #
