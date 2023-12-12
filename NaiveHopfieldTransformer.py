@@ -12,9 +12,10 @@ class NaiveHopfieldTransformer:
 
     def simulate(self, max_steps):
 
-        old_m = self.m0
-        m_odd = []
-        m_even = []
+        m_even = self.m0
+        m_odd = 0
+        m_odd_list = []
+        m_even_list = []
         deriv_beta_odd = []
         deriv_beta_even = []
 
@@ -22,24 +23,26 @@ class NaiveHopfieldTransformer:
         for i in range(0, max_steps):
 
             if i % 2 == 0:
-                m = np.tanh(self.beta * self.Wodd * old_m)
-                deriv_beta_num = (1 - m ** 2) * (
-                            self.Weven * old_m + self.beta * self.Weven * (1 - old_m ** 2) * self.Wodd * m)
-                deriv_beta_denom = (1 - (1 - m ** 2) * self.beta * self.Weven * (1 - old_m ** 2) * self.beta * self.Wodd)
+                m_even = np.tanh(self.beta * self.Weven * m_odd)
+                deriv_beta_num = (1 - m_even ** 2) * (
+                        self.Weven * m_odd + self.beta * self.Weven * (1 - m_odd ** 2) * self.Wodd * m_even)
+                deriv_beta_denom = (
+                        1 - (1 - m_even ** 2) * self.beta * self.Weven * (1 - m_odd ** 2) * self.beta * self.Wodd)
                 deriv_beta = deriv_beta_num / deriv_beta_denom
-                m_odd.append(m)
-                deriv_beta_odd.append(deriv_beta)
 
-            else:
-                m = np.tanh(self.beta * self.Weven * old_m)
-                deriv_beta_num = (1 - m ** 2) * (
-                            self.Wodd * old_m + self.beta * self.Wodd * (1 - old_m ** 2) * self.Weven * m)
-                deriv_beta_denom = (1 - (1 - m ** 2) * self.beta * self.Wodd * (1 - old_m ** 2) * self.beta * self.Weven)
-                deriv_beta = deriv_beta_num / deriv_beta_denom
-                m_even.append(m)
+                m_even_list.append(m_even)
                 deriv_beta_even.append(deriv_beta)
 
-            old_m = m
+            else:
+                m_odd = np.tanh(self.beta * self.Wodd * m_even)
+
+                deriv_beta_num = (1 - m_odd ** 2) * (
+                        self.Wodd * m_even + self.beta * self.Wodd * (1 - m_even ** 2) * self.Weven * m_odd)
+                deriv_beta_denom = (
+                        1 - (1 - m_odd ** 2) * self.beta * self.Wodd * (1 - m_even ** 2) * self.beta * self.Weven)
+                deriv_beta = deriv_beta_num / deriv_beta_denom
+                m_odd_list.append(m_odd)
+                deriv_beta_odd.append(deriv_beta)
 
         return m_odd, m_even, deriv_beta_odd, deriv_beta_even
 
