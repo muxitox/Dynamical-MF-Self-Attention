@@ -23,16 +23,18 @@ class NaiveHopfieldTransformer:
 
             if i % 2 == 0:
                 m = np.tanh(self.beta * self.Wodd * old_m)
-                deriv_beta_num = (1 - m**2) * (self.Weven * old_m + self.beta * self.Weven * (1 - old_m**2) * self.Wodd * m)
-                deriv_beta_denom = (1 - (1 - m ** 2) * self.beta * (1 - old_m ** 2) * self.beta * self.Wodd)
+                deriv_beta_num = (1 - m ** 2) * (
+                            self.Weven * old_m + self.beta * self.Weven * (1 - old_m ** 2) * self.Wodd * m)
+                deriv_beta_denom = (1 - (1 - m ** 2) * self.beta * self.Weven * (1 - old_m ** 2) * self.beta * self.Wodd)
                 deriv_beta = deriv_beta_num / deriv_beta_denom
                 m_odd.append(m)
                 deriv_beta_odd.append(deriv_beta)
 
             else:
                 m = np.tanh(self.beta * self.Weven * old_m)
-                deriv_beta_num = (1 - m**2) * (self.Wodd * old_m + self.beta * self.Wodd * (1 - old_m**2) * self.Weven * m)
-                deriv_beta_denom = (1 - (1 - m**2) * self.beta * (1 - old_m**2) * self.beta * self.Weven)
+                deriv_beta_num = (1 - m ** 2) * (
+                            self.Wodd * old_m + self.beta * self.Wodd * (1 - old_m ** 2) * self.Weven * m)
+                deriv_beta_denom = (1 - (1 - m ** 2) * self.beta * self.Wodd * (1 - old_m ** 2) * self.beta * self.Weven)
                 deriv_beta = deriv_beta_num / deriv_beta_denom
                 m_even.append(m)
                 deriv_beta_even.append(deriv_beta)
@@ -133,13 +135,13 @@ def plot_phase_numeric(Wodd, Weven, last_m_odd_list_shallow, last_m_even_list_sh
     plt.close()
 
 if __name__ == "__main__":
-    Wodd = -0.1
-    Weven = 0.6
+    Wodd = -1
+    Weven = 1
 
     if not os.path.exists(f"imgs/Wodd_{Wodd}_Weven_{Weven}/"):
         os.makedirs(f"imgs/Wodd_{Wodd}_Weven_{Weven}/")
 
-    beta_list = np.linspace(0,30, 500)
+    beta_list = np.linspace(0,10, 500)
 
     # m0_list = [-1, -0.7, -0.5, -0.3, -0.1, 0, 0.1, 0.3, 0.5, 0.7, 1  ]
     m0_list = [0.1, 0.3, 0.5, 0.7, 1]
@@ -169,6 +171,12 @@ if __name__ == "__main__":
             max_steps = 500
             m_odd, m_even, deriv_beta_odd, deriv_beta_even = NHT.simulate(max_steps)
 
+            # if beta > 3.95:
+            #     print(m_odd[-1])
+            #     print(m_even[-1])
+            #     print(deriv_beta_odd[-1])
+            #     print(deriv_beta_even[-1])
+            #     print()
             last_m_odd_list_m0.append(m_odd[-1])
             last_m_even_list_m0.append(m_even[-1])
 
