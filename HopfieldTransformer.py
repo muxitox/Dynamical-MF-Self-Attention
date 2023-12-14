@@ -57,6 +57,11 @@ class HopfieldTransformer:
         self.vocab = vocab
         self.max_sim_steps = max_sim_steps
 
+        self.mo_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mv_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mq_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mk_data = np.zeros((max_sim_steps, num_feat_patterns))
+
         self.mo = np.zeros((max_sim_steps, num_feat_patterns))
         self.mv = np.zeros((max_sim_steps, num_feat_patterns))
         self.mq = np.zeros((max_sim_steps, num_feat_patterns))
@@ -68,6 +73,12 @@ class HopfieldTransformer:
 
         q = self.x_list[t] @ self.Wq.T  # Query representation
         k = self.Wk @ self.x_list[tau]  # Key representation
+
+        # Save the statistics for comparison with the MF approximation
+        if t==tau:
+            self.mq_data[t] = q / self.embedding_size
+            self.mk_data[t] = k / self.embedding_size
+
         qk = q @ k
 
         return np.exp(self.beta_att / np.sqrt(self.num_feat_patterns) * qk)
@@ -90,6 +101,8 @@ class HopfieldTransformer:
 
         v = self.x_list[0:t+1] @ self.Wv.T  # Value representation
         att_t = key_prob @ v
+
+        self.mv_data[t] = v[-1] / self.embedding_size
 
         # # Loopy implementation for testing
         # att_t = np.zeros(self.num_feat_patterns)
@@ -123,12 +136,12 @@ class HopfieldTransformer:
 
         return att_t
 
-    def simulate(self, x0_idx, max_steps):
+    def simulate(self, x0_idx, max_steps, verbose=False):
 
         x0 = self.vocab.encode(x0_idx)
         self.x_list[0,:] = x0
 
-        for t in range(0, max_steps):
+        for t in range(0, max_steps-1):
             att = self.attention(t)
 
             # We project all possible tokens in the vocabulary through Wo
@@ -140,10 +153,14 @@ class HopfieldTransformer:
             # Convert the above result into a probability and get the idx of the most probable token
             new_x_idx = np.argmax(prob_unnormalized)
 
-            # Select it and add it to the list
+            # Encode token and add it to the list
+            new_x = self.vocab.encode(new_x_idx)
             self.x_list[t+1, :] = self.vocab.encode(new_x_idx)
+            # Save for comparison with MF
+            self.mo_data[t+1] = new_x @ self.Wo.T / self.embedding_size
 
-            print(f'In position {t} we have selected token {new_x_idx}')
+            if verbose:
+                print(f'In position {t+1} we have selected token {new_x_idx}')
 
     def compute_means_from_data(self, t):
         self.mv[t] = self.x_list[t] @ self.Wv.T / self.embedding_size
@@ -152,7 +169,7 @@ class HopfieldTransformer:
 
     def compute_mf(self, t, att):
 
-        att_i = np.tanh( self.beta_o * np.einsum('i,e -> ei', att, np.ones(self.embedding_size)) @ self.Wo)
+        att_i = np.tanh(self.beta_o * np.einsum('i,e -> ei', att, np.ones(self.embedding_size)) @ self.Wo)
         self.mo[t] = np.einsum('bi,ii ->b', self.Wk, att_i)/self.embedding_size
 
         # # Loopy implementation for testing
@@ -176,7 +193,7 @@ class HopfieldTransformer:
         self.compute_means_from_data(t=0)
         att = self.attention_mf(t=0)
 
-        for t in range(1, max_steps):
+        for t in range(1, max_steps-1):
             self.compute_mf(t, att)
             att = self.attention_mf(t)
 
@@ -187,7 +204,7 @@ if __name__ == "__main__":
     #     os.makedirs(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/")
 
     # Instantiate vocabulary
-    embedding_size = 8
+    embedding_size = 16
     vocab_size = 2**embedding_size
     vocab = Vocabulary(vocab_size, embedding_size)
     vocab.initialize()
@@ -201,8 +218,15 @@ if __name__ == "__main__":
     max_sim_steps = 512
     # Instantiate HT with the above created vocabulary
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
-    # HT.simulate(x0_idx, max_steps=max_sim_steps)
+    print("Simulating standard Transformer...")
+    HT.simulate(x0_idx, max_steps=max_sim_steps)
+    print("Simulating MF Transformer...")
     HT.simulate_mf(x0_idx, max_steps=max_sim_steps)
+    print("Done.")
+
+    # Plotting
+    print(HT.mo_data)
+    print(HT.mo)
 
 
 
