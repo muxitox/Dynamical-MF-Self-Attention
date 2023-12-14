@@ -161,25 +161,34 @@ class HopfieldTransformer:
         self.mk[t] = self.x_list[t] @ self.Wk.T / self.embedding_size
 
     def compute_mf(self, t, att):
-        self.mo[t] = (self.Wo @ np.tanh(self.beta_o * (self.Wo @ att))) / self.embedding_size
-        self.mv[t] = (self.Wv @ np.tanh(self.beta_o * (self.Wo @ att))) / self.embedding_size
-        self.mq[t] = (self.Wq @ np.tanh(self.beta_o * (self.Wo @ att))) / self.embedding_size
-        self.mk[t] = (self.Wk @ np.tanh(self.beta_o * (self.Wo @ att))) / self.embedding_size
+
+        att_i = np.tanh( self.beta_o * np.einsum('i,e -> ei', att, np.ones(self.embedding_size)) @ self.Wo)
+        self.mo[t] = np.einsum('bi,ii ->b', self.Wk, att_i)/self.embedding_size
+
+        # # Loopy implementation for testing
+        # mo_t = np.zeros(self.num_feat_patterns)
+        # for b in range(0, self.num_feat_patterns):
+        #     for i in range(0, self.embedding_size):
+        #         mo_t[b] += self.Wk[b, i] * np.tanh(self.beta_o * self.Wo[:, i] @ att)
+        # mo_t /= self.embedding_size
+        # print(np.allclose(mo2, mo_t))
+
+        self.mv[t] = np.einsum('bi,ii ->b', self.Wv, att_i)/self.embedding_size
+        self.mq[t] = np.einsum('bi,ii ->b', self.Wq, att_i)/self.embedding_size
+        self.mq[t] = np.einsum('bi,ii ->b', self.Wk, att_i)/self.embedding_size
+
     def simulate_mf(self, x0_idx, max_steps):
 
         x0 = self.vocab.encode(x0_idx)
         self.x_list[0, :] = x0
 
+        # Initialize attention with the info from the initial token
+        self.compute_means_from_data(t=0)
+        att = self.attention_mf(t=0)
+
         for t in range(1, max_steps):
-
-            if t == 0:
-                self.compute_means_from_data(t)
-            else:
-                self.compute_mf(self, t, att)
-
+            self.compute_mf(t, att)
             att = self.attention_mf(t)
-
-
 
 
 if __name__ == "__main__":
