@@ -102,18 +102,8 @@ class HopfieldTransformer:
 
     def exp_f_mf(self, t, tau):
 
-        # q = self.x_list[t] @ self.Wq.T  # Query representation
-        # k = self.Wk @ self.x_list[tau]  # Key representation
-        # qk = q @ k
-        #
-        # return np.exp(self.beta_att / np.sqrt(self.num_feat_patterns) * qk)
-
-        # Loopy implementation for testing
-        accum = 0
-        for a in range(0, self.num_feat_patterns):
-            accum += self.mq[t, a] * self.mq[tau, a]
-
-        return np.exp(self.beta_att * self.embedding_size**2 / np.sqrt(self.num_feat_patterns) * accum)
+        mqk = self.mq[t] @ self.mk[tau]
+        return np.exp(self.beta_att * self.embedding_size**2 / np.sqrt(self.num_feat_patterns) * mqk)
 
     def attention_mf(self, t):
 
