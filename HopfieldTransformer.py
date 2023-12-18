@@ -176,8 +176,8 @@ class HopfieldTransformer:
 
     def compute_mf(self, t, att):
 
-        att_i = np.tanh(self.beta_o * np.einsum('i,e -> ei', att, np.ones(self.embedding_size)) @ self.Wo)
-        self.mo[t] = np.einsum('bi,ii ->b', self.Wo, att_i) / self.embedding_size
+        att_i = np.tanh(self.beta_o * np.einsum('b,bi -> i', att, self.Wo, optimize=True))
+        self.mo[t] = np.einsum('bi,i ->b', self.Wo, att_i, optimize=True) / self.embedding_size
 
         # # Loopy implementation for testing
         # mo_t = np.zeros(self.num_feat_patterns)
@@ -187,9 +187,9 @@ class HopfieldTransformer:
         # mo_t /= self.embedding_size
         # print(np.allclose(self.mo[t], mo_t))
 
-        self.mv[t] = np.einsum('bi,ii ->b', self.Wv, att_i) / self.embedding_size
-        self.mq[t] = np.einsum('bi,ii ->b', self.Wq, att_i) / self.embedding_size
-        self.mq[t] = np.einsum('bi,ii ->b', self.Wk, att_i) / self.embedding_size
+        self.mv[t] = np.einsum('bi,i ->b', self.Wv, att_i, optimize=True) / self.embedding_size
+        self.mq[t] = np.einsum('bi,i ->b', self.Wq, att_i, optimize=True) / self.embedding_size
+        self.mq[t] = np.einsum('bi,i ->b', self.Wk, att_i, optimize=True) / self.embedding_size
 
     def simulate_mf(self, x0_idx, max_steps):
 
@@ -241,11 +241,11 @@ if __name__ == "__main__":
     vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    beta = 1
+    beta = 4
     beta_o = beta
     beta_att = beta
     x0_idx = 33000  # You need to have an initial token to start decoding
-    num_feat_patterns = 4
+    num_feat_patterns = 10
     max_sim_steps = 512
     # Instantiate HT with the above created vocabulary
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     num_plotting_steps = 10
     plot_statistics(HT.att, HT.att_mf, "Att", num_plotting_steps)
 
-    plot_statistics(HT.mo_data, HT.mo, "mo", num_plotting_steps)
+    plot_statistics(HT.mo_data[1:], HT.mo[1:], "mo", num_plotting_steps)
 
     plot_statistics(HT.mv_data, HT.mv, "mv", num_plotting_steps)
 
