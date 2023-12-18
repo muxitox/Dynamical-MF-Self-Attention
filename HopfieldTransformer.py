@@ -67,6 +67,9 @@ class HopfieldTransformer:
         self.mq = np.zeros((max_sim_steps, num_feat_patterns))
         self.mk = np.zeros((max_sim_steps, num_feat_patterns))
 
+        self.att = np.zeros((max_sim_steps, num_feat_patterns))
+        self.att_mf = np.zeros((max_sim_steps, num_feat_patterns))
+
         self.x_list = np.zeros((max_sim_steps, embedding_size))
 
     def exp_f(self, t, tau):
@@ -111,6 +114,8 @@ class HopfieldTransformer:
         #         for tau in range(0, t + 1):
         #             att_t[b] += self.Wv[b, i] * self.x_list[tau,i] * key_prob[tau]
 
+        self.att[t] = att_t
+
         return att_t
 
     def exp_f_mf(self, t, tau):
@@ -133,6 +138,8 @@ class HopfieldTransformer:
         # for b in range(0, self.num_feat_patterns):
         #     for tau in range(0, t+1):
         #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
+
+        self.att_mf[t] = att_t
 
         return att_t
 
@@ -170,19 +177,19 @@ class HopfieldTransformer:
     def compute_mf(self, t, att):
 
         att_i = np.tanh(self.beta_o * np.einsum('i,e -> ei', att, np.ones(self.embedding_size)) @ self.Wo)
-        self.mo[t] = np.einsum('bi,ii ->b', self.Wk, att_i)/self.embedding_size
+        self.mo[t] = np.einsum('bi,ii ->b', self.Wo, att_i) / self.embedding_size
 
         # # Loopy implementation for testing
         # mo_t = np.zeros(self.num_feat_patterns)
         # for b in range(0, self.num_feat_patterns):
         #     for i in range(0, self.embedding_size):
-        #         mo_t[b] += self.Wk[b, i] * np.tanh(self.beta_o * self.Wo[:, i] @ att)
+        #         mo_t[b] += self.Wo[b, i] * np.tanh(self.beta_o * self.Wo[:, i] @ att)
         # mo_t /= self.embedding_size
-        # print(np.allclose(mo2, mo_t))
+        # print(np.allclose(self.mo[t], mo_t))
 
-        self.mv[t] = np.einsum('bi,ii ->b', self.Wv, att_i)/self.embedding_size
-        self.mq[t] = np.einsum('bi,ii ->b', self.Wq, att_i)/self.embedding_size
-        self.mq[t] = np.einsum('bi,ii ->b', self.Wk, att_i)/self.embedding_size
+        self.mv[t] = np.einsum('bi,ii ->b', self.Wv, att_i) / self.embedding_size
+        self.mq[t] = np.einsum('bi,ii ->b', self.Wq, att_i) / self.embedding_size
+        self.mq[t] = np.einsum('bi,ii ->b', self.Wk, att_i) / self.embedding_size
 
     def simulate_mf(self, x0_idx, max_steps):
 
@@ -213,13 +220,13 @@ if __name__ == "__main__":
     beta = 1
     beta_o = beta
     beta_att = beta
-    x0_idx = 1  # You need to have an initial token to start decoding
+    x0_idx = 33000  # You need to have an initial token to start decoding
     num_feat_patterns = 10
     max_sim_steps = 512
     # Instantiate HT with the above created vocabulary
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
-    print("Simulating standard Transformer...")
-    HT.simulate(x0_idx, max_steps=max_sim_steps)
+    # print("Simulating standard Transformer...")
+    # HT.simulate(x0_idx, max_steps=max_sim_steps)
     print("Simulating MF Transformer...")
     HT.simulate_mf(x0_idx, max_steps=max_sim_steps)
     print("Done.")
