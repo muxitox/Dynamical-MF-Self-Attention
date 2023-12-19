@@ -194,7 +194,7 @@ class HopfieldTransformer:
 
         self.mv[t] = np.einsum('bi,i ->b', self.Wv, att_i, optimize=True) / self.embedding_size
         self.mq[t] = np.einsum('bi,i ->b', self.Wq, att_i, optimize=True) / self.embedding_size
-        self.mq[t] = np.einsum('bi,i ->b', self.Wk, att_i, optimize=True) / self.embedding_size
+        self.mk[t] = np.einsum('bi,i ->b', self.Wk, att_i, optimize=True) / self.embedding_size
 
     def simulate_mf(self, x0_idx, max_steps):
 
@@ -244,8 +244,8 @@ if __name__ == "__main__":
     beta = 4
     beta_o = beta
     beta_att = beta
-    x0_idx = 33000  # You need to have an initial token to start decoding
-    num_feat_patterns = 10
+    x0_idx = 14  # You need to have an initial token to start decoding
+    num_feat_patterns = 4
     max_sim_steps = 512
     # Instantiate HT with the above created vocabulary
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
