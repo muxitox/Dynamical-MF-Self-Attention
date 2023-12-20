@@ -153,26 +153,28 @@ class HopfieldTransformer:
         x0 = self.vocab.encode(x0_idx)
         self.x_list[0,:] = x0
 
-        for t in range(0, max_steps-1):
+        for t in range(0, max_steps):
             att = self.attention(t)
 
-            # We project all possible tokens in the vocabulary through Wo
-            o = self.vocab.idx2word @ self.Wo.T
+            if t < max_steps-1:  # We'll compute att once more for computing statistics
 
-            # We multiply by the attention score
-            prob_unnormalized = o @ att
+                # We project all possible tokens in the vocabulary through Wo
+                o = self.vocab.idx2word @ self.Wo.T
 
-            # Convert the above result into a probability and get the idx of the most probable token
-            new_x_idx = np.argmax(prob_unnormalized)
+                # We multiply by the attention score
+                prob_unnormalized = o @ att
 
-            # Encode token and add it to the list
-            new_x = self.vocab.encode(new_x_idx)
-            self.x_list[t+1, :] = self.vocab.encode(new_x_idx)
-            # Save for comparison with MF
-            self.mo_data[t+1] = new_x @ self.Wo.T / self.embedding_size
+                # Convert the above result into a probability and get the idx of the most probable token
+                new_x_idx = np.argmax(prob_unnormalized)
 
-            if verbose:
-                print(f'In position {t+1} we have selected token {new_x_idx}')
+                # Encode token and add it to the list
+                new_x = self.vocab.encode(new_x_idx)
+                self.x_list[t+1, :] = self.vocab.encode(new_x_idx)
+                # Save for comparison with MF
+                self.mo_data[t+1] = new_x @ self.Wo.T / self.embedding_size
+
+                if verbose:
+                    print(f'In position {t+1} we have selected token {new_x_idx}')
 
     def compute_means_from_data(self, t):
         self.mv[t] = self.x_list[t] @ self.Wv.T / self.embedding_size
@@ -205,7 +207,7 @@ class HopfieldTransformer:
         self.compute_means_from_data(t=0)
         att = self.attention_mf(t=0)
 
-        for t in range(1, max_steps-1):
+        for t in range(1, max_steps):
             self.compute_mf(t, att)
             att = self.attention_mf(t)
 
