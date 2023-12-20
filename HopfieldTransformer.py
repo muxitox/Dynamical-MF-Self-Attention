@@ -209,13 +209,15 @@ class HopfieldTransformer:
             self.compute_mf(t, att)
             att = self.attention_mf(t)
 
-def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps=40):
-    fig, ax = plt.subplots(num_feat_patterns//2, 2)
-
-    num_plotting_steps_arange = np.arange(num_plotting_steps)
+def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps):
+    nrows = num_feat_patterns//2
+    fig, ax = plt.subplots(nrows, 2,  figsize=(8, 2*nrows), constrained_layout=True)
 
     if stat_name == "mo":
+        num_plotting_steps_arange = np.arange(num_plotting_steps - 1)
         num_plotting_steps_arange += 1
+    else:
+        num_plotting_steps_arange = np.arange(num_plotting_steps)
 
     for i in range(0, min(10, num_feat_patterns)):
 
@@ -224,10 +226,35 @@ def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plott
         ax[row, i % 2].plot(num_plotting_steps_arange, stat2[:num_plotting_steps, i], '--', label="mf")
         if i > 3:
             ax[row, i % 2].set_xlabel("t")
-        ax[row, i % 2].legend(loc="upper right")
+        ax[row, i % 2].legend(loc="upper center")
 
-    plt.suptitle(f"Evolution of {stat_name}")
+    # fig.tight_layout(pad=0.1)
+    fig.suptitle(f"Evolution of {stat_name}")
     plt.show()
+
+def plot_statistics_1d(stat1, stat2, stat_name, num_plotting_steps):
+
+    if stat_name == "mo":
+        num_plotting_steps_arange = np.arange(num_plotting_steps - 1)
+        num_plotting_steps_arange += 1
+    else:
+        num_plotting_steps_arange = np.arange(num_plotting_steps)
+
+    plt.figure()
+    plt.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, 0], label="std")
+    plt.plot(num_plotting_steps_arange, stat2[:num_plotting_steps, 0], '--', label="mf")
+    plt.xlabel("t")
+    plt.legend(loc="upper right")
+
+    plt.title(f"Evolution of {stat_name}")
+    plt.show()
+
+def plot_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps):
+
+    if num_feat_patterns == 1:
+        plot_statistics_1d(stat1, stat2, stat_name, num_plotting_steps)
+    else:
+        plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps)
 
 if __name__ == "__main__":
 
@@ -245,7 +272,7 @@ if __name__ == "__main__":
     beta_o = beta
     beta_att = beta
     x0_idx = 14  # You need to have an initial token to start decoding
-    num_feat_patterns = 4
+    num_feat_patterns = 10
     max_sim_steps = 512
     # Instantiate HT with the above created vocabulary
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
@@ -257,16 +284,16 @@ if __name__ == "__main__":
 
     # Plotting
     print("Plotting statistics...")
-    num_plotting_steps = 10
-    plot_statistics_2_cols(HT.att, HT.att_mf, "Att", num_feat_patterns, num_plotting_steps)
+    num_plotting_steps = 512
+    plot_statistics(HT.att, HT.att_mf, "Att", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics_2_cols(HT.mo_data[1:], HT.mo[1:], "mo", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mo_data[1:], HT.mo[1:], "mo", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics_2_cols(HT.mv_data, HT.mv, "mv", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mv_data, HT.mv, "mv", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics_2_cols(HT.mq_data, HT.mq, "mq", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mq_data, HT.mq, "mq", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics_2_cols(HT.mk_data, HT.mk, "mk", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mk_data, HT.mk, "mk", num_feat_patterns, num_plotting_steps)
     print("Done.")
 
 
