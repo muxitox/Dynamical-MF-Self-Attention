@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-# Create seed for reproducibility
-np.random.seed(9)
+
 
 imgs_root = "imgs/hopfield_transformer"
 
@@ -171,6 +170,8 @@ class HopfieldTransformer:
     def simulate(self, x0, max_steps, verbose=True):
         self.x_list[0,:] = x0
 
+        selected_tokens = []
+
         for t in range(0, max_steps):
             att = self.attention(t)
 
@@ -191,8 +192,12 @@ class HopfieldTransformer:
                 # Save for comparison with MF
                 self.mo_data[t+1] = new_x @ self.Wo.T / self.embedding_size
 
+                selected_tokens.append(new_x_idx)
+
                 if verbose:
                     print(f'In position {t+1} we have selected token {new_x_idx}')
+
+        return selected_tokens
 
     def compute_means_from_data(self, t):
         self.mv[t] = self.x_list[t] @ self.Wv.T / self.embedding_size
@@ -228,7 +233,7 @@ class HopfieldTransformer:
             att = self.attention_mf(t)
 
 def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps):
-    nrows = num_feat_patterns//2 + 1
+    nrows = (num_feat_patterns + 1 ) // 2
     fig, ax = plt.subplots(nrows, 2,  figsize=(8, 2*nrows), constrained_layout=True)
 
     if stat_name == "mo":
@@ -284,7 +289,7 @@ if __name__ == "__main__":
     #     os.makedirs(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/")
 
     # Instantiate vocabulary
-    embedding_size = 4
+    embedding_size = 16
     vocab_size = 2**embedding_size
     vocab = Vocabulary(vocab_size, embedding_size)
     vocab.initialize()
@@ -294,8 +299,20 @@ if __name__ == "__main__":
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 3
-    max_sim_steps = 15
+    num_feat_patterns = 4
+    max_sim_steps = 100
+
+    # Create seed for reproducibility
+    # Embedding size 4:
+    # Seed for 3 length cycle with 3 patterns: 9
+    # Seed for 4 length cycle with 4 patterns: 19, 33, 41, 53 Only the 4% were 4 lenght cycles. Only 3% were 3 length. (Out of 100)
+    # Embedding size 16:
+    # Seed for 4 length cycle with 4 patterns: 106. A different initial state than W[0] changes the dynamic
+
+    seed = 106
+
+    np.random.seed(seed)
+
     # Instantiate HT with the above created vocabulary
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
 
@@ -313,10 +330,14 @@ if __name__ == "__main__":
     print(HT.decoded_tokens)
 
     print("Simulating standard Transformer...")
-    HT.simulate(x0, max_steps=max_sim_steps)
+    selected_tokens = HT.simulate(x0, max_steps=max_sim_steps)
     print("Simulating MF Transformer...")
     HT.simulate_mf(x0, max_steps=max_sim_steps)
     print("Done.")
+
+    num_diff_tokens = len(np.unique(selected_tokens[10:]))
+    if num_diff_tokens > 2:
+        print("Seed:", seed, "Num different tokens: ", num_diff_tokens)
 
     # Plotting
     print("Plotting statistics...")
