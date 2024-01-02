@@ -85,10 +85,16 @@ class HopfieldTransformer:
         idwo1 = 7
         idwv0 = 7
         idwv1 = 1
-        idwq0 = 0
-        idwq1 = 0
-        idwk0 = 4
-        idwk1 = 4
+        idwq0 = 7
+        idwq1 = 1
+        idwk0 = 7
+        idwk1 = 1
+
+        # If o!=the rest and v = q  and v != k -> fixed point
+        # If o = k and v = q -> fixed point
+        # If v = q = k -> 2 cycle
+        # If o = q = k -> 2 cycle
+
 
         self.Wo[0] = self.W[idwo0]
         self.Wo[1] = self.W[idwo1]
