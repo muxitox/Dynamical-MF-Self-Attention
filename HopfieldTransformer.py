@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 # Create seed for reproducibility
-np.random.seed(1)
+np.random.seed(9)
 
 imgs_root = "imgs/hopfield_transformer"
 
@@ -17,7 +17,7 @@ def bool2int(x):  # Transform bool array into positive integer
     y = 0
     for i, j in enumerate(np.array(x)[::-1]):
         y += j * 2**i
-    return y
+    return int(y)
 
 
 def bitfield(n,size):			# Transform positive integer into bit array
@@ -42,16 +42,36 @@ class Vocabulary:
     def encode(self, idx):
         return self.idx2word[idx]
 
+    def decode(self, x):
+        x = (x + 1)/2
+        return bool2int(x)
+
 
 class HopfieldTransformer:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512):
         self.beta_o = beta_o
         self.beta_att = beta_att
-        self.Wo = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-        self.Wv = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-        self.Wq = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-        self.Wk = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+
+        self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+
+        self.decoded_tokens = np.zeros(len(self.W))
+
+        for a in range(0, len(self.W)):
+            self.decoded_tokens[a] = vocab.decode(self.W[a])
+
+
+        self.Wo = np.copy(self.W)
+        np.random.shuffle(self.Wo)
+        self.Wv = np.copy(self.W)
+        np.random.shuffle(self.Wv)
+        self.Wq = np.copy(self.W)
+        np.random.shuffle(self.Wq)
+        self.Wk = np.copy(self.W)
+        np.random.shuffle(self.Wk)
+
+        # In 2D same behavior as 2feat
+
         self.num_feat_patterns = num_feat_patterns
         self.embedding_size = embedding_size
         self.vocab = vocab
@@ -148,9 +168,7 @@ class HopfieldTransformer:
 
         return att_t
 
-    def simulate(self, x0_idx, max_steps, verbose=False):
-
-        x0 = self.vocab.encode(x0_idx)
+    def simulate(self, x0, max_steps, verbose=True):
         self.x_list[0,:] = x0
 
         for t in range(0, max_steps):
@@ -198,9 +216,7 @@ class HopfieldTransformer:
         self.mq[t] = np.einsum('bi,i ->b', self.Wq, att_i, optimize=True) / self.embedding_size
         self.mk[t] = np.einsum('bi,i ->b', self.Wk, att_i, optimize=True) / self.embedding_size
 
-    def simulate_mf(self, x0_idx, max_steps):
-
-        x0 = self.vocab.encode(x0_idx)
+    def simulate_mf(self, x0, max_steps):
         self.x_list[0, :] = x0
 
         # Initialize attention with the info from the initial token
@@ -212,7 +228,7 @@ class HopfieldTransformer:
             att = self.attention_mf(t)
 
 def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps):
-    nrows = num_feat_patterns//2
+    nrows = num_feat_patterns//2 + 1
     fig, ax = plt.subplots(nrows, 2,  figsize=(8, 2*nrows), constrained_layout=True)
 
     if stat_name == "mo":
@@ -224,11 +240,15 @@ def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plott
     for i in range(0, min(10, num_feat_patterns)):
 
         row = i // 2
-        ax[row, i % 2].plot(num_plotting_steps_arange, stat1[:num_plotting_steps, i], label="std")
-        ax[row, i % 2].plot(num_plotting_steps_arange, stat2[:num_plotting_steps, i], '--', label="mf")
+        if num_feat_patterns <= 2:
+            local_ax = ax[i % 2]
+        else:
+            local_ax = ax[row, i % 2]
+        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, i], label="std")
+        local_ax.plot(num_plotting_steps_arange, stat2[:num_plotting_steps, i], '--', label="mf")
         if i > 3:
-            ax[row, i % 2].set_xlabel("t")
-        ax[row, i % 2].legend(loc="upper center")
+            local_ax.set_xlabel("t")
+        local_ax.legend(loc="upper center")
 
     # fig.tight_layout(pad=0.1)
     fig.suptitle(f"Evolution of {stat_name}")
@@ -264,7 +284,7 @@ if __name__ == "__main__":
     #     os.makedirs(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/")
 
     # Instantiate vocabulary
-    embedding_size = 16
+    embedding_size = 4
     vocab_size = 2**embedding_size
     vocab = Vocabulary(vocab_size, embedding_size)
     vocab.initialize()
@@ -273,20 +293,34 @@ if __name__ == "__main__":
     beta = 4
     beta_o = beta
     beta_att = beta
-    x0_idx = 14  # You need to have an initial token to start decoding
-    num_feat_patterns = 10
-    max_sim_steps = 512
+
+    num_feat_patterns = 3
+    max_sim_steps = 15
     # Instantiate HT with the above created vocabulary
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
+
+    # Select initial token
+    x0_idx = 10  # You need to have an initial token to start decoding
+    random_idx = False
+    if random_idx:
+        x0 = vocab.encode(x0_idx)
+    else:
+        x0 = HT.W[0]
+        x0_idx = vocab.decode(x0)
+        print(f"Initializing the model with the token with index {x0_idx}")
+
+    print("List of tokens encoded in the features")
+    print(HT.decoded_tokens)
+
     print("Simulating standard Transformer...")
-    HT.simulate(x0_idx, max_steps=max_sim_steps)
+    HT.simulate(x0, max_steps=max_sim_steps)
     print("Simulating MF Transformer...")
-    HT.simulate_mf(x0_idx, max_steps=max_sim_steps)
+    HT.simulate_mf(x0, max_steps=max_sim_steps)
     print("Done.")
 
     # Plotting
     print("Plotting statistics...")
-    num_plotting_steps = 512
+    num_plotting_steps = max_sim_steps
     plot_statistics(HT.att, HT.att_mf, "Att", num_feat_patterns, num_plotting_steps)
 
     plot_statistics(HT.mo_data[1:], HT.mo[1:], "mo", num_feat_patterns, num_plotting_steps)
