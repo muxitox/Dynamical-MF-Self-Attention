@@ -317,9 +317,9 @@ if __name__ == "__main__":
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
 
     # Select initial token
-    x0_idx = 10  # You need to have an initial token to start decoding
     random_idx = False
     if random_idx:
+        x0_idx = 10  # You need to have an initial token to start decoding
         x0 = vocab.encode(x0_idx)
     else:
         x0 = HT.W[0]
