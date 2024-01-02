@@ -91,6 +91,7 @@ class HopfieldTransformer:
         idwk1 = 1
 
         # If o!=the rest and v = q  and v != k -> fixed point
+        # If all are equal fixed point
         # If o = k and v = q -> fixed point
         # If v = q = k -> 2 cycle
         # If o = q = k -> 2 cycle
