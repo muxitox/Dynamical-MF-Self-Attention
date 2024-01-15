@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.special import softmax
 import os
 
 
@@ -62,12 +63,14 @@ class HopfieldTransformer:
 
         self.Wo = np.copy(self.W)
         np.random.shuffle(self.Wo)
-        self.Wv = np.copy(self.W)
-        np.random.shuffle(self.Wv)
+        # self.Wv = np.copy(self.W)
+        # np.random.shuffle(self.Wv)
+        self.Wv = np.roll(self.Wo, 1, 1)
         self.Wq = np.copy(self.W)
         np.random.shuffle(self.Wq)
-        self.Wk = np.copy(self.W)
-        np.random.shuffle(self.Wk)
+        # self.Wk = np.copy(self.W)
+        # np.random.shuffle(self.Wk)
+        self.Wk = self.Wq
 
         # In 2D same behavior as 2feat
 
@@ -167,7 +170,7 @@ class HopfieldTransformer:
 
         return att_t
 
-    def simulate(self, x0, max_steps, verbose=True):
+    def simulate(self, x0, max_steps, verbose=False):
         self.x_list[0,:] = x0
 
         selected_tokens = []
@@ -181,10 +184,14 @@ class HopfieldTransformer:
                 o = self.vocab.idx2word @ self.Wo.T
 
                 # We multiply by the attention score
-                prob_unnormalized = o @ att
+                prob_unnormalized = self.beta_o * o @ att
+
+                print("Num max", np.sum(prob_unnormalized==max(prob_unnormalized)))
+
+                prob_normalized = softmax(prob_unnormalized)
 
                 # Convert the above result into a probability and get the idx of the most probable token
-                new_x_idx = np.argmax(prob_unnormalized)
+                new_x_idx = np.random.choice(range(len(prob_normalized)), p=prob_normalized)
 
                 # Encode token and add it to the list
                 new_x = self.vocab.encode(new_x_idx)
@@ -300,7 +307,7 @@ if __name__ == "__main__":
     beta_att = beta
 
     num_feat_patterns = 4
-    max_sim_steps = 100
+    max_sim_steps = 20
 
     # Create seed for reproducibility
     # Embedding size 4:
@@ -309,7 +316,7 @@ if __name__ == "__main__":
     # Embedding size 16:
     # Seed for 4 length cycle with 4 patterns: 106. A different initial state than W[0] changes the dynamic
 
-    seed = 106
+    seed = 1
 
     np.random.seed(seed)
 
@@ -330,7 +337,7 @@ if __name__ == "__main__":
     print(HT.decoded_tokens)
 
     print("Simulating standard Transformer...")
-    selected_tokens = HT.simulate(x0, max_steps=max_sim_steps)
+    selected_tokens = HT.simulate(x0, max_steps=max_sim_steps, verbose=True)
     print("Simulating MF Transformer...")
     HT.simulate_mf(x0, max_steps=max_sim_steps)
     print("Done.")
