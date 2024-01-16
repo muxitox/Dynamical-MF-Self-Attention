@@ -186,7 +186,7 @@ class HopfieldTransformer:
                 # We multiply by the attention score
                 prob_unnormalized = self.beta_o * o @ att
 
-                print("Num max", np.sum(prob_unnormalized==max(prob_unnormalized)))
+                print("Num tokens with max probability", np.sum(prob_unnormalized==max(prob_unnormalized)), "/", self.vocab.vocab_size)
 
                 prob_normalized = softmax(prob_unnormalized)
 
