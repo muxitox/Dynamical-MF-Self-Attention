@@ -68,6 +68,8 @@ class HopfieldTransformer:
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512):
         self.beta_o = beta_o
         self.beta_att = beta_att
+        self.se_bit_size = vocab.se_bit_size
+        self.pe_bit_size = vocab.pe_bit_size
 
         self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
@@ -96,11 +98,13 @@ class HopfieldTransformer:
         self.max_sim_steps = max_sim_steps
 
         self.mo_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mo_se_data = np.zeros((max_sim_steps, num_feat_patterns))
         self.mv_data = np.zeros((max_sim_steps, num_feat_patterns))
         self.mq_data = np.zeros((max_sim_steps, num_feat_patterns))
         self.mk_data = np.zeros((max_sim_steps, num_feat_patterns))
 
         self.mo = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mo_se = np.zeros((max_sim_steps, num_feat_patterns))
         self.mv = np.zeros((max_sim_steps, num_feat_patterns))
         self.mq = np.zeros((max_sim_steps, num_feat_patterns))
         self.mk = np.zeros((max_sim_steps, num_feat_patterns))
@@ -216,6 +220,7 @@ class HopfieldTransformer:
 
                 # Save for comparison with MF
                 self.mo_data[t+1] = new_x @ self.Wo.T / self.embedding_size
+                self.mo_se_data[t+1] = new_x[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.embedding_size
 
                 selected_tokens.append(new_x_idx)
 
@@ -231,8 +236,10 @@ class HopfieldTransformer:
 
     def compute_mf(self, t, att):
 
-        att_i = np.tanh(self.beta_o * np.einsum('b,bi -> i', att, self.Wo, optimize=True))
-        self.mo[t] = np.einsum('bi,i ->b', self.Wo, att_i, optimize=True) / self.embedding_size
+        att_Wo_i = np.tanh(self.beta_o * np.einsum('b,bi -> i', att, self.Wo[:,:self.se_bit_size], optimize=True))
+        att_Wo_i = np.concatenate((att_Wo_i, bitfield(t, self.pe_bit_size) * 2 - 1))
+        self.mo[t] = np.einsum('bi,i ->b', self.Wo, att_Wo_i, optimize=True) / self.embedding_size
+        self.mo_se[t] = np.einsum('bi,i ->b', self.Wo[:,:self.se_bit_size], att_Wo_i[:self.se_bit_size], optimize=True) / self.embedding_size
 
         # # Loopy implementation for testing
         # mo_t = np.zeros(self.num_feat_patterns)
@@ -242,9 +249,9 @@ class HopfieldTransformer:
         # mo_t /= self.embedding_size
         # print(np.allclose(self.mo[t], mo_t))
 
-        self.mv[t] = np.einsum('bi,i ->b', self.Wv, att_i, optimize=True) / self.embedding_size
-        self.mq[t] = np.einsum('bi,i ->b', self.Wq, att_i, optimize=True) / self.embedding_size
-        self.mk[t] = np.einsum('bi,i ->b', self.Wk, att_i, optimize=True) / self.embedding_size
+        self.mv[t] = np.einsum('bi,i ->b', self.Wv, att_Wo_i, optimize=True) / self.embedding_size
+        self.mq[t] = np.einsum('bi,i ->b', self.Wq, att_Wo_i, optimize=True) / self.embedding_size
+        self.mk[t] = np.einsum('bi,i ->b', self.Wk, att_Wo_i, optimize=True) / self.embedding_size
 
     def simulate_mf(self, x0, max_steps):
         self.x_list[0, :] = x0
@@ -261,7 +268,7 @@ def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plott
     nrows = (num_feat_patterns + 1 ) // 2
     fig, ax = plt.subplots(nrows, 2,  figsize=(8, 2*nrows), constrained_layout=True)
 
-    if stat_name == "mo":
+    if stat_name == "mo" or stat_name == "mo_se":
         num_plotting_steps_arange = np.arange(num_plotting_steps - 1)
         num_plotting_steps_arange += 1
     else:
@@ -280,13 +287,16 @@ def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plott
             local_ax.set_xlabel("t")
         local_ax.legend(loc="upper center")
 
+        if stat_name == "mo_se":
+            plt.show()
+
     # fig.tight_layout(pad=0.1)
     fig.suptitle(f"Evolution of {stat_name}")
     plt.show()
 
 def plot_statistics_1d(stat1, stat2, stat_name, num_plotting_steps):
 
-    if stat_name == "mo":
+    if stat_name == "mo" or stat_name == "mo_se":
         num_plotting_steps_arange = np.arange(num_plotting_steps - 1)
         num_plotting_steps_arange += 1
     else:
@@ -328,14 +338,8 @@ if __name__ == "__main__":
     num_feat_patterns = 4
     max_sim_steps = 20
 
-    # Create seed for reproducibility
-    # Embedding size 4:
-    # Seed for 3 length cycle with 3 patterns: 9
-    # Seed for 4 length cycle with 4 patterns: 19, 33, 41, 53 Only the 4% were 4 lenght cycles. Only 3% were 3 length. (Out of 100)
-    # Embedding size 16:
-    # Seed for 4 length cycle with 4 patterns: 106. A different initial state than W[0] changes the dynamic
-
-    seed = 1
+    # Create seed for reproducibilitu
+    seed = 4
 
     np.random.seed(seed)
 
@@ -373,6 +377,8 @@ if __name__ == "__main__":
     plot_statistics(HT.att, HT.att_mf, "Att", num_feat_patterns, num_plotting_steps)
 
     plot_statistics(HT.mo_data[1:], HT.mo[1:], "mo", num_feat_patterns, num_plotting_steps)
+
+    plot_statistics(HT.mo_se_data[1:], HT.mo_se[1:], "mo_se", num_feat_patterns, num_plotting_steps)
 
     plot_statistics(HT.mv_data, HT.mv, "mv", num_feat_patterns, num_plotting_steps)
 
