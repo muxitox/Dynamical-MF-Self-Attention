@@ -81,14 +81,14 @@ class HopfieldTransformer:
 
         self.Wo = np.copy(self.W)
         np.random.shuffle(self.Wo)
-        # self.Wv = np.copy(self.W)
-        # np.random.shuffle(self.Wv)
-        self.Wv = np.roll(self.Wo, 1, 1)
+        self.Wv = np.copy(self.W)
+        np.random.shuffle(self.Wv)
+        # self.Wv = np.roll(self.Wo, 1, 1)
         self.Wq = np.copy(self.W)
         np.random.shuffle(self.Wq)
-        # self.Wk = np.copy(self.W)
-        # np.random.shuffle(self.Wk)
-        self.Wk = self.Wq
+        self.Wk = np.copy(self.W)
+        np.random.shuffle(self.Wk)
+        # self.Wk = self.Wq
 
         # In 2D same behavior as 2feat
 
