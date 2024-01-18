@@ -114,6 +114,18 @@ class HopfieldTransformer:
 
         self.x_list = np.zeros((max_sim_steps, embedding_size))
 
+    def reset_data(self):
+        self.x_list = np.zeros((max_sim_steps, embedding_size))
+
+        self.mo_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mo_se_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mv_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mq_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mk_data = np.zeros((max_sim_steps, num_feat_patterns))
+
+        self.att = np.zeros((max_sim_steps, num_feat_patterns))
+
+
     def exp_f(self, t, tau):
 
         q = self.x_list[t] @ self.Wq.T  # Query representation
@@ -287,9 +299,6 @@ def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plott
             local_ax.set_xlabel("t")
         local_ax.legend(loc="upper center")
 
-        if stat_name == "mo_se":
-            plt.show()
-
     # fig.tight_layout(pad=0.1)
     fig.suptitle(f"Evolution of {stat_name}")
     plt.show()
@@ -339,12 +348,12 @@ if __name__ == "__main__":
     max_sim_steps = 20
 
     # Create seed for reproducibilitu
-    seed = 4
+    seed = 10
 
     np.random.seed(seed)
 
-    # Instantiate HT with the above created vocabulary
-    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
+    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size,
+                             vocab=vocab, max_sim_steps=max_sim_steps)
 
     # Select initial token
     random_idx = False
@@ -361,30 +370,60 @@ if __name__ == "__main__":
     print("List of tokens encoded in the features")
     print(HT.decoded_tokens)
 
-    print("Simulating standard Transformer...")
-    selected_tokens = HT.simulate(x0, max_steps=max_sim_steps, verbose=True)
+    num_runs = 50
+
+    mean_att = np.zeros((max_sim_steps, num_feat_patterns))
+    mean_mo_data = np.zeros((max_sim_steps, num_feat_patterns))
+    mean_mo_se_data = np.zeros((max_sim_steps, num_feat_patterns))
+    mean_mv_data = np.zeros((max_sim_steps, num_feat_patterns))
+    mean_mq_data = np.zeros((max_sim_steps, num_feat_patterns))
+    mean_mk_data = np.zeros((max_sim_steps, num_feat_patterns))
+
+    for i in range(0, num_runs):
+        # Instantiate HT with the above created vocabulary
+
+        # print("Simulating standard Transformer...")
+        HT.reset_data()
+        selected_tokens = HT.simulate(x0, max_steps=max_sim_steps, verbose=True)
+
+        num_diff_tokens = len(np.unique(selected_tokens[10:]))
+        # if num_diff_tokens > 2:
+        #     print("Seed:", seed, "Num different tokens: ", num_diff_tokens)
+
+        #  Collect data to compute the mean of the trajectory
+        mean_att += HT.att
+        mean_mo_data += HT.mo_data
+        mean_mo_se_data += HT.mo_se_data
+        mean_mv_data += HT.mv_data
+        mean_mq_data += HT.mq_data
+        mean_mk_data += HT.mk_data
+
+    # Compute mean
+    mean_att /= num_runs
+    mean_mo_data /= num_runs
+    mean_mo_se_data /= num_runs
+    mean_mv_data /= num_runs
+    mean_mq_data /= num_runs
+    mean_mk_data /= num_runs
+
     print("Simulating MF Transformer...")
     HT.simulate_mf(x0, max_steps=max_sim_steps)
     print("Done.")
 
-    num_diff_tokens = len(np.unique(selected_tokens[10:]))
-    if num_diff_tokens > 2:
-        print("Seed:", seed, "Num different tokens: ", num_diff_tokens)
-
     # Plotting
     print("Plotting statistics...")
     num_plotting_steps = max_sim_steps
-    plot_statistics(HT.att, HT.att_mf, "Att", num_feat_patterns, num_plotting_steps)
+    plot_statistics(mean_att, HT.att_mf, "Att", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics(HT.mo_data[1:], HT.mo[1:], "mo", num_feat_patterns, num_plotting_steps)
+    plot_statistics(mean_mo_data[1:], HT.mo[1:], "mo", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics(HT.mo_se_data[1:], HT.mo_se[1:], "mo_se", num_feat_patterns, num_plotting_steps)
+    plot_statistics(mean_mo_se_data[1:], HT.mo_se[1:], "mo_se", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics(HT.mv_data, HT.mv, "mv", num_feat_patterns, num_plotting_steps)
+    plot_statistics(mean_mv_data, HT.mv, "mv", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics(HT.mq_data, HT.mq, "mq", num_feat_patterns, num_plotting_steps)
+    plot_statistics(mean_mq_data, HT.mq, "mq", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics(HT.mk_data, HT.mk, "mk", num_feat_patterns, num_plotting_steps)
+    plot_statistics(mean_mk_data, HT.mk, "mk", num_feat_patterns, num_plotting_steps)
     print("Done.")
 
 
