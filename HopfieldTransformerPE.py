@@ -73,22 +73,33 @@ class HopfieldTransformer:
 
         self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
+        reorder_weights = False
+        if reorder_weights:
+            self.Wo = np.copy(self.W)
+            np.random.shuffle(self.Wo)
+            self.Wv = np.copy(self.W)
+            np.random.shuffle(self.Wv)
+            # self.Wv = np.roll(self.Wo, 1, 1)
+            self.Wq = np.copy(self.W)
+            np.random.shuffle(self.Wq)
+            self.Wk = np.copy(self.W)
+            np.random.shuffle(self.Wk)
+            # self.Wk = self.Wq
+
+        else:
+
+            self.Wo = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wv = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wq = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wk = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+
+            self.W = self.Wo
+
         self.decoded_tokens = np.zeros(len(self.W))
 
         for a in range(0, len(self.W)):
             self.decoded_tokens[a] = vocab.decode(self.W[a])
 
-
-        self.Wo = np.copy(self.W)
-        np.random.shuffle(self.Wo)
-        self.Wv = np.copy(self.W)
-        np.random.shuffle(self.Wv)
-        # self.Wv = np.roll(self.Wo, 1, 1)
-        self.Wq = np.copy(self.W)
-        np.random.shuffle(self.Wq)
-        self.Wk = np.copy(self.W)
-        np.random.shuffle(self.Wk)
-        # self.Wk = self.Wq
 
         # In 2D same behavior as 2feat
 
@@ -224,7 +235,11 @@ class HopfieldTransformer:
                 prob_normalized = softmax(prob_unnormalized)
 
                 # Convert the above result into a probability and get the idx of the most probable token
-                new_x_idx = np.random.choice(range(len(prob_normalized)), p=prob_normalized)
+                sample = False
+                if sample:
+                    new_x_idx = np.random.choice(range(len(prob_normalized)), p=prob_normalized)
+                else:
+                    new_x_idx = np.argmax(prob_normalized)
 
                 # Encode token and add it to the list
                 new_x = self.vocab.encode(new_x_idx)
@@ -333,7 +348,7 @@ if __name__ == "__main__":
     #     os.makedirs(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/")
 
     # Instantiate vocabulary
-    semantic_embedding_size = 10
+    semantic_embedding_size = 16
     positional_embedding_size = 6
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
@@ -344,11 +359,12 @@ if __name__ == "__main__":
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 4
+    num_feat_patterns = 8
     max_sim_steps = 20
 
-    # Create seed for reproducibilitu
-    seed = 10
+    # Create seed for reproducibility
+    # Nice seed for reorder of W, 14 se spins 6 pe spins 6 features: 10. Interesting cycle
+    seed = 13
 
     np.random.seed(seed)
 
@@ -370,7 +386,7 @@ if __name__ == "__main__":
     print("List of tokens encoded in the features")
     print(HT.decoded_tokens)
 
-    num_runs = 50
+    num_runs = 1
 
     mean_att = np.zeros((max_sim_steps, num_feat_patterns))
     mean_mo_data = np.zeros((max_sim_steps, num_feat_patterns))
