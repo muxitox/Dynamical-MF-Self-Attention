@@ -73,7 +73,7 @@ class HopfieldTransformer:
 
         self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
-        reorder_weights = False
+        reorder_weights = True
         if reorder_weights:
             self.Wo = np.copy(self.W)
             np.random.shuffle(self.Wo)
@@ -137,7 +137,7 @@ class HopfieldTransformer:
         self.att = np.zeros((max_sim_steps, num_feat_patterns))
 
 
-    def exp_f(self, t, tau):
+    def qk_f(self, t, tau):
 
         q = self.x_list[t] @ self.Wq.T  # Query representation
         k = self.Wk @ self.x_list[tau]  # Key representation
@@ -158,7 +158,7 @@ class HopfieldTransformer:
         #         for j in range(0, self.embedding_size):
         #             qk_accum += self.x_list[t,i] * self.Wq[a, i] * self.Wk[a, j] * self.x_list[tau,j]
         #
-        # res2 = np.exp(self.beta_att / np.sqrt(self.num_feat_patterns) * qk_accum)
+        # res2 = self.beta_att / np.sqrt(self.num_feat_patterns) * qk_accum
         # print(np.allclose(res, res2))
 
         return res
@@ -168,7 +168,7 @@ class HopfieldTransformer:
 
         key_prob = np.zeros(t+1)
         for tau in range(0, t+1):
-            key_prob[tau] = self.exp_f(t, tau)
+            key_prob[tau] = self.qk_f(t, tau)
         key_prob /= np.sum(key_prob)
 
         v = self.x_list[0:t+1] @ self.Wv.T  # Value representation
@@ -191,14 +191,14 @@ class HopfieldTransformer:
     def exp_f_mf(self, t, tau):
 
         mqk = self.mq[t] @ self.mk[tau]
-        return np.exp(self.beta_att * self.embedding_size**2 / np.sqrt(self.num_feat_patterns) * mqk)
+        return self.beta_att * self.embedding_size**2 / np.sqrt(self.num_feat_patterns) * mqk
 
     def attention_mf(self, t):
 
         key_prob = np.zeros(t+1)
         for tau in range(0, t+1):
             key_prob[tau] = self.exp_f_mf(t, tau)
-        key_prob /= np.sum(key_prob)
+        key_prob = softmax(key_prob)
 
         att_t = self.embedding_size * (self.mv[:t+1].T @ key_prob)
 
@@ -217,6 +217,10 @@ class HopfieldTransformer:
 
         self.x_list[0,:] = x0
 
+        # Save for comparison with MF
+        self.mo_data[0] = x0 @ self.Wo.T / self.embedding_size
+        self.mo_se_data[0] = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.embedding_size
+
         selected_tokens = []
 
         for t in range(0, max_steps):
@@ -230,12 +234,13 @@ class HopfieldTransformer:
                 # We multiply by the attention score
                 prob_unnormalized = self.beta_o * o @ att
 
-                print("Num tokens with max probability", np.sum(prob_unnormalized==max(prob_unnormalized)), "/", self.vocab.vocab_size)
-
                 prob_normalized = softmax(prob_unnormalized)
 
+                print("Num tokens with max probability in time", t, ":", np.sum(np.isclose(prob_normalized,max(prob_normalized))), "/", self.vocab.vocab_size)
+
+
                 # Convert the above result into a probability and get the idx of the most probable token
-                sample = False
+                sample = True
                 if sample:
                     new_x_idx = np.random.choice(range(len(prob_normalized)), p=prob_normalized)
                 else:
@@ -251,12 +256,11 @@ class HopfieldTransformer:
 
                 selected_tokens.append(new_x_idx)
 
-                if verbose:
-                    print(f'In position {t+1} we have selected token {new_x_idx}')
-
         return selected_tokens
 
     def compute_means_from_data(self, t):
+        self.mo[t] = self.x_list[t] @ self.Wo.T / self.embedding_size
+        self.mo_se[t] = self.x_list[t, :self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.embedding_size
         self.mv[t] = self.x_list[t] @ self.Wv.T / self.embedding_size
         self.mq[t] = self.x_list[t] @ self.Wq.T / self.embedding_size
         self.mk[t] = self.x_list[t] @ self.Wk.T / self.embedding_size
@@ -295,11 +299,13 @@ def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plott
     nrows = (num_feat_patterns + 1 ) // 2
     fig, ax = plt.subplots(nrows, 2,  figsize=(8, 2*nrows), constrained_layout=True)
 
-    if stat_name == "mo" or stat_name == "mo_se":
-        num_plotting_steps_arange = np.arange(num_plotting_steps - 1)
-        num_plotting_steps_arange += 1
-    else:
-        num_plotting_steps_arange = np.arange(num_plotting_steps)
+    # if stat_name == "mo" or stat_name == "mo_se":
+    #     num_plotting_steps_arange = np.arange(num_plotting_steps - 1)
+    #     num_plotting_steps_arange += 1
+    # else:
+    #     num_plotting_steps_arange = np.arange(num_plotting_steps)
+
+    num_plotting_steps_arange = np.arange(num_plotting_steps)
 
     for i in range(0, min(10, num_feat_patterns)):
 
@@ -320,11 +326,13 @@ def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plott
 
 def plot_statistics_1d(stat1, stat2, stat_name, num_plotting_steps):
 
-    if stat_name == "mo" or stat_name == "mo_se":
-        num_plotting_steps_arange = np.arange(num_plotting_steps - 1)
-        num_plotting_steps_arange += 1
-    else:
-        num_plotting_steps_arange = np.arange(num_plotting_steps)
+    # if stat_name == "mo" or stat_name == "mo_se":
+    #     num_plotting_steps_arange = np.arange(num_plotting_steps - 1)
+    #     num_plotting_steps_arange += 1
+    # else:
+    #     num_plotting_steps_arange = np.arange(num_plotting_steps)
+
+    num_plotting_steps_arange = np.arange(num_plotting_steps)
 
     plt.figure()
     plt.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, 0], label="std")
@@ -348,7 +356,7 @@ if __name__ == "__main__":
     #     os.makedirs(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/")
 
     # Instantiate vocabulary
-    semantic_embedding_size = 16
+    semantic_embedding_size = 14
     positional_embedding_size = 6
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
@@ -359,12 +367,13 @@ if __name__ == "__main__":
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 8
+    num_feat_patterns = 6
     max_sim_steps = 20
 
     # Create seed for reproducibility
-    # Nice seed for reorder of W, 14 se spins 6 pe spins 6 features: 10. Interesting cycle
-    seed = 13
+    # Nice seed for reorder of W (no more constrains), 14 se spins 6 pe spins 6 features: 10. Sample = True Interesting cycle.
+    # Seed 13 (8, 16 + 6) does not coincide with std model
+    seed = 10
 
     np.random.seed(seed)
 
@@ -431,9 +440,9 @@ if __name__ == "__main__":
     num_plotting_steps = max_sim_steps
     plot_statistics(mean_att, HT.att_mf, "Att", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics(mean_mo_data[1:], HT.mo[1:], "mo", num_feat_patterns, num_plotting_steps)
+    plot_statistics(mean_mo_data, HT.mo, "mo", num_feat_patterns, num_plotting_steps)
 
-    plot_statistics(mean_mo_se_data[1:], HT.mo_se[1:], "mo_se", num_feat_patterns, num_plotting_steps)
+    plot_statistics(mean_mo_se_data, HT.mo_se, "mo_se", num_feat_patterns, num_plotting_steps)
 
     plot_statistics(mean_mv_data, HT.mv, "mv", num_feat_patterns, num_plotting_steps)
 
