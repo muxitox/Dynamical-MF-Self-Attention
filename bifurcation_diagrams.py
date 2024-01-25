@@ -24,7 +24,7 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
             feat_Y_values.extend(unique_values_feat)
             feat_X_values.extend(beta_values_feat)
 
-        local_ax.plot(feat_X_values, feat_Y_values)
+        local_ax.plot(feat_X_values, feat_Y_values, ls='', marker=',')
         # if i > 3:
         #     local_ax.set_xlabel("t")
         # local_ax.legend(loc="upper center")
