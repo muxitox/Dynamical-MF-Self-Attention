@@ -73,7 +73,7 @@ class HopfieldTransformer:
 
         self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
-        reorder_weights = True
+        reorder_weights = False
         if reorder_weights:
             self.Wo = np.copy(self.W)
             np.random.shuffle(self.Wo)
@@ -124,6 +124,10 @@ class HopfieldTransformer:
         self.att_mf = np.zeros((max_sim_steps, num_feat_patterns))
 
         self.x_list = np.zeros((max_sim_steps, embedding_size))
+
+    def set_betas(self, beta_o, beta_att):
+        self.beta_o = beta_o
+        self.beta_att = beta_att
 
     def reset_data(self):
         self.x_list = np.zeros((max_sim_steps, embedding_size))
@@ -188,7 +192,7 @@ class HopfieldTransformer:
 
         return att_t
 
-    def exp_f_mf(self, t, tau):
+    def qk_f_mf(self, t, tau):
 
         mqk = self.mq[t] @ self.mk[tau]
         return self.beta_att * self.embedding_size**2 / np.sqrt(self.num_feat_patterns) * mqk
@@ -197,7 +201,7 @@ class HopfieldTransformer:
 
         key_prob = np.zeros(t+1)
         for tau in range(0, t+1):
-            key_prob[tau] = self.exp_f_mf(t, tau)
+            key_prob[tau] = self.qk_f_mf(t, tau)
         key_prob = softmax(key_prob)
 
         att_t = self.embedding_size * (self.mv[:t+1].T @ key_prob)
@@ -356,8 +360,8 @@ if __name__ == "__main__":
     #     os.makedirs(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/")
 
     # Instantiate vocabulary
-    semantic_embedding_size = 14
-    positional_embedding_size = 6
+    semantic_embedding_size = 10
+    positional_embedding_size = 7
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     vocab.initialize()
@@ -368,12 +372,12 @@ if __name__ == "__main__":
     beta_att = beta
 
     num_feat_patterns = 6
-    max_sim_steps = 20
+    max_sim_steps = 100
 
     # Create seed for reproducibility
     # Nice seed for reorder of W (no more constrains), 14 se spins 6 pe spins 6 features: 10. Sample = True Interesting cycle.
     # Seed 13 (8, 16 + 6) does not coincide with std model
-    seed = 10
+    seed = 0
 
     np.random.seed(seed)
 
