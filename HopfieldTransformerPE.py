@@ -130,15 +130,15 @@ class HopfieldTransformer:
         self.beta_att = beta_att
 
     def reset_data(self):
-        self.x_list = np.zeros((max_sim_steps, embedding_size))
+        self.x_list = np.zeros((self.max_sim_steps, self.embedding_size))
 
-        self.mo_data = np.zeros((max_sim_steps, num_feat_patterns))
-        self.mo_se_data = np.zeros((max_sim_steps, num_feat_patterns))
-        self.mv_data = np.zeros((max_sim_steps, num_feat_patterns))
-        self.mq_data = np.zeros((max_sim_steps, num_feat_patterns))
-        self.mk_data = np.zeros((max_sim_steps, num_feat_patterns))
+        self.mo_data = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mo_se_data = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mv_data = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mq_data = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mk_data = np.zeros((self.max_sim_steps, self.num_feat_patterns))
 
-        self.att = np.zeros((max_sim_steps, num_feat_patterns))
+        self.att = np.zeros((self.max_sim_steps, self.num_feat_patterns))
 
 
     def qk_f(self, t, tau):
@@ -311,7 +311,7 @@ def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plott
 
     num_plotting_steps_arange = np.arange(num_plotting_steps)
 
-    for i in range(0, min(10, num_feat_patterns)):
+    for i in range(0, num_feat_patterns):
 
         row = i // 2
         if num_feat_patterns <= 2:
@@ -361,23 +361,23 @@ if __name__ == "__main__":
 
     # Instantiate vocabulary
     semantic_embedding_size = 10
-    positional_embedding_size = 7
+    positional_embedding_size = 8
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    beta = 4
+    beta = 0.1
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 6
+    num_feat_patterns = 4
     max_sim_steps = 100
 
     # Create seed for reproducibility
     # Nice seed for reorder of W (no more constrains), 14 se spins 6 pe spins 6 features: 10. Sample = True Interesting cycle.
     # Seed 13 (8, 16 + 6) does not coincide with std model
-    seed = 0
+    seed = 8
 
     np.random.seed(seed)
 
@@ -385,9 +385,9 @@ if __name__ == "__main__":
                              vocab=vocab, max_sim_steps=max_sim_steps)
 
     # Select initial token
-    random_idx = False
+    random_idx = True
     if random_idx:
-        x0_idx = 10  # You need to have an initial token to start decoding
+        x0_idx = 684  # You need to have an initial token to start decoding
         x0 = vocab.encode(x0_idx)
     else:
         x0 = HT.W[0]
