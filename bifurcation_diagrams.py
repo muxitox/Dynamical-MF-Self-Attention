@@ -101,11 +101,11 @@ if __name__ == "__main__":
     # Create variables for the Hopfield Transformer (HT)
 
     seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    beta_list = np.linspace(0, 10, 100)
+    beta_list = np.linspace(0, 10, 150)
     num_feat_patterns_list = [1, 2, 4, 8, 16]
     num_transient_steps = 50
     max_sim_steps = 150
-    num_ini_tokens = 1
+    num_ini_tokens = 3
 
     runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, num_ini_tokens, seed_list)
