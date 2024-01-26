@@ -1,12 +1,13 @@
 import numpy as np
 from HopfieldTransformerPE import Embedding, HopfieldTransformer
 import matplotlib.pyplot as plt
+import os
 
 def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path):
     nrows = (num_feat_patterns + 1) // 2
     fig, ax = plt.subplots(nrows, 2, figsize=(8, 2 * nrows), constrained_layout=True)
 
-    for feat in range(0, min(10, num_feat_patterns)):
+    for feat in range(0, num_feat_patterns):
 
         row = feat // 2
         if num_feat_patterns <= 2:
@@ -18,13 +19,14 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
         feat_X_values = []
 
         for b_idx in range(0, len(beta_list)):
-            unique_values_feat = np.unique(mo_results_beta_list[b_idx][:, feat])
-            beta_values_feat = [beta_list[beta_list]] * len(unique_values_feat)
+            unique_values_feat = mo_results_beta_list[b_idx][:, feat]
+            beta_values_feat = np.ones(len(unique_values_feat)) * beta_list[b_idx]
 
             feat_Y_values.extend(unique_values_feat)
             feat_X_values.extend(beta_values_feat)
 
         local_ax.plot(feat_X_values, feat_Y_values, ls='', marker=',')
+        local_ax.set_ylim(-1, 1)
         # if i > 3:
         #     local_ax.set_xlabel("t")
         # local_ax.legend(loc="upper center")
@@ -32,6 +34,7 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
     # fig.tight_layout(pad=0.1)
     fig.suptitle(f"Bifurcation_diagram")
     fig.savefig(save_path)
+    plt.close()
 
 def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, num_ini_tokens, seed_list):
@@ -40,6 +43,8 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     vocab.initialize()
 
+    np.random.seed(0)
+    ini_tokens_idx_list = np.random.randint(2 ** semantic_embedding_size, size=num_ini_tokens)
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -50,13 +55,11 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
             HT = HopfieldTransformer(0, 0, num_feat_patterns=num_feat_patterns,
                                      embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
 
-            ini_tokens_idx_list = np.random.randint(2**semantic_embedding_size, size=num_ini_tokens)
-
 
             for ini_token_idx in ini_tokens_idx_list:
 
 
-                mo_results_beta_list = []
+                mo_se_results_beta_list = []
                 for beta in beta_list:
 
                     beta_o = beta
@@ -72,19 +75,23 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
                     HT.simulate_mf(x0, max_steps=max_sim_steps)
 
                     # Discard burnout steps
-                    mo_result = HT.mo[num_transient_steps:]
+                    mo_se_result = np.copy(HT.mo_se[num_transient_steps:])
 
                     # Accumulate results in a var of beta_list length
-                    mo_results_beta_list.append(mo_result)
+                    mo_se_results_beta_list.append(mo_se_result)
 
                 # Save/plot results for each ini_token, W config, and num_feat_patterns
-                save_path = "results/num_feat_patterns-" + str(num_feat_patterns) + "/-seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
-                plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path)
+                folder_path = "results/num_feat_patterns-" + str(num_feat_patterns)
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+
+                save_path = folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
+                plot_bifurcation_diagram(mo_se_results_beta_list, beta_list, num_feat_patterns, save_path)
+
+                print(f"Plotted num_feat_patterns {num_feat_patterns}, seed {seed}, ini_token_idx {ini_token_idx}")
 
 if __name__ == "__main__":
 
-    # if not os.path.exists(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/"):
-    #     os.makedirs(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/")
 
     # Instantiate vocabulary
     semantic_embedding_size = 10
@@ -93,12 +100,12 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
 
-    seed_list = [0, 1, 2, 3, 4]
+    seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     beta_list = np.linspace(0, 10, 100)
     num_feat_patterns_list = [1, 2, 4, 8, 16]
     num_transient_steps = 50
     max_sim_steps = 150
-    num_ini_tokens = 3
+    num_ini_tokens = 1
 
     runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, num_ini_tokens, seed_list)
