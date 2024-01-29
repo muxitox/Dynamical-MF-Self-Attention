@@ -325,24 +325,9 @@ class HopfieldTransformer:
         self.compute_means_from_data(t=0)
         att = self.attention_mf(t=0)
 
-        import time
-
-        timee1 = 0
-        timee2 = 0
         for t in range(1, max_steps):
             self.compute_mf(t, att)
-
-            start1 = time.time()
-            att = self.attention_mf(t)
-            end1 = time.time()
-            timee1 += end1 - start1
-
-            start2 = time.time()
-            att_opt = self.attention_mf_optimized(t)
-            end2 = time.time()
-            timee2 += end2 - start2
-
-        print(timee1, timee2)
+            att = self.attention_mf_optimized(t)
 
 
 def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps):
