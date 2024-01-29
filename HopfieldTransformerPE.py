@@ -42,8 +42,19 @@ class Embedding:
     def encode(self, idx):
         return self.idx2word[idx]
 
+    def encode_force(self, idx, pos):
+
+        # Make position with modular arithmetics to avoid a possible error
+        pos = pos % self.pe_bit_size**2
+
+        se = bitfield(idx, self.se_bit_size) * 2 - 1
+        pe = bitfield(pos, self.pe_bit_size) * 2 - 1
+
+        return np.concatenate(se, pe)
 
     def add_pe(self, x, pos):
+        # Make position with modular arithmetics to avoid a possible error
+        pos = pos % self.pe_bit_size**2
         pe = bitfield(pos, self.pe_bit_size) * 2 - 1
         x[self.se_bit_size:] = pe
         return x
@@ -61,8 +72,6 @@ class Embedding:
         return bool2int(x)
 
 
-
-
 class HopfieldTransformer:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512):
@@ -73,7 +82,7 @@ class HopfieldTransformer:
 
         self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
-        reorder_weights = False
+        reorder_weights = True
         if reorder_weights:
             self.Wo = np.copy(self.W)
             np.random.shuffle(self.Wo)
@@ -217,6 +226,27 @@ class HopfieldTransformer:
 
         return att_t
 
+    def attention_mf_optimized(self, t):
+
+        mqk = np.einsum('b,tb -> t', self.mq[t], self.mk[:t+1, :], optimize=True)
+
+        key_prob = self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
+        key_prob = softmax(key_prob)
+
+
+        att_t = self.embedding_size * (self.mv[:t+1].T @ key_prob)
+
+        # # Loopy implementation for testing
+        #
+        # att_t_loopy = np.zeros(self.num_feat_patterns)
+        # for b in range(0, self.num_feat_patterns):
+        #     for tau in range(0, t+1):
+        #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
+
+        self.att_mf[t] = att_t
+
+        return att_t
+
     def simulate(self, x0, max_steps, verbose=False):
 
         self.x_list[0,:] = x0
@@ -295,9 +325,25 @@ class HopfieldTransformer:
         self.compute_means_from_data(t=0)
         att = self.attention_mf(t=0)
 
+        import time
+
+        timee1 = 0
+        timee2 = 0
         for t in range(1, max_steps):
             self.compute_mf(t, att)
+
+            start1 = time.time()
             att = self.attention_mf(t)
+            end1 = time.time()
+            timee1 += end1 - start1
+
+            start2 = time.time()
+            att_opt = self.attention_mf_optimized(t)
+            end2 = time.time()
+            timee2 += end2 - start2
+
+        print(timee1, timee2)
+
 
 def plot_statistics_2_cols(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps):
     nrows = (num_feat_patterns + 1 ) // 2
@@ -360,24 +406,24 @@ if __name__ == "__main__":
     #     os.makedirs(f"{imgs_root}/Wodd_{Wodd}_Weven_{Weven}/")
 
     # Instantiate vocabulary
-    semantic_embedding_size = 10
+    semantic_embedding_size = 14
     positional_embedding_size = 8
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    beta = 0.1
+    beta = 4
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 4
-    max_sim_steps = 100
+    num_feat_patterns = 6
+    max_sim_steps = 200
 
     # Create seed for reproducibility
     # Nice seed for reorder of W (no more constrains), 14 se spins 6 pe spins 6 features: 10. Sample = True Interesting cycle.
     # Seed 13 (8, 16 + 6) does not coincide with std model
-    seed = 8
+    seed = 13
 
     np.random.seed(seed)
 
