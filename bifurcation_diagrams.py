@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, show_max_num_patterns=None):
+def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, feat_name, show_max_num_patterns=None):
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
@@ -37,9 +37,11 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
             feat_X_values.extend(beta_values_feat)
 
         local_ax.plot(feat_X_values, feat_Y_values, ls='', marker=',')
-        local_ax.set_ylim(-1, 1)
-        # if i > 3:
-        #     local_ax.set_xlabel("t")
+        if feat_name != "att":
+            local_ax.set_ylim(-1, 1)
+
+        if feat > num_feat_patterns-2:
+            local_ax.set_xlabel("beta")
         # local_ax.legend(loc="upper center")
 
     # fig.tight_layout(pad=0.1)
@@ -69,7 +71,13 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
 
             for ini_token_idx in ini_tokens_idx_list:
 
+                mo_results_beta_list = []
                 mo_se_results_beta_list = []
+                mv_results_beta_list = []
+                mq_results_beta_list = []
+                mk_results_beta_list = []
+                att_results_beta_list = []
+
                 for beta in beta_list:
                     beta_o = beta
                     beta_att = beta
@@ -84,10 +92,20 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
                     HT.simulate_mf(x0, max_steps=max_sim_steps)
 
                     # Discard burnout steps
+                    mo_result = np.copy(HT.mo[num_transient_steps:])
                     mo_se_result = np.copy(HT.mo_se[num_transient_steps:])
+                    mv_result = np.copy(HT.mv[num_transient_steps:])
+                    mq_result = np.copy(HT.mq[num_transient_steps:])
+                    mk_result = np.copy(HT.mk[num_transient_steps:])
+                    att_result = np.copy(HT.att_mf[num_transient_steps:])
 
                     # Accumulate results in a var of beta_list length
+                    mo_results_beta_list.append(mo_result)
                     mo_se_results_beta_list.append(mo_se_result)
+                    mv_results_beta_list.append(mv_result)
+                    mq_results_beta_list.append(mq_result)
+                    mk_results_beta_list.append(mk_result)
+                    att_results_beta_list.append(att_result)
 
                 # Save/plot results for each ini_token, W config, and num_feat_patterns
                 folder_path = ("results/" + "se_size-" + str(semantic_embedding_size) + "-pe_size-" + str(
@@ -99,8 +117,23 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
 
-                save_path = folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
-                plot_bifurcation_diagram(mo_se_results_beta_list, beta_list, num_feat_patterns, save_path,
+                save_path = folder_path + "/mo-seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
+                plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, feat_name='mo',
+                                         show_max_num_patterns=6)
+                save_path = folder_path + "/mo_se-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
+                plot_bifurcation_diagram(mo_se_results_beta_list, beta_list, num_feat_patterns, save_path, feat_name='mo_se',
+                                         show_max_num_patterns=6)
+                save_path = folder_path + "/mv-seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
+                plot_bifurcation_diagram(mv_results_beta_list, beta_list, num_feat_patterns, save_path, feat_name='mv',
+                                         show_max_num_patterns=6)
+                save_path = folder_path + "/mq-seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
+                plot_bifurcation_diagram(mq_results_beta_list, beta_list, num_feat_patterns, save_path, feat_name='mq',
+                                         show_max_num_patterns=6)
+                save_path = folder_path + "/mk-seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
+                plot_bifurcation_diagram(mk_results_beta_list, beta_list, num_feat_patterns, save_path, feat_name='mk',
+                                         show_max_num_patterns=6)
+                save_path = folder_path + "/att-seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
+                plot_bifurcation_diagram(att_results_beta_list, beta_list, num_feat_patterns, save_path, feat_name='att',
                                          show_max_num_patterns=6)
 
                 print(f"Plotted num_feat_patterns {num_feat_patterns}, seed {seed}, ini_token_idx {ini_token_idx}")
