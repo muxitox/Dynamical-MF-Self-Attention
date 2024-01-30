@@ -58,7 +58,9 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
     # vocab.initialize()
 
     np.random.seed(0)
-    ini_tokens_idx_list = np.random.randint(2 ** semantic_embedding_size, size=num_ini_tokens)
+    ini_tokens_list = np.random.randint(2, size=(num_ini_tokens, semantic_embedding_size + positional_embedding_size)) * 2 - 1
+    # Initialize positional embedding
+    ini_tokens_list[:, -positional_embedding_size:] = -1
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -69,7 +71,7 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
             HT = HopfieldTransformer(0, 0, num_feat_patterns=num_feat_patterns,
                                      embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
 
-            for ini_token_idx in ini_tokens_idx_list:
+            for ini_token_idx in range(0, num_ini_tokens):
 
                 mo_results_beta_list = []
                 mo_se_results_beta_list = []
@@ -86,7 +88,7 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
                     HT.set_betas(beta_o, beta_att)
                     HT.reset_data()
                     # Encode initial token with position 0
-                    x0 = vocab.encode_force(ini_token_idx, 0)
+                    x0 = ini_tokens_list[ini_token_idx]
 
                     # Simulate for max_sim_steps steps
                     HT.simulate_mf(x0, max_steps=max_sim_steps)
@@ -141,12 +143,12 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
 
 if __name__ == "__main__":
     # Instantiate vocabulary
-    semantic_embedding_size = 10
+    semantic_embedding_size = 100
     positional_embedding_size = 8
 
     # Create variables for the Hopfield Transformer (HT)
     seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    beta_list = np.linspace(0, 4, 200)
+    beta_list = np.linspace(0, 3, 250)
     num_feat_patterns_list = [1, 2, 4, 8, 16]
     num_transient_steps = 50
     max_sim_steps = 256

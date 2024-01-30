@@ -28,8 +28,6 @@ class Embedding:
         self.se_bit_size = se_bit_size
         self.pe_bit_size = pe_bit_size
 
-        self.idx2word = np.zeros((self.vocab_size, se_bit_size + pe_bit_size))
-
     def initialize(self):
         self.idx2word = np.zeros((self.vocab_size, self.se_bit_size + self.pe_bit_size))
         for i in range(self.vocab_size):
