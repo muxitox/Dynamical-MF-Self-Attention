@@ -49,7 +49,7 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
     # fig.tight_layout(pad=0.1)
     fig.suptitle(f"Bifurcation_diagram {feat_name}")
     fig.savefig(save_path)
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -157,7 +157,9 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
 
                 if not os.path.exists(folder_path + "/mo/"):
                     os.makedirs(folder_path + "/mo/")
-                mo_save_path = folder_path + "/mo/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".png"
+                mo_save_path = (folder_path + "/mo/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx)
+                                + "-transient_steps-" + str(num_transient_steps)
+                                + ".png")
                 plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, mo_save_path,
                                          num_transient_steps, feat_name='mo',
                                          show_max_num_patterns=show_max_num_patterns)
@@ -165,35 +167,35 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
                 if not os.path.exists(folder_path + "/mo_se/"):
                     os.makedirs(folder_path + "/mo_se/")
                 mo_se_save_path = folder_path + "/mo_se/seed-" + str(seed) + "-ini_token_idx-" + str(
-                    ini_token_idx) + ".png"
+                    ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png"
                 plot_bifurcation_diagram(mo_se_results_beta_list, beta_list, num_feat_patterns, mo_se_save_path,
                                          num_transient_steps, feat_name='mo_se',  show_max_num_patterns=show_max_num_patterns)
 
                 if not os.path.exists(folder_path + "/mv/"):
                     os.makedirs(folder_path+ "/mv/")
                 mv_save_path = folder_path + "/mv/seed-" + str(seed) + "-ini_token_idx-" + str(
-                    ini_token_idx) + ".png"
+                    ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png"
                 plot_bifurcation_diagram(mv_results_beta_list, beta_list, num_feat_patterns, mv_save_path,
                                          num_transient_steps, feat_name='mv', show_max_num_patterns=show_max_num_patterns)
 
                 if not os.path.exists(folder_path + "/mq/"):
                     os.makedirs(folder_path + "/mq/")
                 mq_save_path = folder_path + "/mq/seed-" + str(seed) + "-ini_token_idx-" + str(
-                    ini_token_idx) + ".png"
+                    ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png"
                 plot_bifurcation_diagram(mq_results_beta_list, beta_list, num_feat_patterns, mq_save_path,
                                          num_transient_steps, feat_name='mq', show_max_num_patterns=show_max_num_patterns)
 
                 if not os.path.exists(folder_path + "/mk/"):
                     os.makedirs(folder_path + "/mk/")
                 mk_save_path = folder_path + "/mk/seed-" + str(seed) + "-ini_token_idx-" + str(
-                    ini_token_idx) + ".png"
+                    ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png"
                 plot_bifurcation_diagram(mk_results_beta_list, beta_list, num_feat_patterns, mk_save_path,
                                          num_transient_steps, feat_name='mk', show_max_num_patterns=show_max_num_patterns)
 
                 if not os.path.exists(folder_path + "/att/"):
                     os.makedirs(folder_path + "/att/")
                 att_save_path = folder_path + "/att/seed-" + str(seed) + "-ini_token_idx-" + str(
-                    ini_token_idx) + ".png"
+                    ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png"
                 plot_bifurcation_diagram(att_results_beta_list, beta_list, num_feat_patterns, att_save_path,
                                          num_transient_steps, feat_name='att', show_max_num_patterns=show_max_num_patterns)
 
@@ -201,23 +203,16 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
 
 if __name__ == "__main__":
     # Instantiate vocabulary
-    semantic_embedding_size = 5
-    positional_embedding_size = 8
+    semantic_embedding_size = 100
+    positional_embedding_size = 10
 
     # Create variables for the Hopfield Transformer (HT)
-    # seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    # beta_list = np.linspace(0, 3, 250)
-    # num_feat_patterns_list = [1, 2, 4, 8, 16]
-    # num_transient_steps = 50
-    # max_sim_steps = 256
-    # num_ini_tokens = 3
-
-    seed_list = [2]
-    beta_list = np.linspace(0, 3, 1000)
-    num_feat_patterns_list = [1]
-    num_transient_steps = 5
-    max_sim_steps = 15
-    num_ini_tokens = 1
+    seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    beta_list = np.linspace(0, 3, 250)
+    num_feat_patterns_list = [1, 2, 4, 8, 16]
+    num_transient_steps = 50
+    max_sim_steps = 256
+    num_ini_tokens = 3
 
     import time
 
