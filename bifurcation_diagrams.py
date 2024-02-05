@@ -56,7 +56,7 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
 
 
 def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list,
-           max_sim_steps, num_ini_tokens, seed_list):
+           max_sim_steps, num_ini_tokens, seed_list, reorder_weights):
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     # We don't initialize the vocab as it's more efficient to work without a dict with the MF implementation
@@ -74,7 +74,8 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
 
             # Initialize transformer weights and create variables for storing results
             HT = HopfieldTransformer(0, 0, num_feat_patterns=num_feat_patterns,
-                                     embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps)
+                                     embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps,
+                                     reorder_weights=reorder_weights)
 
             for ini_token_idx in range(0, num_ini_tokens):
 
@@ -109,8 +110,8 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
                 # Save/plot results for each ini_token, W config, and num_feat_patterns
                 folder_path = ("results/" + "se_size-" + str(semantic_embedding_size) + "-pe_size-" + str(
                     positional_embedding_size)
-                               + "/num_feat_patterns-" + str(num_feat_patterns) + "/max_sim_steps-" + str(max_sim_steps)
-                               + "/min_beta-" + str(beta_list[0])
+                               + "/num_feat_patterns-" + str(num_feat_patterns) + "-reorder_weights-" + str(int(reorder_weights))
+                               + "/max_sim_steps-" + str(max_sim_steps) + "/min_beta-" + str(beta_list[0])
                                + "-max_beta-" + str(beta_list[-1]) + "-num_betas-" + str(len(beta_list))) + "/stats"
 
                 if not os.path.exists(folder_path):
@@ -130,7 +131,7 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
 
 
 def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
-           max_sim_steps, ini_tokens_list, seed_list, save_not_plot):
+           max_sim_steps, ini_tokens_list, seed_list, reorder_weights, save_not_plot):
 
 
     for num_feat_patterns in num_feat_patterns_list:
@@ -139,8 +140,9 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
 
                 folder_path = ("results/" + "se_size-" + str(semantic_embedding_size) + "-pe_size-" + str(
                     positional_embedding_size)
-                               + "/num_feat_patterns-" + str(num_feat_patterns) + "/max_sim_steps-" + str(max_sim_steps)
-                               + "/min_beta-" + str(beta_list[0])
+                               + "/num_feat_patterns-" + str(num_feat_patterns) + "-reorder_weights-" + str(
+                            int(reorder_weights))
+                               + "/max_sim_steps-" + str(max_sim_steps) + "/min_beta-" + str(beta_list[0])
                                + "-max_beta-" + str(beta_list[-1]) + "-num_betas-" + str(len(beta_list)))
 
                 stats_data_path = (folder_path + "/stats/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) +
@@ -220,6 +222,7 @@ if __name__ == "__main__":
     num_transient_steps = 256
     max_sim_steps = 1024
     num_ini_tokens = 3
+    reorder_weights = False
     save_not_plot = True
 
     import time
@@ -227,7 +230,7 @@ if __name__ == "__main__":
     start = time.time()
 
     runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list,
-           max_sim_steps, num_ini_tokens, seed_list)
+           max_sim_steps, num_ini_tokens, seed_list, reorder_weights)
 
     end = time.time()
     elapsed_time = end - start
@@ -236,4 +239,4 @@ if __name__ == "__main__":
 
     ini_tokens_list = range(0, num_ini_tokens)
     plotter(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
-            max_sim_steps, ini_tokens_list, seed_list, save_not_plot)
+            max_sim_steps, ini_tokens_list, seed_list, reorder_weights, save_not_plot)

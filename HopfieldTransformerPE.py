@@ -66,7 +66,7 @@ class Embedding:
 
 class HopfieldTransformer:
 
-    def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512):
+    def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512, reorder_weights=False):
         self.beta_o = beta_o
         self.beta_att = beta_att
         self.se_bit_size = vocab.se_bit_size
@@ -74,7 +74,6 @@ class HopfieldTransformer:
 
         self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
-        reorder_weights = True
         if reorder_weights:
             self.Wo = np.copy(self.W)
             np.random.shuffle(self.Wo)
