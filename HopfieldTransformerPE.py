@@ -66,13 +66,19 @@ class Embedding:
 
 class HopfieldTransformer:
 
-    def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512, reorder_weights=False):
+    def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512,
+                 normalize_weights=True, reorder_weights=False):
         self.beta_o = beta_o
         self.beta_att = beta_att
         self.se_bit_size = vocab.se_bit_size
         self.pe_bit_size = vocab.pe_bit_size
 
-        self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+        normalizing_constant = 1
+        if normalize_weights:
+            normalizing_constant = 1 / (np.sqrt(num_feat_patterns) * np.sqrt(embedding_size))
+
+        self.W = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+
 
         if reorder_weights:
             self.Wo = np.copy(self.W)
@@ -87,11 +93,10 @@ class HopfieldTransformer:
             # self.Wk = self.Wq
 
         else:
-
-            self.Wo = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wv = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wq = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wk = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wo = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wv = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wq = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wk = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
             self.W = self.Wo
 
@@ -151,7 +156,9 @@ class HopfieldTransformer:
 
         qk = q @ k
 
-        res = np.exp(self.beta_att / np.sqrt(self.num_feat_patterns) * qk)
+        # res = np.exp(self.beta_att / np.sqrt(self.num_feat_patterns) * qk)
+        res = np.exp(self.beta_att * qk)
+
 
         # # Loopy implementation for testing
         # qk_accum = 0
@@ -218,7 +225,9 @@ class HopfieldTransformer:
 
         mqk = np.einsum('b,tb -> t', self.mq[t], self.mk[:t + 1, :], optimize=True)
 
-        key_prob = self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
+        # key_prob = self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
+        key_prob = self.beta_att * self.embedding_size ** 2 * mqk
+
         key_prob = softmax(key_prob)
 
         att_t = self.embedding_size * (self.mv[:t + 1].T @ key_prob)

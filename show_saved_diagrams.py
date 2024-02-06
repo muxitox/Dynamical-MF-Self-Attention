@@ -15,7 +15,8 @@ if __name__ == "__main__":
     max_sim_steps = 1024
     save_not_plot = False
     reorder_weights = False
+    normalize_weights = True
     ini_tokens_list = [0]
 
     plotter(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
-           max_sim_steps, ini_tokens_list, seed_list, reorder_weights, save_not_plot)
+           max_sim_steps, ini_tokens_list, seed_list, normalize_weights, reorder_weights, save_not_plot)
