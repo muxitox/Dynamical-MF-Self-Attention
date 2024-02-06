@@ -132,7 +132,7 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
 
 
 def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
-           max_sim_steps, ini_tokens_list, seed_list, reorder_weights, save_not_plot):
+           max_sim_steps, ini_tokens_list, seed_list, normalize_weights, reorder_weights, save_not_plot):
 
 
     for num_feat_patterns in num_feat_patterns_list:
