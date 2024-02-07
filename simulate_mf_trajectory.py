@@ -55,7 +55,7 @@ if __name__ == "__main__":
     max_sim_steps = 200
 
     normalize_weights = True
-    reorder_weights = True
+    reorder_weights = False
 
     # Select initial token with seed 0
     np.random.seed(0)

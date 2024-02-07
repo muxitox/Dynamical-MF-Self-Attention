@@ -157,7 +157,7 @@ class HopfieldTransformer:
         qk = q @ k
 
         # res = np.exp(self.beta_att / np.sqrt(self.num_feat_patterns) * qk)
-        res = np.exp(self.beta_att * qk)
+        res = np.exp(self.beta_att * self.normalizing_constant * qk)
 
 
         # # Loopy implementation for testing
@@ -167,7 +167,7 @@ class HopfieldTransformer:
         #         for j in range(0, self.embedding_size):
         #             qk_accum += self.x_list[t,i] * self.Wq[a, i] * self.Wk[a, j] * self.x_list[tau,j]
         #
-        # res2 = self.beta_att / np.sqrt(self.num_feat_patterns) * qk_accum
+        # res2 = self.beta_att * self.normalizing_constant * qk_accum
         # print(np.allclose(res, res2))
 
         return res
@@ -199,7 +199,7 @@ class HopfieldTransformer:
     def qk_f_mf(self, t, tau):
 
         mqk = self.mq[t] @ self.mk[tau]
-        return self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
+        return self.beta_att * self.embedding_size ** 2 * self.normalizing_constant * mqk
 
     def attention_mf(self, t):
 
@@ -263,7 +263,7 @@ class HopfieldTransformer:
                 o = self.vocab.idx2word @ self.Wo.T
 
                 # We multiply by the attention score
-                prob_unnormalized = self.beta_o * o @ att
+                prob_unnormalized = self.beta_o * self.normalizing_constant * o @ att
 
                 prob_normalized = softmax(prob_unnormalized)
 
@@ -314,7 +314,7 @@ class HopfieldTransformer:
         # mo_t = np.zeros(self.num_feat_patterns)
         # for b in range(0, self.num_feat_patterns):
         #     for i in range(0, self.embedding_size):
-        #         mo_t[b] += self.Wo[b, i] * np.tanh(self.beta_o * self.Wo[:, i] @ att)
+        #         mo_t[b] += self.Wo[b, i] * np.tanh(self.beta_o * self.normalizing_constant *  self.Wo[:, i] @ att)
         # mo_t /= self.embedding_size
         # print(np.allclose(self.mo[t], mo_t))
 
