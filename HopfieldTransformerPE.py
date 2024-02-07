@@ -73,11 +73,11 @@ class HopfieldTransformer:
         self.se_bit_size = vocab.se_bit_size
         self.pe_bit_size = vocab.pe_bit_size
 
-        normalizing_constant = 1
+        self.normalizing_constant = 1
         if normalize_weights:
-            normalizing_constant = 1 / (np.sqrt(num_feat_patterns) * np.sqrt(embedding_size))
+            self.normalizing_constant = 1 / np.sqrt(num_feat_patterns * embedding_size)
 
-        self.W = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+        self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
 
         if reorder_weights:
@@ -93,10 +93,10 @@ class HopfieldTransformer:
             # self.Wk = self.Wq
 
         else:
-            self.Wo = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wv = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wq = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wk = normalizing_constant * np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wo = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wv = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wq = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wk = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
 
             self.W = self.Wo
 
@@ -226,7 +226,8 @@ class HopfieldTransformer:
         mqk = np.einsum('b,tb -> t', self.mq[t], self.mk[:t + 1, :], optimize=True)
 
         # key_prob = self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
-        key_prob = self.beta_att * self.embedding_size ** 2 * mqk
+        key_prob = self.beta_att * self.embedding_size ** 2 * self.normalizing_constant * mqk
+        # key_prob = self.beta_att * self.embedding_size ** 2 * mqk
 
         key_prob = softmax(key_prob)
 
@@ -300,7 +301,7 @@ class HopfieldTransformer:
     def compute_mf(self, t, att):
 
         # Compute the mean of every (semantic) spin i at time t
-        att_Wo_i = np.tanh(self.beta_o * np.einsum('b,bi -> i', att, self.Wo[:, :self.se_bit_size], optimize=True))
+        att_Wo_i = np.tanh(self.beta_o * self.normalizing_constant * np.einsum('b,bi -> i', att, self.Wo[:, :self.se_bit_size], optimize=True))
         # Concatenate semantic information with positional encoding
         att_Wo_i = np.concatenate((att_Wo_i, bitfield(t, self.pe_bit_size) * 2 - 1))
         # Compute mean fields
