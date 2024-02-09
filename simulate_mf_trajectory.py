@@ -40,19 +40,19 @@ if __name__ == "__main__":
 
 
     # Instantiate vocabulary
-    semantic_embedding_size = 14
-    positional_embedding_size = 8
+    semantic_embedding_size = 100
+    positional_embedding_size = 10
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
-    vocab.initialize()
+    # vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    beta = 4
+    beta = 0.03
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 6
-    max_sim_steps = 200
+    num_feat_patterns = 16
+    max_sim_steps = 400
 
     normalize_weights = True
     reorder_weights = False
@@ -84,15 +84,15 @@ if __name__ == "__main__":
     # Plotting
     print("Plotting statistics...")
     num_plotting_steps = max_sim_steps
-    plot_statistics(HT.att_mf, "Att", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.att_mf, "Att", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
 
-    plot_statistics(HT.mo, "mo", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mo, "mo", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
 
-    plot_statistics(HT.mo_se, "mo_se", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mo_se, "mo_se", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
 
-    plot_statistics(HT.mv, "mv", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mv, "mv", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
 
-    plot_statistics(HT.mq, "mq", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mq, "mq", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
 
-    plot_statistics(HT.mk, "mk", num_feat_patterns, num_plotting_steps)
+    plot_statistics(HT.mk, "mk", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
     print("Done.")

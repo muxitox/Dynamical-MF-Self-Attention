@@ -66,14 +66,12 @@ class Embedding:
 
 class HopfieldTransformer:
 
-    def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
+    def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, max_sim_steps=512,
                  normalize_weights=True, reorder_weights=False):
         self.beta_o = beta_o
         self.beta_att = beta_att
         self.se_bit_size = vocab.se_bit_size
         self.pe_bit_size = vocab.pe_bit_size
-
-        self.context_size = context_size
 
         self.normalizing_constant = 1
         if normalize_weights:
@@ -176,15 +174,12 @@ class HopfieldTransformer:
 
     def attention(self, t):
 
-        idx_ctx_start = max(0, t - self.context_size + 1)
-        effective_context_size = min(self.context_size, t + 1)
-
-        key_prob = np.zeros(effective_context_size)
-        for tau in range(0, effective_context_size):
-            key_prob[tau] = self.qk_f(t, idx_ctx_start + tau)
+        key_prob = np.zeros(t + 1)
+        for tau in range(0, t + 1):
+            key_prob[tau] = self.qk_f(t, tau)
         key_prob /= np.sum(key_prob)
 
-        v = self.x_list[idx_ctx_start:t + 1] @ self.Wv.T  # Value representation
+        v = self.x_list[0:t + 1] @ self.Wv.T  # Value representation
         att_t = key_prob @ v
 
         # Save for stats comparison
@@ -208,15 +203,12 @@ class HopfieldTransformer:
 
     def attention_mf(self, t):
 
-        idx_ctx_start = max(0, t - self.context_size + 1)
-        effective_context_size = min(self.context_size, t + 1)
-
-        key_prob = np.zeros(effective_context_size)
-        for tau in range(0, effective_context_size):
-            key_prob[tau] = self.qk_f_mf(t, idx_ctx_start + tau)
+        key_prob = np.zeros(t + 1)
+        for tau in range(0, t + 1):
+            key_prob[tau] = self.qk_f_mf(t, tau)
         key_prob = softmax(key_prob)
 
-        att_t = self.embedding_size * (self.mv[idx_ctx_start:t + 1].T @ key_prob)
+        att_t = self.embedding_size * (self.mv[:t + 1].T @ key_prob)
 
         # # Loopy implementation for testing
         #
@@ -231,9 +223,7 @@ class HopfieldTransformer:
 
     def attention_mf_optimized(self, t):
 
-        idx_ctx_start = max(0, t - self.context_size + 1)
-
-        mqk = np.einsum('b,tb -> t', self.mq[t], self.mk[idx_ctx_start:t + 1, :], optimize=True)
+        mqk = np.einsum('b,tb -> t', self.mq[t], self.mk[:t + 1, :], optimize=True)
 
         # key_prob = self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
         key_prob = self.beta_att * self.embedding_size ** 2 * self.normalizing_constant * mqk
@@ -241,7 +231,7 @@ class HopfieldTransformer:
 
         key_prob = softmax(key_prob)
 
-        att_t = self.embedding_size * (self.mv[idx_ctx_start:t + 1].T @ key_prob)
+        att_t = self.embedding_size * (self.mv[:t + 1].T @ key_prob)
 
         # # Loopy implementation for testing
         #
