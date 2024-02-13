@@ -174,15 +174,23 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
 
 if __name__ == "__main__":
     # Instantiate vocabulary
-    semantic_embedding_size = 10
-    positional_embedding_size = 10
+    semantic_embedding_size = 100
+    positional_embedding_size = 11
 
     # Create variables for the Hopfield Transformer (HT)
     seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     beta_list = np.linspace(0, 4, 1500)
-    num_feat_patterns_list = [1, 2, 4, 6, 10, 16]
-    num_transient_steps = 256
-    max_sim_steps = 1024
+    num_feat_patterns_list = [1, 16]
+    # num_feat_patterns_list = [4, 6]
+    # num_feat_patterns_list = [2, 10]
+    num_transient_steps = 768
+    max_sim_steps = 1536
+
+    if max_sim_steps > 2**positional_embedding_size:
+        raise("The positional embedding cannot simulate that many steps.")
+    if num_transient_steps > max_sim_steps:
+        raise("You cannot discard more timesteps than you are simulating.")
+
     context_size = 10
     num_ini_tokens = 3
     reorder_weights = False
