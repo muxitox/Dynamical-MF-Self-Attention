@@ -189,14 +189,6 @@ if __name__ == "__main__":
     normalize_weights_str = "N"
     save_not_plot = True
 
-    seed_list = [0, 1]
-    beta_list = np.linspace(0, 4, 100)
-    num_feat_patterns_list = [1, 2]
-    num_transient_steps = 10
-    max_sim_steps = 30
-    num_ini_tokens = 2
-
-
     stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
 
     start = time.time()
