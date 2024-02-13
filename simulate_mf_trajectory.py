@@ -53,8 +53,9 @@ if __name__ == "__main__":
 
     num_feat_patterns = 16
     max_sim_steps = 400
+    context_size = 10
 
-    normalize_weights = True
+    normalize_weights_str = "np.sqrt(N+M)"
     reorder_weights = False
 
     # Select initial token with seed 0
@@ -72,8 +73,8 @@ if __name__ == "__main__":
     np.random.seed(seed)
 
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                                     embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps,
-                                     normalize_weights=normalize_weights, reorder_weights=reorder_weights)
+                             embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps, context_size=context_size,
+                             normalize_weights_str=normalize_weights_str, reorder_weights=reorder_weights)
 
     num_runs = 1
 
@@ -84,15 +85,7 @@ if __name__ == "__main__":
     # Plotting
     print("Plotting statistics...")
     num_plotting_steps = max_sim_steps
-    plot_statistics(HT.att_mf, "Att", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
 
-    plot_statistics(HT.mo, "mo", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
-
-    plot_statistics(HT.mo_se, "mo_se", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
-
-    plot_statistics(HT.mv, "mv", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
-
-    plot_statistics(HT.mq, "mq", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
-
-    plot_statistics(HT.mk, "mk", num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
+    for stat_name in HT.statistics_names:
+        plot_statistics(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
     print("Done.")
