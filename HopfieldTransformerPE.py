@@ -234,7 +234,7 @@ class HopfieldTransformer:
 
         idx_ctx_start = max(0, t - self.context_size + 1)
 
-        mqk = np.einsum('b,tb -> t', self.mf_statistics["mq"][t], self.mf_statistics["mk"][idx_ctx_start:t + 1, :], optimize=True)
+        mqk = np.einsum('b,tb -> t', self.mf_statistics["mq"][t], self.mf_statistics["mk"][idx_ctx_start:t + 1], optimize=True)
 
         # key_prob = self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
         key_prob = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
@@ -290,12 +290,12 @@ class HopfieldTransformer:
                     new_x_idx = np.argmax(prob_normalized)
 
                 # Encode token and add it to the list
-                new_x = self.vocab.encode(new_x_idx)
-                self.x_list[t + 1, :] = self.vocab.encode_w_pos(new_x_idx, t + 1)
+                # new_x = self.vocab.encode(new_x_idx)
+                self.x_list[t + 1, :] = self.vocab.encode_w_pos(new_x_idx, (t + 1) % self.context_size)
 
                 # Save for comparison with MF
-                self.std_statistics["mo"][t + 1] = new_x @ self.Wo.T / self.embedding_size
-                self.std_statistics["mo_se"][t + 1] = new_x[:self.se_bit_size] @ self.Wo[:,
+                self.std_statistics["mo"][t + 1] = self.x_list[t + 1, :] @ self.Wo.T / self.embedding_size
+                self.std_statistics["mo_se"][t + 1] = self.x_list[t + 1, :][:self.se_bit_size] @ self.Wo[:,
                                                                     :self.se_bit_size].T / self.embedding_size
 
                 selected_tokens.append(new_x_idx)
@@ -314,7 +314,7 @@ class HopfieldTransformer:
         # Compute the mean of every (semantic) spin i at time t
         att_Wo_i = np.tanh(self.beta_o * (1 / self.normalizing_constant) * np.einsum('b,bi -> i', att, self.Wo[:, :self.se_bit_size], optimize=True))
         # Concatenate semantic information with positional encoding
-        att_Wo_i = np.concatenate((att_Wo_i, bitfield(t, self.pe_bit_size) * 2 - 1))
+        att_Wo_i = np.concatenate((att_Wo_i, bitfield(t % self.context_size, self.pe_bit_size) * 2 - 1))
         # Compute mean fields
         self.mf_statistics["mo"][t] = np.einsum('bi,i ->b', self.Wo, att_Wo_i, optimize=True) / self.embedding_size
         # Compute only semantic information
