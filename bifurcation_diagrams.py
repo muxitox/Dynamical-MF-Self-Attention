@@ -83,7 +83,7 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
 
                 # Initialize structure for saving the results for each beta
                 results_beta_list = {}
-                for stat_name in stats_to_save_plot:
+                for stat_name in HT.statistics_names:
                     results_beta_list[stat_name] = []
 
                 for beta in beta_list:
@@ -99,7 +99,7 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
                     # Simulate for max_sim_steps steps
                     HT.simulate_mf(x0, max_steps=max_sim_steps)
 
-                    for stat_name in HT.statistics_names:
+                    for stat_name in stats_to_save_plot:
                         # Accumulate results in a var of beta_list length
                         results_beta_list[stat_name].append(np.copy(HT.mf_statistics[stat_name]))
 
@@ -179,10 +179,10 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    beta_list = np.linspace(0, 4, 1500)
-    num_feat_patterns_list = [1, 16]
+    beta_list = np.linspace(0, 0.2, 1500)
     # num_feat_patterns_list = [4, 6]
     # num_feat_patterns_list = [2, 10]
+    num_feat_patterns_list = [1, 16]
     num_transient_steps = 768
     max_sim_steps = 1536
 
@@ -194,10 +194,12 @@ if __name__ == "__main__":
     context_size = 10
     num_ini_tokens = 3
     reorder_weights = False
-    normalize_weights_str = "N"
+    normalize_weights_str = "np.sqrt(N+M)"
     save_not_plot = True
 
-    stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
+    # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
+    stats_to_save_plot = ["mo_se"]
+
 
     start = time.time()
 

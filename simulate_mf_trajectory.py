@@ -30,7 +30,7 @@ def plot_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, sho
         local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label="mf")
         if feat > num_feat_patterns-2:
             local_ax.set_xlabel("t")
-        local_ax.legend(loc="upper center")
+        local_ax.legend()
 
     # fig.tight_layout(pad=0.1)
     fig.suptitle(f"Evolution of {stat_name}")
@@ -40,8 +40,8 @@ if __name__ == "__main__":
 
 
     # Instantiate vocabulary
-    semantic_embedding_size = 100
-    positional_embedding_size = 10
+    semantic_embedding_size = 80
+    positional_embedding_size = 2
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     # vocab.initialize()
@@ -51,16 +51,16 @@ if __name__ == "__main__":
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 16
-    max_sim_steps = 400
-    context_size = 10
+    num_feat_patterns = 4
+    max_sim_steps = 1000
+    context_size = 2
 
-    normalize_weights_str = "np.sqrt(N+M)"
+    normalize_weights_str = "np.sqrt(N*M)"
     reorder_weights = False
 
     # Select initial token with seed 0
     np.random.seed(0)
-    num_ini_tokens = 3
+    num_ini_tokens = 1
     ini_tokens_list = np.random.randint(2, size=(num_ini_tokens, embedding_size)) * 2 - 1
     # Initialize positional embedding
     ini_tokens_list[:, -positional_embedding_size:] = -1
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     x0 = ini_tokens_list[ini_token_idx, :]
 
     # Create seed for reproducibility
-    seed = 13
+    seed = 1
     np.random.seed(seed)
 
     HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
