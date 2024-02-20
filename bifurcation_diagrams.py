@@ -194,7 +194,7 @@ if __name__ == "__main__":
     context_size = 10
     num_ini_tokens = 3
     reorder_weights = False
-    normalize_weights_str = "np.sqrt(N+M)"
+    normalize_weights_str = "np.sqrt(N*M)"
     save_not_plot = True
 
     # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]

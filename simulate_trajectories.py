@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     # Instantiate vocabulary
     semantic_embedding_size = 14
-    positional_embedding_size = 8
+    positional_embedding_size = 4
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     vocab.initialize()
@@ -56,16 +56,16 @@ if __name__ == "__main__":
     beta_att = beta
 
     num_feat_patterns = 6
-    context_size = 10
-    max_sim_steps = 10
-    normalize_weights_str = "np.sqrt(N+M)"
+    context_size = 16
+    max_sim_steps = 32
+    normalize_weights_str = "np.sqrt(N*M)"
     # normalize_weights_str = "N"
     normalize_weights_str = normalize_weights_str.replace(" ", "")
 
     # Create seed for reproducibility
     # Nice seed for reorder of W (no more constrains), 14 se spins 6 pe spins 6 features: 10. Sample = True Interesting cycle.
     # Seed 13 (8, 16 + 6) does not coincide with std model
-    seed = 24
+    seed = 27
 
     np.random.seed(seed)
 

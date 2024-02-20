@@ -41,19 +41,19 @@ if __name__ == "__main__":
 
     # Instantiate vocabulary
     semantic_embedding_size = 80
-    positional_embedding_size = 2
+    positional_embedding_size = 4
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     # vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    beta = 0.03
+    beta = 0.3
     beta_o = beta
     beta_att = beta
 
     num_feat_patterns = 4
     max_sim_steps = 1000
-    context_size = 2
+    context_size = 16
 
     normalize_weights_str = "np.sqrt(N*M)"
     reorder_weights = False
