@@ -319,7 +319,7 @@ class HopfieldTransformer:
         self.mf_statistics["mo"][t] = np.einsum('bi,i ->b', self.Wo, att_Wo_i, optimize=True) / self.embedding_size
         # Compute only semantic information
         self.mf_statistics["mo_se"][t] = np.einsum('bi,i ->b', self.Wo[:, :self.se_bit_size], att_Wo_i[:self.se_bit_size],
-                                     optimize=True) / self.embedding_size
+                                     optimize=True) / self.se_bit_size
 
         # # Loopy implementation for testing
         # mo_t = np.zeros(self.num_feat_patterns)

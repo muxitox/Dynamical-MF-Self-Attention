@@ -15,9 +15,9 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
     nrows = (num_feat_patterns + 1) // 2
 
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(4, 2), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(8, 2 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
 
     for feat in range(0, num_feat_patterns):
 
@@ -40,7 +40,7 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
             feat_X_values.extend(beta_values_feat)
 
         local_ax.plot(feat_X_values, feat_Y_values, ls='', marker='.', ms='0.05')
-        if feat_name != "att":
+        if feat_name != "att" and beta_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
 
         if feat > num_feat_patterns-2:
@@ -175,30 +175,36 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
 if __name__ == "__main__":
     # Instantiate vocabulary
     semantic_embedding_size = 100
-    positional_embedding_size = 11
+    positional_embedding_size = 2
 
     # Create variables for the Hopfield Transformer (HT)
-    seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    beta_list = np.linspace(0, 0.2, 1500)
+    seed_list = [0, 1, 2, 3, 4, 5, 6]
+    # seed_list = [3]
+    # beta_list = np.linspace(0, 0.2, 1500)
+    # beta_list = np.linspace(1, 1.4, 1500)
+    beta_list = np.linspace(0, 4, 1500)
+    # num_feat_patterns_list = [1, 2, 4, 6, 10, 16]
     # num_feat_patterns_list = [4, 6]
     # num_feat_patterns_list = [2, 10]
-    num_feat_patterns_list = [1, 16]
-    num_transient_steps = 768
+    # num_feat_patterns_list = [1, 16]
+    num_feat_patterns_list = [3]
+    num_transient_steps = 1024
     max_sim_steps = 1536
+    context_size = 4
 
-    if max_sim_steps > 2**positional_embedding_size:
-        raise("The positional embedding cannot simulate that many steps.")
+    if context_size > 2**positional_embedding_size:
+        raise("The positional embedding cannot cover all the context size.")
     if num_transient_steps > max_sim_steps:
         raise("You cannot discard more timesteps than you are simulating.")
 
-    context_size = 10
     num_ini_tokens = 3
     reorder_weights = False
     normalize_weights_str = "np.sqrt(N*M)"
+    # normalize_weights_str = "N"
     save_not_plot = True
 
     # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
-    stats_to_save_plot = ["mo_se"]
+    stats_to_save_plot = ["mo", "mo_se"]
 
 
     start = time.time()
