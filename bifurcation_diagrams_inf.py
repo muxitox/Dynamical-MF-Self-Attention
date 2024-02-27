@@ -1,65 +1,14 @@
 import numpy as np
 from HopfieldTransformerPEInfN import HopfieldTransformerInfN
-from HopfieldTransformerPE import Embedding
+from bifurcation_diagrams import plot_bifurcation_diagram
 import matplotlib.pyplot as plt
 import os
 import time
 
 
-def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, num_transient_steps,
-                             feat_name, show_max_num_patterns=None, save_not_plot=True):
-
-    # Plot show_max_num_patterns subfigures if defined
-    if (show_max_num_patterns is not None):
-        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
-
-    nrows = (num_feat_patterns + 1) // 2
-
-    if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(4, 2), constrained_layout=True)
-    else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(8, 2 * nrows), constrained_layout=True)
-
-    for feat in range(0, num_feat_patterns):
-
-        row = feat // 2
-        if num_feat_patterns == 1:
-            local_ax = ax
-        elif num_feat_patterns == 2:
-            local_ax = ax[feat % 2]
-        else:
-            local_ax = ax[row, feat % 2]
-
-        feat_Y_values = []
-        feat_X_values = []
-
-        for b_idx in range(0, len(beta_list)):
-            unique_values_feat = mo_results_beta_list[b_idx][num_transient_steps:, feat]
-            beta_values_feat = np.ones(len(unique_values_feat)) * beta_list[b_idx]
-
-            feat_Y_values.extend(unique_values_feat)
-            feat_X_values.extend(beta_values_feat)
-
-        local_ax.plot(feat_X_values, feat_Y_values, ls='', marker='.', ms='0.05')
-        if feat_name != "att":
-            local_ax.set_ylim(-1, 1)
-
-        if feat > num_feat_patterns-2:
-            local_ax.set_xlabel("beta")
-        # local_ax.legend(loc="upper center")
-
-    # fig.tight_layout(pad=0.1)
-    fig.suptitle(f"Bifurcation_diagram {feat_name}")
-    if save_not_plot:
-        fig.savefig(save_path)
-    else:
-        plt.show()
-    plt.close()
-
-
 def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
-           se_per_contribution, correlations_from_weights):
+           se_per_contribution, correlations_from_weights, keep_context):
 
 
     if correlations_from_weights == False:
@@ -90,18 +39,26 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                 for stat_name in HT.statistics_names:
                     results_beta_list[stat_name] = []
 
-                for beta in beta_list:
-                    beta_o = beta
-                    beta_att = beta
-
-                    # Reset the matrix for storing results
+                for beta_idx in range(0, len(beta_list)):
+                    beta_o = beta_list[beta_idx]
+                    beta_att = beta_list[beta_idx]
                     HT.set_betas(beta_o, beta_att)
-                    HT.reset_data()
-                    # Encode initial token with position 0
-                    x0 = ini_tokens_list[ini_token_idx]
 
-                    # Simulate for max_sim_steps steps
-                    HT.simulate_mf(x0, max_steps=max_sim_steps)
+                    if beta_idx == 0 or not keep_context:
+                        # For the first beta in the series reset everything and start from scratch
+                        # Reset the matrix for storing results
+                        HT.reset_data()
+                        # Encode initial token with position 0
+                        x0 = ini_tokens_list[ini_token_idx]
+
+                        # Simulate for max_sim_steps steps
+                        HT.simulate_mf(x0, max_steps=max_sim_steps)
+                    else:
+                        # For the following betas, start from previous context in order to avoid falling into different
+                        # attractors every time
+
+                        HT.reset_data_keep_context()
+                        HT.simulate_mf_from_context(max_steps=max_sim_steps)
 
                     for stat_name in stats_to_save_plot:
                         # Accumulate results in a var of beta_list length
@@ -115,7 +72,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                                normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
                                + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-" + str(context_size) +
                                "/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1]) +
-                               "-num_betas-" + str(len(beta_list)) + "/stats")
+                               "-num_betas-" + str(len(beta_list)) + "-keep_context-" + str(int(keep_context)) + "/stats")
 
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
@@ -135,7 +92,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 
 def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,
-            stats_to_save_plot, correlations_from_weights, se_per_contribution):
+            stats_to_save_plot, correlations_from_weights, se_per_contribution, keep_context):
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -149,7 +106,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
                                + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-" + str(context_size) +
                                "/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1]) +
-                               "-num_betas-" + str(len(beta_list)))
+                               "-num_betas-" + str(len(beta_list)) + "-keep_context-" + str(int(keep_context)))
 
                 stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) +
                                    ".npz")
@@ -181,24 +138,23 @@ if __name__ == "__main__":
     # Instantiate vocabulary
     tentative_semantic_embedding_size = 100
     positional_embedding_size = 4
+    context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
     seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    seed_list = [0]
-    beta_list = np.linspace(0.1, 0.2, 2)
+    beta_list = np.linspace(0, 4, 1500)
     se_per_contribution = 0.95
-    num_feat_patterns_list = [1]
-    num_transient_steps = 768
+    num_feat_patterns_list = [1, 2, 3]
+    num_transient_steps = 1024
     max_sim_steps = 1536
-    context_size = 16
-
+    keep_context = True
 
     if context_size > 2**positional_embedding_size:
         raise("The positional embedding cannot cover the whole context size.")
     if num_transient_steps > max_sim_steps:
         raise("You cannot discard more timesteps than you are simulating.")
 
-    num_ini_tokens = 1
+    num_ini_tokens = 3
     reorder_weights = False
     normalize_weights_str = "np.sqrt(N*M)"
     correlations_from_weights = True
@@ -212,7 +168,7 @@ if __name__ == "__main__":
 
     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
-           se_per_contribution, correlations_from_weights)
+           se_per_contribution, correlations_from_weights, keep_context)
 
     end = time.time()
     elapsed_time = end - start
@@ -222,4 +178,4 @@ if __name__ == "__main__":
     ini_tokens_list = range(0, num_ini_tokens)
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,
-            stats_to_save_plot, correlations_from_weights, se_per_contribution)
+            stats_to_save_plot, correlations_from_weights, se_per_contribution, keep_context)

@@ -11,9 +11,9 @@ def plot_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, sho
     nrows = (num_feat_patterns + 1) // 2
 
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(4, 2), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(8, 2 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
 
     num_plotting_steps_arange = np.arange(num_plotting_steps)
 

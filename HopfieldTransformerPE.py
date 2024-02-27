@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from scipy.special import softmax
 from utils import bitfield, bool2int
@@ -128,6 +129,23 @@ class HopfieldTransformer:
         for name_i in self.statistics_names:
             self.std_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
             self.mf_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+
+    def reset_data_keep_context(self):
+        x_list_copy = copy.deepcopy(self.x_list)
+
+        mf_statistics_copy = {}
+        std_statistics_copy = {}
+        for name_i in self.statistics_names:
+            mf_statistics_copy[name_i] = copy.deepcopy(self.mf_statistics[name_i])
+            std_statistics_copy[name_i] = copy.deepcopy(self.std_statistics[name_i])
+
+        self.reset_data()
+
+
+        self.x_list[:self.context_size, :] = x_list_copy[-self.context_size:, :]
+        for name_i in self.statistics_names:
+            self.mf_statistics[name_i][:self.context_size, :] = mf_statistics_copy[name_i][-self.context_size:, :]
+            self.std_statistics[name_i][:self.context_size, :] = std_statistics_copy[name_i][-self.context_size:, :]
 
     def qk_f(self, t, tau):
 
@@ -286,7 +304,7 @@ class HopfieldTransformer:
 
     def compute_means_from_data(self, t):
         self.mf_statistics["mo"][t] = self.x_list[t] @ self.Wo.T / self.embedding_size
-        self.mf_statistics["mo_se"][t] = self.x_list[t, :self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.embedding_size
+        self.mf_statistics["mo_se"][t] = self.x_list[t, :self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
         self.mf_statistics["mv"][t] = self.x_list[t] @ self.Wv.T / self.embedding_size
         self.mf_statistics["mq"][t] = self.x_list[t] @ self.Wq.T / self.embedding_size
         self.mf_statistics["mk"][t] = self.x_list[t] @ self.Wk.T / self.embedding_size
@@ -315,12 +333,25 @@ class HopfieldTransformer:
         self.mf_statistics["mq"][t] = np.einsum('bi,i ->b', self.Wq, att_Wo_i, optimize=True) / self.embedding_size
         self.mf_statistics["mk"][t] = np.einsum('bi,i ->b', self.Wk, att_Wo_i, optimize=True) / self.embedding_size
 
+    def simulate_mf_from_context(self, max_steps):
+        # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
+        # self.context_size steps
+
+        # Initialize attention to the last computed attention
+        att = self.mf_statistics["att"][self.context_size - 1, :]
+
+        # We initialize the model at the end of the previous
+        ini_t = self.context_size
+        for t in range(ini_t, max_steps):
+            self.compute_mf(t, att)
+            att = self.attention_mf_optimized(t)
+
     def simulate_mf(self, x0, max_steps):
         self.x_list[0, :] = x0
 
         # Initialize attention with the info from the initial token
         self.compute_means_from_data(t=0)
-        att = self.attention_mf(t=0)
+        att = self.attention_mf_optimized(t=0)
 
         for t in range(1, max_steps):
             self.compute_mf(t, att)
