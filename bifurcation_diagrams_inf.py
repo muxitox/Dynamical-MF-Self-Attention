@@ -11,8 +11,6 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
            se_per_contribution, correlations_from_weights, keep_context):
 
 
-    if correlations_from_weights == False:
-        tentative_semantic_embedding_size = 0
 
     np.random.seed(0)
     ini_tokens_list = np.random.randint(2, size=(num_ini_tokens, tentative_semantic_embedding_size + positional_embedding_size)) * 2 - 1
@@ -157,7 +155,7 @@ if __name__ == "__main__":
     num_ini_tokens = 3
     reorder_weights = False
     normalize_weights_str = "np.sqrt(N*M)"
-    correlations_from_weights = True
+    correlations_from_weights = False
     save_not_plot = True
 
     # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
