@@ -108,10 +108,21 @@ class HopfieldTransformerInfN:
             self.pair_corr_o_k = np.random.normal(0, 1, (num_feat_patterns, num_feat_patterns))
             self.pair_corr_o_q = np.random.normal(0, 1, (num_feat_patterns, num_feat_patterns))
 
+            self.pair_corr_o_o = np.clip(self.pair_corr_o_o, -1, 1)
+            self.pair_corr_o_v = np.clip(self.pair_corr_o_v, -1, 1)
+            self.pair_corr_o_q = np.clip(self.pair_corr_o_q, -1, 1)
+            self.pair_corr_o_q = np.clip(self.pair_corr_o_q, -1, 1)
+
+
             self.three_corr_o_o = np.random.normal(0, 1, num_feat_patterns)
             self.three_corr_o_v = np.random.normal(0, 1, num_feat_patterns)
             self.three_corr_o_k = np.random.normal(0, 1, num_feat_patterns)
             self.three_corr_o_q = np.random.normal(0, 1, num_feat_patterns)
+
+            self.three_corr_o_o = np.clip(self.three_corr_o_o, -1, 1)
+            self.pair_corr_o_v = np.clip(self.three_corr_o_v, -1, 1)
+            self.pair_corr_o_q = np.clip(self.three_corr_o_k, -1, 1)
+            self.pair_corr_o_q = np.clip(self.three_corr_o_q, -1, 1)
 
 
         self.even_corr_o_o = self.pair_corr_o_o
