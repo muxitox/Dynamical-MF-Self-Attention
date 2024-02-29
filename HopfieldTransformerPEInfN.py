@@ -105,20 +105,30 @@ class HopfieldTransformerInfN:
             self.pair_corr_o_k = np.random.normal(0, sc, (num_feat_patterns, num_feat_patterns))
             self.pair_corr_o_q = np.random.normal(0, sc, (num_feat_patterns, num_feat_patterns))
 
+            # Set autocorrelations to 0
+            np.fill_diagonal(self.pair_corr_o_o , 1)
+
             self.pair_corr_o_o = np.clip(self.pair_corr_o_o, -1, 1)
             self.pair_corr_o_v = np.clip(self.pair_corr_o_v, -1, 1)
             self.pair_corr_o_k = np.clip(self.pair_corr_o_k, -1, 1)
             self.pair_corr_o_q = np.clip(self.pair_corr_o_q, -1, 1)
 
-            self.three_corr_o_o = np.random.normal(0, sc, num_feat_patterns)
-            self.three_corr_o_v = np.random.normal(0, sc, num_feat_patterns)
-            self.three_corr_o_k = np.random.normal(0, sc, num_feat_patterns)
-            self.three_corr_o_q = np.random.normal(0, sc, num_feat_patterns)
+            if num_feat_patterns == 3:
+                # self.three_corr_o_o = np.random.normal(0, sc, num_feat_patterns)
+                # self.three_corr_o_v = np.random.normal(0, sc, num_feat_patterns)
+                # self.three_corr_o_k = np.random.normal(0, sc, num_feat_patterns)
+                # self.three_corr_o_q = np.random.normal(0, sc, num_feat_patterns)
+                #
+                # self.three_corr_o_o = np.clip(self.three_corr_o_o, -1, 1)
+                # self.three_corr_o_v = np.clip(self.three_corr_o_v, -1, 1)
+                # self.three_corr_o_k = np.clip(self.three_corr_o_k, -1, 1)
+                # self.three_corr_o_q = np.clip(self.three_corr_o_q, -1, 1)
 
-            self.three_corr_o_o = np.clip(self.three_corr_o_o, -1, 1)
-            self.three_corr_o_v = np.clip(self.three_corr_o_v, -1, 1)
-            self.three_corr_o_k = np.clip(self.three_corr_o_k, -1, 1)
-            self.three_corr_o_q = np.clip(self.three_corr_o_q, -1, 1)
+                self.three_corr_o_o = np.prod(self.pair_corr_o_o, axis=0)
+                self.three_corr_o_v = np.prod(self.pair_corr_o_v, axis=0)
+                self.three_corr_o_k = np.prod(self.pair_corr_o_k, axis=0)
+                self.three_corr_o_q = np.prod(self.pair_corr_o_q, axis=0)
+
 
         self.even_corr_o_o = self.pair_corr_o_o
         self.even_corr_o_v = self.pair_corr_o_v
