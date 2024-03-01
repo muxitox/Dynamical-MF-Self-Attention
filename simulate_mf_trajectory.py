@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from HopfieldTransformerPE import HopfieldTransformer
 from HopfieldTransformerPE import Embedding
-def plot_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None):
+def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
+                         save_not_plot=False, save_path=None):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -34,7 +35,14 @@ def plot_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, sho
 
     # fig.tight_layout(pad=0.1)
     fig.suptitle(f"Evolution of {stat_name}")
-    plt.show()
+
+    if save_not_plot:
+        fig.savefig(save_path)
+    else:
+        plt.show()
+    plt.close()
+
+
 
 if __name__ == "__main__":
 
@@ -87,5 +95,5 @@ if __name__ == "__main__":
     num_plotting_steps = max_sim_steps
 
     for stat_name in HT.statistics_names:
-        plot_statistics(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
+        plot_save_statistics(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=6)
     print("Done.")
