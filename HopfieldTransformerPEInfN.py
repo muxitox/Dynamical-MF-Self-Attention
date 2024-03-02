@@ -379,7 +379,8 @@ class HopfieldTransformerInfN:
         # We initialize the model at the end of the previous
         ini_t = self.context_size
         for t in range(ini_t, max_steps):
-            self.compute_mf(t, att)
+            self.compute_mf_optimized(t, att)
+            att = self.attention_mf_optimized(t)
 
     def simulate_mf(self, x0, max_steps):
         self.x_list[0, :] = x0
