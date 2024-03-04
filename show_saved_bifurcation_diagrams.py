@@ -19,10 +19,11 @@ if __name__ == "__main__":
     normalize_weights_str = "N"
     # normalize_weights_str = "np.sqrt(N+M)"
     ini_tokens_list = [0]
+    keep_context = False
 
     stats_to_save_plot = ["mo_se"]
 
     plotter(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
             max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights,
             save_not_plot,
-            stats_to_save_plot)
+            stats_to_save_plot, keep_context)

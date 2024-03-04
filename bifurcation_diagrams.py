@@ -4,6 +4,32 @@ import matplotlib.pyplot as plt
 import os
 import time
 
+# LaTeX macros
+plt.rc('text', usetex=True)
+plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
+font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
+plt.rc('font', **font)
+plt.rc('legend', **{'fontsize': 14})
+
+
+def feat_name_to_latex(feat_name):
+
+    if feat_name == "mo":
+        latex_str = "m^o"
+    elif feat_name == "mo_se":
+        latex_str = "m^o"
+    elif feat_name == "mv":
+        latex_str = "m^v"
+    elif feat_name == "mk":
+        latex_str = "m^k"
+    elif feat_name == "mq":
+        latex_str = "m^q"
+    elif feat_name == "att":
+        latex_str = "att"
+
+    return latex_str
+
+
 
 def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, num_transient_steps,
                              feat_name, show_max_num_patterns=None, save_not_plot=True):
@@ -16,8 +42,12 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
 
     if num_feat_patterns == 1:
         fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+    elif num_feat_patterns == 3:
+        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
     else:
         fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+
+    latex_str = feat_name_to_latex(feat_name)
 
     for feat in range(0, num_feat_patterns):
 
@@ -26,6 +56,8 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
             local_ax = ax
         elif num_feat_patterns == 2:
             local_ax = ax[feat % 2]
+        elif num_feat_patterns == 3:
+            local_ax = ax[feat % 3]
         else:
             local_ax = ax[row, feat % 2]
 
@@ -43,12 +75,19 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
         if feat_name != "att" and beta_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
 
-        if feat > num_feat_patterns-2:
-            local_ax.set_xlabel("beta")
+
+        local_ax.set_xlim(beta_list[0], beta_list[-1])
+
+        if num_feat_patterns==3:
+            local_ax.set_xlabel(r"$\beta$")
+        elif feat > num_feat_patterns-2:
+            local_ax.set_xlabel(r"$\beta$")
+
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
         # local_ax.legend(loc="upper center")
 
     # fig.tight_layout(pad=0.1)
-    fig.suptitle(f"Bifurcation_diagram {feat_name}")
+    # fig.suptitle(f"Bifurcation_diagram {feat_name}")
     if save_not_plot:
         fig.savefig(save_path)
     else:
@@ -69,6 +108,9 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
     ini_tokens_list = np.random.randint(2, size=(num_ini_tokens, semantic_embedding_size + positional_embedding_size)) * 2 - 1
     # Initialize positional embedding
     ini_tokens_list[:, -positional_embedding_size:] = -1
+
+    if reverse_betas:      # Flip vector to avoid falling in the same fixed points due to the mean-field 0 a low beta
+        beta_list = np.flip(beta_list)
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -115,14 +157,26 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
                         # Accumulate results in a var of beta_list length
                         results_beta_list[stat_name].append(np.copy(HT.mf_statistics[stat_name]))
 
+                if reverse_betas:
+                    for stat_name in stats_to_save_plot:
+                        # Flip again the vector to keep the order
+                        results_beta_list[stat_name] = np.flip(results_beta_list[stat_name])
+
+                    beta_string = ("/min_beta-" + str(beta_list[-1]) + "-max_beta-" + str(beta_list[1]) +
+                                   "-num_betas-" + str(len(beta_list)) + "-reverse_betas-keep_context-" +
+                                   str(int(keep_context)))
+                else:
+                    beta_string = ("/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1]) +
+                                   "-num_betas-" + str(len(beta_list)) + "-keep_context-" +
+                                   str(int(keep_context)))
+
                 # Save/plot results for each ini_token, W config, and num_feat_patterns
                 folder_path = ("results/" + "se_size-" + str(semantic_embedding_size) + "-pe_size-" +
                                str(positional_embedding_size)
                                + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-" +
                                normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
-                               + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-" + str(context_size) +
-                               "/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1]) +
-                               "-num_betas-" + str(len(beta_list)) + "-keep_context-" + str(int(keep_context)) + "/stats")
+                               + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-" + str(context_size)
+                               + beta_string + "/stats")
 
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
@@ -148,6 +202,10 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
         for seed in seed_list:
             for ini_token_idx in ini_tokens_list:
 
+                reverse_betas_str = ""
+                if reverse_betas:
+                    reverse_betas_str = "-reverse_betas"
+
                 # Create folder path name as defined in the runner function
                 folder_path = ("results/" + "se_size-" + str(semantic_embedding_size) + "-pe_size-" +
                                str(positional_embedding_size)
@@ -155,7 +213,7 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
                                normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
                                + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-" + str(context_size) +
                                "/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1]) +
-                               "-num_betas-" + str(len(beta_list)) + "-keep_context-" + str(int(keep_context)))
+                               "-num_betas-" + str(len(beta_list)) + f"{reverse_betas_str}-keep_context-"  + str(int(keep_context)))
 
                 stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) +
                                    ".npz")
@@ -188,7 +246,7 @@ if __name__ == "__main__":
     positional_embedding_size = 2
 
     # Create variables for the Hopfield Transformer (HT)
-    seed_list = [0, 1, 2, 3, 4, 5, 6]
+    seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     # seed_list = [3]
     # beta_list = np.linspace(0, 0.2, 1500)
     # beta_list = np.linspace(1, 1.4, 1500)
@@ -202,6 +260,8 @@ if __name__ == "__main__":
     max_sim_steps = 1536
     context_size = 4
     keep_context = True  # Keep context when we change of beta
+    reverse_betas = False
+
 
     seed_list = [1, 2]
     num_feat_patterns_list = [3]
@@ -227,7 +287,8 @@ if __name__ == "__main__":
     start = time.time()
 
     runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
-           context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot, keep_context)
+           context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
+           keep_context, reverse_betas)
 
     end = time.time()
     elapsed_time = end - start
@@ -237,4 +298,4 @@ if __name__ == "__main__":
     ini_tokens_list = range(0, num_ini_tokens)
     plotter(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
             max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,
-            stats_to_save_plot, keep_context)
+            stats_to_save_plot, keep_context, reverse_betas)
