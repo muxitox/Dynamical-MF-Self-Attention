@@ -2,17 +2,17 @@ import numpy as np
 import os
 from simulate_mf_trajectory import plot_save_statistics
 
-def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
+def plotter(num_feat_patterns, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str, reorder_weights, save_not_plot,
-            stats_to_save_plot, correlations_from_weights, se_per_contribution, keep_context, reverse_betas, beta_to_show):
+            stats_to_save_plot, keep_context, reverse_betas, beta_to_show):
 
     reverse_betas_str = ""
     if reverse_betas:
         reverse_betas_str = "-reverse_betas"
 
-    folder_path = ("results/infN-correlations_from_weights-" + str(int(correlations_from_weights)) +
-                   "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-" +
-                   str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
+    # Create folder path name as defined in the runner function
+    folder_path = ("results/" + "se_size-" + str(semantic_embedding_size) + "-pe_size-" +
+                   str(positional_embedding_size)
                    + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-" +
                    normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
                    + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-" + str(context_size) +
@@ -24,6 +24,8 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
 
     # Load data
     data = np.load(stats_data_path)
+
+    show_max_num_patterns = 6
 
     # Load each stat and plot/save it
     for stat_name in stats_to_save_plot:
@@ -46,7 +48,7 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
         if save_not_plot and (not os.path.exists(plot_save_folder_path)):
             os.makedirs(plot_save_folder_path)
 
-        plot_save_statistics(stat_results[num_transient_steps:,:], stat_name, num_feat_patterns, max_sim_steps-num_transient_steps,
+        plot_save_statistics(stat_results[num_transient_steps:,:], stat_name, show_max_num_patterns, max_sim_steps-num_transient_steps,
                              show_max_num_patterns=None,
                              save_not_plot=save_not_plot, save_path=plot_save_path)
 
@@ -54,37 +56,37 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
 
 if __name__ == "__main__":
     # Instantiate vocabulary
-    tentative_semantic_embedding_size = 100
+    semantic_embedding_size = 100
     positional_embedding_size = 4
     context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
-    seed = 5
+    seed = 6
     beta_list = np.linspace(0, 4, 1500)
-    se_per_contribution = 0.95
-    num_feat_patterns = 3
-    num_transient_steps = 0  # 0 if we want to show the trajectory since the beginning
+    num_feat_patterns = 16
+    num_transient_steps = 1024  # 0 if we want to show the trajectory since the beginning
     max_sim_steps = 1536
     keep_context = True
     reverse_betas = True
-    beta_to_show = 2    # We'll find the nearest beta in the defined range
+    beta_to_show = 1.13    # We'll find the nearest beta in the defined range
 
+    # 2 chaos
 
     if context_size > 2**positional_embedding_size:
         raise("The positional embedding cannot cover the whole context size.")
     if num_transient_steps > max_sim_steps:
         raise("You cannot discard more timesteps than you are simulating.")
 
-    ini_token_idx = 2
+    ini_token_idx = 0
     reorder_weights = False
     normalize_weights_str = "np.sqrt(N*M)"
     correlations_from_weights = False
-    save_not_plot = False
+    save_not_plot = True
 
-    stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
-    # stats_to_save_plot = ["mo", "mo_se"]
+    # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
+    stats_to_save_plot = ["mo_se"]
 
 
-    plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
+    plotter(num_feat_patterns, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str, reorder_weights, save_not_plot,
-            stats_to_save_plot, correlations_from_weights, se_per_contribution, keep_context, reverse_betas, beta_to_show)
+            stats_to_save_plot, keep_context, reverse_betas, beta_to_show)

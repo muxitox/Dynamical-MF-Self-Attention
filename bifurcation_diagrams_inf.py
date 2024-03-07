@@ -70,7 +70,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                         # Flip again the vector to keep the order
                         results_beta_list[stat_name] = np.flip(results_beta_list[stat_name])
 
-                    beta_string = ("/min_beta-" + str(beta_list[-1]) + "-max_beta-" + str(beta_list[1]) +
+                    beta_string = ("/min_beta-" + str(beta_list[-1]) + "-max_beta-" + str(beta_list[0]) +
                                    "-num_betas-" + str(len(beta_list)) + "-reverse_betas-keep_context-" +
                                    str(int(keep_context)))
                 else:

@@ -2,6 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from HopfieldTransformerPE import HopfieldTransformer
 from HopfieldTransformerPE import Embedding
+from utils import feat_name_to_latex
+
+# LaTeX macros
+plt.rc('text', usetex=True)
+plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
+font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
+plt.rc('font', **font)
+plt.rc('legend', **{'fontsize': 14})
+
+
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
                          save_not_plot=False, save_path=None):
 
@@ -18,6 +28,8 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
     num_plotting_steps_arange = np.arange(num_plotting_steps)
 
+    latex_str = feat_name_to_latex(stat_name)
+
     for feat in range(0, num_feat_patterns):
 
         row = feat // 2
@@ -29,12 +41,15 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
             local_ax = ax[row, feat % 2]
 
         local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label="mf")
-        if feat > num_feat_patterns-2:
+        if feat > num_feat_patterns-3:
             local_ax.set_xlabel("t")
+
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
+
         local_ax.legend()
 
     # fig.tight_layout(pad=0.1)
-    fig.suptitle(f"Evolution of {stat_name}")
+    # fig.suptitle(f"Evolution of {stat_name}")
 
     if save_not_plot:
         fig.savefig(save_path)

@@ -3,6 +3,8 @@ from HopfieldTransformerPE import Embedding, HopfieldTransformer
 import matplotlib.pyplot as plt
 import os
 import time
+from utils import feat_name_to_latex
+
 
 # LaTeX macros
 plt.rc('text', usetex=True)
@@ -11,23 +13,6 @@ font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
 plt.rc('font', **font)
 plt.rc('legend', **{'fontsize': 14})
 
-
-def feat_name_to_latex(feat_name):
-
-    if feat_name == "mo":
-        latex_str = "m^o"
-    elif feat_name == "mo_se":
-        latex_str = "m^o"
-    elif feat_name == "mv":
-        latex_str = "m^v"
-    elif feat_name == "mk":
-        latex_str = "m^k"
-    elif feat_name == "mq":
-        latex_str = "m^q"
-    elif feat_name == "att":
-        latex_str = "att"
-
-    return latex_str
 
 
 
@@ -80,7 +65,7 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
 
         if num_feat_patterns==3:
             local_ax.set_xlabel(r"$\beta$")
-        elif feat > num_feat_patterns-2:
+        elif feat > num_feat_patterns-3:
             local_ax.set_xlabel(r"$\beta$")
 
         local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
@@ -97,7 +82,7 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
 
 def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
-           keep_context):
+           keep_context, reverse_betas):
 
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
@@ -162,7 +147,7 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
                         # Flip again the vector to keep the order
                         results_beta_list[stat_name] = np.flip(results_beta_list[stat_name])
 
-                    beta_string = ("/min_beta-" + str(beta_list[-1]) + "-max_beta-" + str(beta_list[1]) +
+                    beta_string = ("/min_beta-" + str(beta_list[-1]) + "-max_beta-" + str(beta_list[0]) +
                                    "-num_betas-" + str(len(beta_list)) + "-reverse_betas-keep_context-" +
                                    str(int(keep_context)))
                 else:
@@ -196,7 +181,7 @@ def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding
 
 def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,
-            stats_to_save_plot, keep_context):
+            stats_to_save_plot, keep_context, reverse_betas):
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -242,8 +227,9 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
 
 if __name__ == "__main__":
     # Instantiate vocabulary
-    semantic_embedding_size = 10
+    semantic_embedding_size = 100
     positional_embedding_size = 2
+    context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
     seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
@@ -251,41 +237,30 @@ if __name__ == "__main__":
     # beta_list = np.linspace(0, 0.2, 1500)
     # beta_list = np.linspace(1, 1.4, 1500)
     beta_list = np.linspace(0, 4, 1500)
-    # num_feat_patterns_list = [1, 2, 4, 6, 10, 16]
-    # num_feat_patterns_list = [4, 6]
+    num_feat_patterns_list = [1, 2, 3, 4, 6, 10, 16]
+    # num_feat_patterns_list = [3, 4, 6]
     # num_feat_patterns_list = [2, 10]
     # num_feat_patterns_list = [1, 16]
-    num_feat_patterns_list = [3]
     num_transient_steps = 1024
     max_sim_steps = 1536
-    context_size = 4
     keep_context = True  # Keep context when we change of beta
-    reverse_betas = False
-
-
-    seed_list = [1, 2]
-    num_feat_patterns_list = [3]
-    beta_list = np.linspace(1, 4, 10)
-    num_transient_steps = 10
-    max_sim_steps = 100
-
+    reverse_betas = True
 
     if context_size > 2**positional_embedding_size:
         raise Exception("The positional embedding cannot cover all the context size.")
     if num_transient_steps > max_sim_steps:
         raise Exception("You cannot discard more timesteps than you are simulating.")
 
-    num_ini_tokens = 2
+    num_ini_tokens = 3
     reorder_weights = False
     normalize_weights_str = "np.sqrt(N*M)"
     # normalize_weights_str = "N"
     save_not_plot = True
 
     # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
-    stats_to_save_plot = ["mo", "mo_se"]
+    stats_to_save_plot = ["mo", "mo_se", "att"]
 
     start = time.time()
-
     runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
            keep_context, reverse_betas)
