@@ -1,5 +1,5 @@
 import numpy as np
-from HopfieldTransformerPE import Embedding, HopfieldTransformer
+from models.HopfieldTransformerPE import Embedding, HopfieldTransformer
 
 
 
