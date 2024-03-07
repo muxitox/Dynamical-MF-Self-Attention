@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from HopfieldTransformerPE import HopfieldTransformer
-from HopfieldTransformerPE import Embedding
+from models.HopfieldTransformerPE import HopfieldTransformer
+from models.HopfieldTransformerPE import Embedding
 from utils import feat_name_to_latex
 
 # LaTeX macros

@@ -1,7 +1,6 @@
 import numpy as np
-from HopfieldTransformerPEInfN import HopfieldTransformerInfN
+from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from bifurcation_diagrams import plot_bifurcation_diagram
-import matplotlib.pyplot as plt
 import os
 import time
 

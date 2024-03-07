@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from HopfieldTransformerPE_fullcontext import HopfieldTransformer as HopfieldTransformerFC
-from HopfieldTransformerPE import HopfieldTransformer
-from HopfieldTransformerPE import Embedding
+from models.HopfieldTransformerPE import HopfieldTransformer
+from models.HopfieldTransformerPE import Embedding
 
 def plot_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None):
 
