@@ -23,6 +23,8 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
     if num_feat_patterns == 1:
         fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+    elif num_feat_patterns == 3:
+        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
     else:
         fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
 
@@ -37,11 +39,16 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
             local_ax = ax
         elif num_feat_patterns == 2:
             local_ax = ax[feat % 2]
+        elif num_feat_patterns == 3:
+            local_ax = ax[feat % 3]
         else:
             local_ax = ax[row, feat % 2]
 
         local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label="mf")
-        if feat > num_feat_patterns-3:
+
+        if num_feat_patterns == 3:
+            local_ax.set_xlabel(r"$\beta$")
+        elif feat > num_feat_patterns-3:
             local_ax.set_xlabel("t")
 
         local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
