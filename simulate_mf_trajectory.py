@@ -44,7 +44,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         else:
             local_ax = ax[row, feat % 2]
 
-        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label="mf")
+        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat])
 
         if num_feat_patterns == 3:
             local_ax.set_xlabel(r"$\beta$")
@@ -53,7 +53,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
         local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
 
-        local_ax.legend()
+        # local_ax.legend()
 
     # fig.tight_layout(pad=0.1)
     # fig.suptitle(f"Evolution of {stat_name}")
