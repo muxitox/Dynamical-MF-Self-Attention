@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from bifurcation_diagrams import plot_bifurcation_diagram
+from plotting.plotting import plot_bifurcation_diagram
 
 def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,

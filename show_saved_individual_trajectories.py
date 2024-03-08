@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from simulate_mf_trajectory import plot_save_statistics
+from plotting.plotting import plot_save_statistics
 
 def plotter(num_feat_patterns, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str, reorder_weights, save_not_plot,

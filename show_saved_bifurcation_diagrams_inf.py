@@ -1,5 +1,5 @@
 import numpy as np
-from bifurcation_diagrams import plot_bifurcation_diagram
+from plotting.plotting import plot_bifurcation_diagram
 import os
 
 def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
@@ -64,19 +64,19 @@ if __name__ == "__main__":
 
     # VARS FOR LOADING CHECKPOINTS
     # Create variables for the Hopfield Transformer (HT)
-    seed_list = [5]
+    seed_list = [4]
     beta_list = np.linspace(0, 4, 1500)
     se_per_contribution = 0.95
-    num_feat_patterns_list = [3]
+    num_feat_patterns_list = [1]
     ini_tokens_list = [0]
     num_transient_steps = 1024
     max_sim_steps = 1536
-    keep_context = False
-    reverse_betas = False
+    keep_context = True
+    reverse_betas = True
 
     # Specific stats for plotting
-    min_beta_to_show = 0
-    max_beta_to_show = 3
+    min_beta_to_show = 0.13
+    max_beta_to_show = 0.15
 
     # seed_list = [ 1]
     # num_feat_patterns_list = [3]
@@ -93,8 +93,8 @@ if __name__ == "__main__":
     save_not_plot = True
 
     beta_list = np.linspace(0, 4, 1500)
-    stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
-    # stats_to_save_plot = ["mo", "mo_se"]
+    # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
+    stats_to_save_plot = ["mo", "mo_se"]
 
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
             num_transient_steps,

@@ -1,84 +1,8 @@
 import numpy as np
 from models.HopfieldTransformerPE import Embedding, HopfieldTransformer
-import matplotlib.pyplot as plt
 import os
 import time
-from utils import feat_name_to_latex
-
-
-# LaTeX macros
-plt.rc('text', usetex=True)
-plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
-font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
-plt.rc('font', **font)
-plt.rc('legend', **{'fontsize': 14})
-
-
-
-
-def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, num_transient_steps,
-                             feat_name, show_max_num_patterns=None, save_not_plot=True):
-
-    # Plot show_max_num_patterns subfigures if defined
-    if (show_max_num_patterns is not None):
-        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
-
-    nrows = (num_feat_patterns + 1) // 2
-
-    if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
-    elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
-    else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
-
-    latex_str = feat_name_to_latex(feat_name)
-
-    for feat in range(0, num_feat_patterns):
-
-        row = feat // 2
-        if num_feat_patterns == 1:
-            local_ax = ax
-        elif num_feat_patterns == 2:
-            local_ax = ax[feat % 2]
-        elif num_feat_patterns == 3:
-            local_ax = ax[feat % 3]
-        else:
-            local_ax = ax[row, feat % 2]
-
-        feat_Y_values = []
-        feat_X_values = []
-
-        for b_idx in range(0, len(beta_list)):
-            unique_values_feat = mo_results_beta_list[b_idx][num_transient_steps:, feat]
-            beta_values_feat = np.ones(len(unique_values_feat)) * beta_list[b_idx]
-
-            feat_Y_values.extend(unique_values_feat)
-            feat_X_values.extend(beta_values_feat)
-
-        local_ax.plot(feat_X_values, feat_Y_values, ls='', marker='.', ms='0.05')
-        if feat_name != "att" and beta_list[-1] > 3.5:
-            local_ax.set_ylim(-1, 1)
-
-
-        local_ax.set_xlim(beta_list[0], beta_list[-1])
-
-        if num_feat_patterns==3:
-            local_ax.set_xlabel(r"$\beta$")
-        elif feat > num_feat_patterns-3:
-            local_ax.set_xlabel(r"$\beta$")
-
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
-        # local_ax.legend(loc="upper center")
-
-    # fig.tight_layout(pad=0.1)
-    # fig.suptitle(f"Bifurcation_diagram {feat_name}")
-    if save_not_plot:
-        fig.savefig(save_path)
-    else:
-        plt.show()
-    plt.close()
-
+from plotting.plotting import plot_bifurcation_diagram
 
 def runner(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
