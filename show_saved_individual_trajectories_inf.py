@@ -39,7 +39,7 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
         plot_save_path_traj = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/beta-{beta_to_show}-ini_token_idx-" +
                           str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png")
 
-        plot_save_path_spec = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/spec-beta-{beta_to_show}-ini_token_idx-" +
+        plot_save_path_fft = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/fft-beta-{beta_to_show}-ini_token_idx-" +
                           str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png")
 
 
@@ -50,13 +50,13 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
             os.makedirs(plot_save_folder_path)
 
         plot_save_statistics(stat_results[num_transient_steps:,:], stat_name, num_feat_patterns, max_sim_steps-num_transient_steps,
-                             show_max_num_patterns=None,
+                             show_max_num_patterns=num_feat_patterns,
                              save_not_plot=save_not_plot, save_path=plot_save_path_traj)
 
         plot_save_fft(stat_results[num_transient_steps:, :], stat_name, num_feat_patterns,
                       max_sim_steps - num_transient_steps,
-                      show_max_num_patterns=None,
-                      save_not_plot=save_not_plot, save_path=plot_save_path_spec)
+                      show_max_num_patterns=num_feat_patterns,
+                      save_not_plot=save_not_plot, save_path=plot_save_path_fft)
 
 
 if __name__ == "__main__":

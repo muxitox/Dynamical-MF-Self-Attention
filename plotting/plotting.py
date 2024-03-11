@@ -105,6 +105,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         else:
             local_ax = ax[row, feat % 2]
 
+
         local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat])
 
         if num_feat_patterns == 3:
@@ -113,6 +114,9 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
             local_ax.set_xlabel(r"$t$")
 
         local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
+
+        local_ax.set_xlim(num_plotting_steps_arange[0], num_plotting_steps_arange[-1])
+
 
         # local_ax.legend()
 
@@ -169,6 +173,8 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
             local_ax.set_xlabel(r"$Hz$")
 
         local_ax.set_ylabel(fr"Mag. of ${latex_str}_{{{feat},t}}$")
+
+        local_ax.set_xlim(freqs[0], freqs[-1])
 
         # local_ax.legend()
 

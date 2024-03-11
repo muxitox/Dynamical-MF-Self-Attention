@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from plotting.plotting import plot_save_statistics
+from plotting.plotting import plot_save_statistics, plot_save_fft
 
 def plotter(num_feat_patterns, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str, reorder_weights, save_not_plot,
@@ -38,19 +38,28 @@ def plotter(num_feat_patterns, semantic_embedding_size, positional_embedding_siz
         stat_results = stat_results_beta_list[beta_to_show_idx]
 
 
-        plot_save_path = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/beta-{beta_to_show}-ini_token_idx-" +
+        plot_save_path_traj = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/beta-{beta_to_show}-ini_token_idx-" +
                           str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png")
 
+        plot_save_path_fft = (
+                    folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/fft-beta-{beta_to_show}-ini_token_idx-" +
+                    str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png")
 
-        plot_save_folder_path = os.path.dirname(plot_save_path)
+        plot_save_folder_path = os.path.dirname(plot_save_path_traj)
 
         # Create folder if it does not exist and we are saving the image
         if save_not_plot and (not os.path.exists(plot_save_folder_path)):
             os.makedirs(plot_save_folder_path)
 
-        plot_save_statistics(stat_results[num_transient_steps:,:], stat_name, show_max_num_patterns, max_sim_steps-num_transient_steps,
-                             show_max_num_patterns=None,
-                             save_not_plot=save_not_plot, save_path=plot_save_path)
+        plot_save_statistics(stat_results[num_transient_steps:,:], stat_name, num_feat_patterns, max_sim_steps-num_transient_steps,
+                             show_max_num_patterns=show_max_num_patterns,
+                             save_not_plot=save_not_plot, save_path=plot_save_path_traj)
+
+        plot_save_fft(stat_results[num_transient_steps:, :], stat_name, num_feat_patterns,
+                      max_sim_steps - num_transient_steps,
+                      show_max_num_patterns=show_max_num_patterns,
+                      save_not_plot=save_not_plot, save_path=plot_save_path_fft)
+
 
 
 
@@ -61,14 +70,14 @@ if __name__ == "__main__":
     context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
-    seed = 6
-    beta_list = np.linspace(0, 4, 1500)
+    seed = 4
+    beta_list = np.linspace(0.9, 1.5, 1500)
     num_feat_patterns = 16
     num_transient_steps = 1024  # 0 if we want to show the trajectory since the beginning
     max_sim_steps = 1536
     keep_context = True
-    reverse_betas = True
-    beta_to_show = 1.13    # We'll find the nearest beta in the defined range
+    reverse_betas = False
+    beta_to_show = 1.4    # We'll find the nearest beta in the defined range
 
     # 2 chaos
 
