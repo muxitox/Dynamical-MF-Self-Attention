@@ -34,7 +34,7 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
                 show_max_num_patterns = 6
 
                 min_beta_idx = np.searchsorted(beta_list, min_beta_to_show)
-                max_beta_idx = np.searchsorted(beta_list, max_beta_to_show)
+                max_beta_idx = np.searchsorted(beta_list, max_beta_to_show) + 1
 
                 # Load each stat and plot/save it
                 for stat_name in stats_to_save_plot:
@@ -45,9 +45,11 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
                     if save_not_plot and (not os.path.exists(folder_path + f"/{stat_name}/")):
                         os.makedirs(folder_path + f"/{stat_name}/")
 
+                    image_format = ".jpeg"
+
                     fig_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
                                       str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) +
-                                      f"-min_beta-{min_beta_to_show}-max_beta-{max_beta_to_show}.png")
+                                      f"-min_beta-{min_beta_to_show}-max_beta-{max_beta_to_show}{image_format}")
 
                     plot_bifurcation_diagram(stat_results_beta_list[min_beta_idx:max_beta_idx], beta_list[min_beta_idx:max_beta_idx],
                                              num_feat_patterns, fig_save_path,
@@ -62,22 +64,22 @@ if __name__ == "__main__":
     context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
-    seed_list = [6]
-    beta_list = np.linspace(0, 4, 1500)
+    seed_list = [3]
+    beta_list = np.linspace(1.1, 2, 1500)
     num_feat_patterns_list = [16]
     num_transient_steps = 1024
     max_sim_steps = 1536
-    save_not_plot = False
     reorder_weights = False
     # normalize_weights_str = "N"
     normalize_weights_str = "np.sqrt(N*M)"
     ini_tokens_list = [0]
     keep_context = True
-    reverse_betas = True
+    reverse_betas = False
 
-    min_beta_to_show = 0
-    max_beta_to_show = 3
+    save_not_plot = True
 
+    min_beta_to_show = 1.1
+    max_beta_to_show = 2
 
     stats_to_save_plot = ["mo_se"]
 

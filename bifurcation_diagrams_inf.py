@@ -141,8 +141,10 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                     if save_not_plot and (not os.path.exists(folder_path + f"/{stat_name}/")):
                         os.makedirs(folder_path + f"/{stat_name}/")
 
+                    image_format = ".jpeg"
+
                     stat_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
-                                      str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png")
+                                      str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
                     plot_bifurcation_diagram(stat_results_beta_list, beta_list, num_feat_patterns, stat_save_path,
                                              num_transient_steps, feat_name=stat_name,
@@ -166,19 +168,18 @@ if __name__ == "__main__":
     keep_context = True
     reverse_betas = False
 
-    # seed_list = [ 1]
-    # num_feat_patterns_list = [3]
+    num_ini_tokens = 3
+    reorder_weights = False
+    normalize_weights_str = "np.sqrt(N*M)"
+    correlations_from_weights = False
+    save_not_plot = True
 
     if context_size > 2**positional_embedding_size:
         raise("The positional embedding cannot cover the whole context size.")
     if num_transient_steps > max_sim_steps:
         raise("You cannot discard more timesteps than you are simulating.")
 
-    num_ini_tokens = 3
-    reorder_weights = False
-    normalize_weights_str = "np.sqrt(N*M)"
-    correlations_from_weights = False
-    save_not_plot = True
+
 
     beta_list = np.linspace(0, 4, 1500)
     stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]

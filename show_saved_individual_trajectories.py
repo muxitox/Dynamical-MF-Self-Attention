@@ -37,13 +37,14 @@ def plotter(num_feat_patterns, semantic_embedding_size, positional_embedding_siz
 
         stat_results = stat_results_beta_list[beta_to_show_idx]
 
+        image_format = ".jpeg"
 
         plot_save_path_traj = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/beta-{beta_to_show}-ini_token_idx-" +
-                          str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png")
+                          str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
         plot_save_path_fft = (
                     folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/fft-beta-{beta_to_show}-ini_token_idx-" +
-                    str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png")
+                    str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
         plot_save_folder_path = os.path.dirname(plot_save_path_traj)
 
@@ -70,21 +71,14 @@ if __name__ == "__main__":
     context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
-    seed = 4
-    beta_list = np.linspace(0.9, 1.5, 1500)
+    seed = 3
+    beta_list = np.linspace(0, 4, 1500)
     num_feat_patterns = 16
     num_transient_steps = 1024  # 0 if we want to show the trajectory since the beginning
     max_sim_steps = 1536
     keep_context = True
     reverse_betas = False
-    beta_to_show = 1.4    # We'll find the nearest beta in the defined range
-
-    # 2 chaos
-
-    if context_size > 2**positional_embedding_size:
-        raise("The positional embedding cannot cover the whole context size.")
-    if num_transient_steps > max_sim_steps:
-        raise("You cannot discard more timesteps than you are simulating.")
+    beta_to_show = 1.8    # We'll find the nearest beta in the defined range
 
     ini_token_idx = 0
     reorder_weights = False
@@ -92,9 +86,13 @@ if __name__ == "__main__":
     correlations_from_weights = False
     save_not_plot = True
 
+    if context_size > 2**positional_embedding_size:
+        raise("The positional embedding cannot cover the whole context size.")
+    if num_transient_steps > max_sim_steps:
+        raise("You cannot discard more timesteps than you are simulating.")
+
     # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
     stats_to_save_plot = ["mo_se"]
-
 
     plotter(num_feat_patterns, semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str, reorder_weights, save_not_plot,

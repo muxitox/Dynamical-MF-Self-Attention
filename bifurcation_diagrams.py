@@ -141,8 +141,10 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
                     if save_not_plot and (not os.path.exists(folder_path + f"/{stat_name}/")):
                         os.makedirs(folder_path + f"/{stat_name}/")
 
+                    image_format = ".jpeg"
+
                     stat_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
-                                      str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + ".png")
+                                      str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
                     plot_bifurcation_diagram(stat_results_beta_list, beta_list, num_feat_patterns, stat_save_path,
                                              num_transient_steps, feat_name=stat_name,
@@ -152,7 +154,7 @@ def plotter(num_feat_patterns_list, semantic_embedding_size, positional_embeddin
 if __name__ == "__main__":
     # Instantiate vocabulary
     semantic_embedding_size = 100
-    positional_embedding_size = 2
+    positional_embedding_size = 4
     context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
@@ -168,18 +170,19 @@ if __name__ == "__main__":
     num_transient_steps = 1024
     max_sim_steps = 1536
     keep_context = True  # Keep context when we change of beta
-    reverse_betas = True
+    reverse_betas = False
+
+    num_ini_tokens = 1
+    reorder_weights = False
+    normalize_weights_str = "np.sqrt(N*M)"
+    # normalize_weights_str = "N"
+    save_not_plot = True
 
     if context_size > 2**positional_embedding_size:
         raise Exception("The positional embedding cannot cover all the context size.")
     if num_transient_steps > max_sim_steps:
         raise Exception("You cannot discard more timesteps than you are simulating.")
 
-    num_ini_tokens = 3
-    reorder_weights = False
-    normalize_weights_str = "np.sqrt(N*M)"
-    # normalize_weights_str = "N"
-    save_not_plot = True
 
     # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
     stats_to_save_plot = ["mo", "mo_se", "att"]
