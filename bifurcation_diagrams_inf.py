@@ -79,7 +79,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 
 
                     # Save/plot results for each ini_token, W config, and num_feat_patterns
-                folder_path = ("results/infN-correlations_from_weights-" + str(int(correlations_from_weights)) +
+                folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights) +
                                "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-" +
                                str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
                                + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-" +
@@ -115,7 +115,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                 if reverse_betas:
                     reverse_betas_str = "-reverse_betas"
 
-                folder_path = ("results/infN-correlations_from_weights-" + str(int(correlations_from_weights)) +
+                folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights) +
                                "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-" +
                                str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
                                + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-" +
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     beta_list = np.linspace(0, 4, 1500)
     se_per_contribution = 0.95
-    num_feat_patterns_list = [1, 2, 3]
+    num_feat_patterns_list = [3]
     num_transient_steps = 1024
     max_sim_steps = 1536
     keep_context = True
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     num_ini_tokens = 3
     reorder_weights = False
     normalize_weights_str = "np.sqrt(N*M)"
-    correlations_from_weights = False
+    correlations_from_weights = 2
     save_not_plot = True
 
     if context_size > 2**positional_embedding_size:

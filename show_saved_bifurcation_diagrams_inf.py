@@ -15,7 +15,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                 if reverse_betas:
                     reverse_betas_str = "-reverse_betas"
 
-                folder_path = ("results/infN-correlations_from_weights-" + str(int(correlations_from_weights)) +
+                folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights) +
                                "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-" +
                                str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
                                + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-" +
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     reorder_weights = False
     normalize_weights_str = "np.sqrt(N*M)"
-    correlations_from_weights = False
+    correlations_from_weights = 2
     save_not_plot = True
 
     # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
