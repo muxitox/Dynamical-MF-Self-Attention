@@ -54,7 +54,7 @@ class HopfieldTransformerInfN:
             self.W = self.Wo
 
 
-        if correlations_from_weights:
+        if correlations_from_weights == 1:  # Create matrices and compute correlations from them
 
             # Create correlations from matrices for comparison
             if num_feat_patterns < 1 or num_feat_patterns > 3:
@@ -70,8 +70,8 @@ class HopfieldTransformerInfN:
                     for i in range(0, semantic_embedding_bitsize):
                         self.pair_corr_o_o[a, b] += self.Wo[a, i] * self.Wo[b, i]
                         self.pair_corr_o_v[a, b] += self.Wo[a, i] * self.Wv[b, i]
-                        self.pair_corr_o_q[a, b] += self.Wo[a, i] * self.Wq[b, i]
                         self.pair_corr_o_k[a, b] += self.Wo[a, i] * self.Wk[b, i]
+                        self.pair_corr_o_q[a, b] += self.Wo[a, i] * self.Wq[b, i]
 
             self.pair_corr_o_o /= semantic_embedding_bitsize
             self.pair_corr_o_v /= semantic_embedding_bitsize
@@ -89,15 +89,15 @@ class HopfieldTransformerInfN:
                         Wo_corr = self.Wo[0, i] * self.Wo[1, i] * self.Wo[2, i]
                         self.three_corr_o_o[b] += Wo_corr * self.Wo[b, i]
                         self.three_corr_o_v[b] += Wo_corr * self.Wv[b, i]
-                        self.three_corr_o_k[b] += Wo_corr * self.Wq[b, i]
-                        self.three_corr_o_q[b] += Wo_corr * self.Wk[b, i]
+                        self.three_corr_o_q[b] += Wo_corr * self.Wq[b, i]
+                        self.three_corr_o_k[b] += Wo_corr * self.Wk[b, i]
 
                 self.three_corr_o_o /= semantic_embedding_bitsize
                 self.three_corr_o_v /= semantic_embedding_bitsize
                 self.three_corr_o_q /= semantic_embedding_bitsize
                 self.three_corr_o_v /= semantic_embedding_bitsize
 
-        else:
+        elif correlations_from_weights == 0:  #  Normal weights and 4 correlations come from individual corrs
             sc = 0.5
             # Create random correlations
             self.pair_corr_o_o = np.random.normal(0, sc, (num_feat_patterns, num_feat_patterns))
@@ -106,7 +106,7 @@ class HopfieldTransformerInfN:
             self.pair_corr_o_q = np.random.normal(0, sc, (num_feat_patterns, num_feat_patterns))
 
             # Set autocorrelations to 0
-            np.fill_diagonal(self.pair_corr_o_o , 1)
+            np.fill_diagonal(self.pair_corr_o_o, 1)
 
             self.pair_corr_o_o = np.clip(self.pair_corr_o_o, -1, 1)
             self.pair_corr_o_v = np.clip(self.pair_corr_o_v, -1, 1)
@@ -129,6 +129,43 @@ class HopfieldTransformerInfN:
                 self.three_corr_o_k = np.prod(self.pair_corr_o_k, axis=0)
                 self.three_corr_o_q = np.prod(self.pair_corr_o_q, axis=0)
 
+        elif correlations_from_weights == 2:  # Correlations from uniform means
+
+            int_range = 100
+
+            # Create initial means that will later define the correlations
+            self.corr_mo = np.random.randint(-int_range, int_range, size=num_feat_patterns) / int_range
+            self.corr_mv = np.random.randint(-int_range, int_range, size=num_feat_patterns) / int_range
+            self.corr_mq = np.random.randint(-int_range, int_range, size=num_feat_patterns) / int_range
+            self.corr_mk = np.random.randint(-int_range, int_range, size=num_feat_patterns) / int_range
+
+            self.pair_corr_o_o = np.zeros((num_feat_patterns, num_feat_patterns))
+            self.pair_corr_o_v = np.zeros((num_feat_patterns, num_feat_patterns))
+            self.pair_corr_o_k = np.zeros((num_feat_patterns, num_feat_patterns))
+            self.pair_corr_o_q = np.zeros((num_feat_patterns, num_feat_patterns))
+
+
+            for b in range(0, num_feat_patterns):
+                for a in range(0, num_feat_patterns):
+                    self.pair_corr_o_o[a, b] += self.corr_mo[a] * self.corr_mo[b]
+                    self.pair_corr_o_v[a, b] += self.corr_mo[a] * self.corr_mv[b]
+                    self.pair_corr_o_q[a, b] += self.corr_mo[a] * self.corr_mq[b]
+                    self.pair_corr_o_k[a, b] += self.corr_mo[a] * self.corr_mk[b]
+
+            np.fill_diagonal(self.pair_corr_o_o, 1)
+
+            if num_feat_patterns == 3:
+                self.three_corr_o_o = np.zeros(num_feat_patterns)
+                self.three_corr_o_v = np.zeros(num_feat_patterns)
+                self.three_corr_o_k = np.zeros(num_feat_patterns)
+                self.three_corr_o_q = np.zeros(num_feat_patterns)
+
+                for b in range(0, num_feat_patterns):
+                    Wo_corr = self.corr_mo[0] * self.corr_mo[1] * self.corr_mo[2]
+                    self.three_corr_o_o[b] += Wo_corr * self.corr_mo[b]
+                    self.three_corr_o_v[b] += Wo_corr * self.corr_mv[b]
+                    self.three_corr_o_k[b] += Wo_corr * self.corr_mk[b]
+                    self.three_corr_o_q[b] += Wo_corr * self.corr_mq[b]
 
         self.even_corr_o_o = self.pair_corr_o_o
         self.even_corr_o_v = self.pair_corr_o_v
