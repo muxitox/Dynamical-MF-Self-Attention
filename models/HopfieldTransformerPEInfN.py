@@ -76,7 +76,7 @@ class HopfieldTransformerInfN:
             self.pair_corr_o_o /= semantic_embedding_bitsize
             self.pair_corr_o_v /= semantic_embedding_bitsize
             self.pair_corr_o_q /= semantic_embedding_bitsize
-            self.pair_corr_o_v /= semantic_embedding_bitsize
+            self.pair_corr_o_k /= semantic_embedding_bitsize
 
             if num_feat_patterns == 3:
                 self.quad_corr_o_o = np.zeros(num_feat_patterns)
