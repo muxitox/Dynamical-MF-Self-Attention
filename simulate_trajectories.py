@@ -2,45 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from models.HopfieldTransformerPE import HopfieldTransformer
 from models.HopfieldTransformerPE import Embedding
-
-def plot_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None):
-
-    # Plot show_max_num_patterns subfigures if defined
-    if (show_max_num_patterns is not None):
-        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
-
-    nrows = (num_feat_patterns + 1) // 2
-
-    if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
-    else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
-
-    num_plotting_steps_arange = np.arange(num_plotting_steps)
-
-    for feat in range(0, num_feat_patterns):
-
-        row = feat // 2
-        if num_feat_patterns == 1:
-            local_ax = ax
-        elif num_feat_patterns == 2:
-            local_ax = ax[feat % 2]
-        else:
-            local_ax = ax[row, feat % 2]
-
-        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label="std")
-        local_ax.plot(num_plotting_steps_arange, stat2[:num_plotting_steps, feat], '--', label="mf")
-
-        if feat > 3:
-            local_ax.set_xlabel("t")
-        local_ax.legend(loc="upper center")
-
-    # fig.tight_layout(pad=0.1)
-    fig.suptitle(f"Evolution of {stat_name}")
-    plt.show()
+from plotting.plotting import plot_2_statistics
 
 if __name__ == "__main__":
-
 
     # Instantiate vocabulary
     semantic_embedding_size = 14
@@ -124,8 +88,9 @@ if __name__ == "__main__":
     print("Plotting statistics...")
     num_plotting_steps = max_sim_steps
 
+    label_tag = ["std", "mf"]
     for stat_name in HT.statistics_names:
-        plot_statistics(mean_std_statistics[stat_name], HT.mf_statistics[stat_name], stat_name, num_feat_patterns,
+        plot_2_statistics(mean_std_statistics[stat_name], HT.mf_statistics[stat_name], stat_name, num_feat_patterns,
                         num_plotting_steps, show_max_num_patterns=6)
 
     print("Done.")
