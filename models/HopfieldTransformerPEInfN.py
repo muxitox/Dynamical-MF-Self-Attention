@@ -278,9 +278,22 @@ class HopfieldTransformerInfN:
 
     def compute_mf_optimized(self, t, att):
 
-        pe_contribution = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:],
+        pe_contribution_o = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:],
                                     bitfield(t % self.context_size, self.pe_bit_size) * 2 - 1,
-                                    optimize=True) / self.embedding_size
+                                    optimize=True) / self.pe_bit_size
+
+        pe_contribution_v = np.einsum('bi,i ->b', self.Wv[:, self.se_bit_size:],
+                                    bitfield(t % self.context_size, self.pe_bit_size) * 2 - 1,
+                                    optimize=True) / self.pe_bit_size
+
+        pe_contribution_q = np.einsum('bi,i ->b', self.Wq[:, self.se_bit_size:],
+                                    bitfield(t % self.context_size, self.pe_bit_size) * 2 - 1,
+                                    optimize=True) / self.pe_bit_size
+
+        pe_contribution_k = np.einsum('bi,i ->b', self.Wk[:, self.se_bit_size:],
+                                    bitfield(t % self.context_size, self.pe_bit_size) * 2 - 1,
+                                    optimize=True) / self.pe_bit_size
+
 
         tanh_j_sings = np.tanh(
             self.beta_o * (1 / self.normalizing_constant) * np.einsum("jb,b->j",
@@ -292,21 +305,21 @@ class HopfieldTransformerInfN:
         corr_signed_q = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_q)
         corr_signed_k = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_k)
 
-        self.mf_statistics["mo_se"][t] = self.se_per_contribution * np.einsum("jb,j->b", corr_signed_o, tanh_j_sings) / 2 ** (
+        self.mf_statistics["mo_se"][t] = np.einsum("jb,j->b", corr_signed_o, tanh_j_sings) / 2 ** (
                     self.num_feat_patterns - 1)
-        self.mf_statistics["mo"][t] = self.mf_statistics["mo_se"][t] + (1 - self.se_per_contribution) * pe_contribution
+        self.mf_statistics["mo"][t] = self.se_per_contribution * self.mf_statistics["mo_se"][t] + (1 - self.se_per_contribution) * pe_contribution_o
 
         mv_se = self.se_per_contribution * np.einsum("jb,j->b", corr_signed_v, tanh_j_sings) / 2 ** (
                     self.num_feat_patterns - 1)
-        self.mf_statistics["mv"][t] = mv_se + (1 - self.se_per_contribution) * pe_contribution
+        self.mf_statistics["mv"][t] = mv_se + (1 - self.se_per_contribution) * pe_contribution_v
 
         mq_se = self.se_per_contribution * np.einsum("jb,j->b", corr_signed_q, tanh_j_sings) / 2 ** (
                     self.num_feat_patterns - 1)
-        self.mf_statistics["mq"][t] = mq_se + (1 - self.se_per_contribution) * pe_contribution
+        self.mf_statistics["mq"][t] = mq_se + (1 - self.se_per_contribution) * pe_contribution_q
 
         mk_se = self.se_per_contribution * np.einsum("jb,j->b", corr_signed_k, tanh_j_sings) / 2 ** (
                     self.num_feat_patterns - 1)
-        self.mf_statistics["mk"][t] = mk_se + (1 - self.se_per_contribution) * pe_contribution
+        self.mf_statistics["mk"][t] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
 
     def compute_mf(self, t, att):
 
