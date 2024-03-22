@@ -28,13 +28,13 @@ if __name__ == "__main__":
     # vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    seed = 4
-    beta = 3
+    seed = 8
+    beta = 0.1
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 1
-    max_sim_steps = 5
+    num_feat_patterns = 3
+    max_sim_steps = 50
     context_size = 2 ** positional_embedding_size
 
     normalize_weights_str = "np.sqrt(N*M)"
@@ -73,9 +73,6 @@ if __name__ == "__main__":
 
     print("Same weights", np.array_equal(HTInf.Wo, HT.Wo), np.array_equal(HTInf.Wv, HT.Wv), np.array_equal(HTInf.Wk, HT.Wk),
           np.array_equal(HTInf.Wq, HT.Wq))
-
-    print(HT.mf_statistics["mo"])
-    print(HTInf.mf_statistics["mo"])
 
     # Plotting
     print("Plotting statistics...")
