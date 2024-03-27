@@ -46,6 +46,7 @@ class HopfieldTransformerInfN:
             # self.Wk = self.Wq
 
         else:
+
             self.Wo = np.random.randint(2, size=(num_feat_patterns, self.embedding_size)) * 2 - 1
             self.Wv = np.random.randint(2, size=(num_feat_patterns, self.embedding_size)) * 2 - 1
             self.Wq = np.random.randint(2, size=(num_feat_patterns, self.embedding_size)) * 2 - 1
@@ -53,8 +54,22 @@ class HopfieldTransformerInfN:
 
             self.W = self.Wo
 
+            matrix_list = [self.Wo, self.Wv, self.Wq, self.Wk]
 
-        if correlations_from_weights == 1:  # Create matrices and compute correlations from them
+        if correlations_from_weights == 3:  # correlations_from_weights = 3, create uniform +1 -1 matrices and combine them
+
+            num_cuts = 3
+            segment_size = semantic_embedding_bitsize / num_cuts
+            for curr_W in matrix_list:
+                for i in range(0, num_feat_patterns):
+                    for segment_id in range(0, num_cuts):
+                        plus_minus_one = np.random.randint(2, size=1) * 2 - 1
+
+                        segment_begin = int(segment_id * segment_size)
+                        segment_end = int(segment_begin + segment_size + 1)
+                        curr_W[i, segment_begin:segment_end] = plus_minus_one  # Initialize that segment randomly to +-1
+
+        if correlations_from_weights == 1 or correlations_from_weights == 3:  # Create matrices and compute correlations from them
 
             # Create correlations from matrices for comparison
             if num_feat_patterns < 1 or num_feat_patterns > 3:
@@ -114,15 +129,15 @@ class HopfieldTransformerInfN:
             self.pair_corr_o_q = np.clip(self.pair_corr_o_q, -1, 1)
 
             if num_feat_patterns == 3:
-                # self.three_corr_o_o = np.random.normal(0, sc, num_feat_patterns)
-                # self.three_corr_o_v = np.random.normal(0, sc, num_feat_patterns)
-                # self.three_corr_o_k = np.random.normal(0, sc, num_feat_patterns)
-                # self.three_corr_o_q = np.random.normal(0, sc, num_feat_patterns)
+                # self.quad_corr_o_o = np.random.normal(0, sc, num_feat_patterns)
+                # self.quad_corr_o_v = np.random.normal(0, sc, num_feat_patterns)
+                # self.quad_corr_o_k = np.random.normal(0, sc, num_feat_patterns)
+                # self.quad_corr_o_q = np.random.normal(0, sc, num_feat_patterns)
                 #
-                # self.three_corr_o_o = np.clip(self.three_corr_o_o, -1, 1)
-                # self.three_corr_o_v = np.clip(self.three_corr_o_v, -1, 1)
-                # self.three_corr_o_k = np.clip(self.three_corr_o_k, -1, 1)
-                # self.three_corr_o_q = np.clip(self.three_corr_o_q, -1, 1)
+                # self.quad_corr_o_o = np.clip(self.three_corr_o_o, -1, 1)
+                # self.quad_corr_o_v = np.clip(self.three_corr_o_v, -1, 1)
+                # self.quad_corr_o_k = np.clip(self.three_corr_o_k, -1, 1)
+                # self.quad_corr_o_q = np.clip(self.three_corr_o_q, -1, 1)
 
                 self.quad_corr_o_o = np.prod(self.pair_corr_o_o, axis=0)
                 self.quad_corr_o_v = np.prod(self.pair_corr_o_v, axis=0)
