@@ -11,7 +11,7 @@ plt.rc('legend', **{'fontsize': 14})
 
 
 def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, num_transient_steps,
-                             feat_name, show_max_num_patterns=None, save_not_plot=True):
+                             feat_name, show_max_num_patterns=None, save_not_plot=True, title=None):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -66,7 +66,9 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
         # local_ax.legend(loc="upper center")
 
     # fig.tight_layout(pad=0.1)
-    # fig.suptitle(f"Bifurcation_diagram {feat_name}")
+    if title is not None:
+        fig.suptitle(title)
+
     if save_not_plot:
         fig.savefig(save_path)
     else:
@@ -123,7 +125,7 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
     plt.show()
 
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                         save_not_plot=False, save_path=None):
+                         save_not_plot=False, save_path=None, title=None):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -170,7 +172,60 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         # local_ax.legend()
 
     # fig.tight_layout(pad=0.1)
+    if title is not None:
+        fig.suptitle(title)
+
+    if save_not_plot:
+        fig.savefig(save_path)
+    else:
+        plt.show()
+    plt.close()
+
+
+def plot_save_plane(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
+                         save_not_plot=False, save_path=None, tag_names=[], beta=None):
+
+    # Plot show_max_num_patterns subfigures if defined
+    if (show_max_num_patterns is not None):
+        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+
+    nrows = (num_feat_patterns + 1) // 2
+
+    if num_feat_patterns == 1:
+        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+    elif num_feat_patterns == 3:
+        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+    else:
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+
+    num_plotting_steps_arange = np.arange(num_plotting_steps)
+
+    latex_str = feat_name_to_latex(stat_name)
+
+    for feat in range(0, num_feat_patterns):
+
+        row = feat // 2
+        if num_feat_patterns == 1:
+            local_ax = ax
+        elif num_feat_patterns == 2:
+            local_ax = ax[feat % 2]
+        elif num_feat_patterns == 3:
+            local_ax = ax[feat % 3]
+        else:
+            local_ax = ax[row, feat % 2]
+
+        local_ax.plot(stat1[:num_plotting_steps], stat2[:num_plotting_steps], '.', ms='0.08')
+
+        local_ax.set_xlabel(tag_names[0])
+        local_ax.set_ylabel(tag_names[1])
+
+
+        # local_ax.legend()
+
+    # fig.tight_layout(pad=0.1)
     # fig.suptitle(f"Evolution of {stat_name}")
+    fig.suptitle(rf"$\beta${beta}")
+
 
     if save_not_plot:
         fig.savefig(save_path)
