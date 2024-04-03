@@ -11,7 +11,7 @@ plt.rc('legend', **{'fontsize': 14})
 
 
 def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, num_transient_steps,
-                             feat_name, show_max_num_patterns=None, save_not_plot=True):
+                             feat_name, show_max_num_patterns=None, save_not_plot=True, title=None):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -66,7 +66,9 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
         # local_ax.legend(loc="upper center")
 
     # fig.tight_layout(pad=0.1)
-    # fig.suptitle(f"Bifurcation_diagram {feat_name}")
+    if title is not None:
+        fig.suptitle(title)
+
     if save_not_plot:
         fig.savefig(save_path)
     else:
@@ -123,7 +125,7 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
     plt.show()
 
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                         save_not_plot=False, save_path=None):
+                         save_not_plot=False, save_path=None, title=None):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -170,7 +172,8 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         # local_ax.legend()
 
     # fig.tight_layout(pad=0.1)
-    # fig.suptitle(f"Evolution of {stat_name}")
+    if title is not None:
+        fig.suptitle(title)
 
     if save_not_plot:
         fig.savefig(save_path)
