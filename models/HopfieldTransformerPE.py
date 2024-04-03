@@ -69,8 +69,10 @@ class HopfieldTransformer:
             print("The exec_str string is not well defined")
             raise
 
-        self.W = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-
+        self.W = np.zeros((num_feat_patterns, self.embedding_size))
+        self.W_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
+        self.W[:, :semantic_embedding_bitsize] = self.W_SE
+        self.W[:, -positional_embedding_bitsize:] = self.W_SE[:, -positional_embedding_bitsize:]
 
         if reorder_weights:
             self.Wo = np.copy(self.W)
@@ -85,10 +87,25 @@ class HopfieldTransformer:
             # self.Wk = self.Wq
 
         else:
-            self.Wo = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wv = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wq = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
-            self.Wk = np.random.randint(2, size=(num_feat_patterns, embedding_size)) * 2 - 1
+            self.Wo = np.zeros((num_feat_patterns, self.embedding_size))
+            self.Wv = np.zeros((num_feat_patterns, self.embedding_size))
+            self.Wq = np.zeros((num_feat_patterns, self.embedding_size))
+            self.Wk = np.zeros((num_feat_patterns, self.embedding_size))
+
+            self.Wo_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
+            self.Wv_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
+            self.Wq_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
+            self.Wk_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
+
+            self.Wo[:, :semantic_embedding_bitsize] = self.Wo_SE
+            self.Wv[:, :semantic_embedding_bitsize] = self.Wv_SE
+            self.Wq[:, :semantic_embedding_bitsize] = self.Wq_SE
+            self.Wk[:, :semantic_embedding_bitsize] = self.Wk_SE
+
+            self.Wo[:, -positional_embedding_bitsize:] = self.Wo_SE[:, -positional_embedding_bitsize:]
+            self.Wv[:, -positional_embedding_bitsize:] = self.Wv_SE[:, -positional_embedding_bitsize:]
+            self.Wq[:, -positional_embedding_bitsize:] = self.Wq_SE[:, -positional_embedding_bitsize:]
+            self.Wk[:, -positional_embedding_bitsize:] = self.Wk_SE[:, -positional_embedding_bitsize:]
 
             self.W = self.Wo
 
