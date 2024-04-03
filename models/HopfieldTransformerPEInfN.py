@@ -31,9 +31,9 @@ class HopfieldTransformerInfN:
             raise
 
         self.W = np.zeros((num_feat_patterns, self.embedding_size))
-        self.W_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
-        self.W[:, :semantic_embedding_bitsize] = self.W_SE
-        self.W[:, -positional_embedding_bitsize:] = self.W_SE[:, -positional_embedding_bitsize:]
+        self.W_SE = np.random.randint(2, size=(num_feat_patterns, self.se_bit_size)) * 2 - 1
+        self.W[:, :self.se_bit_size] = self.W_SE
+        self.W[:, -self.pe_bit_size:] = self.W_SE[:, -self.pe_bit_size:]
 
         if reorder_weights:
             self.Wo = np.copy(self.W)
@@ -54,20 +54,20 @@ class HopfieldTransformerInfN:
             self.Wq = np.zeros((num_feat_patterns, self.embedding_size))
             self.Wk = np.zeros((num_feat_patterns, self.embedding_size))
 
-            self.Wo_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
-            self.Wv_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
-            self.Wq_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
-            self.Wk_SE = np.random.randint(2, size=(num_feat_patterns, self.semantic_embedding_bitsize)) * 2 - 1
+            self.Wo_SE = np.random.randint(2, size=(num_feat_patterns, self.se_bit_size)) * 2 - 1
+            self.Wv_SE = np.random.randint(2, size=(num_feat_patterns, self.se_bit_size)) * 2 - 1
+            self.Wq_SE = np.random.randint(2, size=(num_feat_patterns, self.se_bit_size)) * 2 - 1
+            self.Wk_SE = np.random.randint(2, size=(num_feat_patterns, self.se_bit_size)) * 2 - 1
 
-            self.Wo[:, :semantic_embedding_bitsize] = self.Wo_SE
-            self.Wv[:, :semantic_embedding_bitsize] = self.Wv_SE
-            self.Wq[:, :semantic_embedding_bitsize] = self.Wq_SE
-            self.Wk[:, :semantic_embedding_bitsize] = self.Wk_SE
+            self.Wo[:, :self.se_bit_size] = self.Wo_SE
+            self.Wv[:, :self.se_bit_size] = self.Wv_SE
+            self.Wq[:, :self.se_bit_size] = self.Wq_SE
+            self.Wk[:, :self.se_bit_size] = self.Wk_SE
 
-            self.Wo[:, -positional_embedding_bitsize:] = self.Wo_SE[:, -positional_embedding_bitsize:]
-            self.Wv[:, -positional_embedding_bitsize:] = self.Wv_SE[:, -positional_embedding_bitsize:]
-            self.Wq[:, -positional_embedding_bitsize:] = self.Wq_SE[:, -positional_embedding_bitsize:]
-            self.Wk[:, -positional_embedding_bitsize:] = self.Wk_SE[:, -positional_embedding_bitsize:]
+            self.Wo[:, -self.pe_bit_size:] = self.Wo_SE[:, -self.pe_bit_size:]
+            self.Wv[:, -self.pe_bit_size:] = self.Wv_SE[:, -self.pe_bit_size:]
+            self.Wq[:, -self.pe_bit_size:] = self.Wq_SE[:, -self.pe_bit_size:]
+            self.Wk[:, -self.pe_bit_size:] = self.Wk_SE[:, -self.pe_bit_size:]
 
             self.W = self.Wo
 
@@ -75,16 +75,31 @@ class HopfieldTransformerInfN:
 
         if correlations_from_weights == 3:  # correlations_from_weights = 3, create uniform +1 -1 matrices and combine them
 
-            num_cuts = 3
-            segment_size = semantic_embedding_bitsize / num_cuts
+            num_segments = 3
+            segment_size = semantic_embedding_bitsize / num_segments
+
+            pe_num_segments = int(positional_embedding_bitsize / segment_size) + 1
+            segments_diff = num_segments - pe_num_segments
+
             for curr_W in matrix_list:
                 for i in range(0, num_feat_patterns):
-                    for segment_id in range(0, num_cuts):
+                    for segment_id in range(0, num_segments):
                         plus_minus_one = np.random.randint(2, size=1) * 2 - 1
 
                         segment_begin = int(segment_id * segment_size)
-                        segment_end = int(segment_begin + segment_size + 1)
+                        segment_end = int(segment_begin + segment_size)
                         curr_W[i, segment_begin:segment_end] = plus_minus_one  # Initialize that segment randomly to +-1
+
+
+                    # We want the positional encoding to be equal right to left to the segments
+                    for pe_segment_id in range(0, pe_num_segments):
+
+                        segment_end_pe = int(self.embedding_size - pe_segment_id*segment_size + 1)
+                        segment_begin_pe = max(semantic_embedding_bitsize, int(positional_embedding_bitsize - (pe_segment_id+1)*segment_size))
+
+                        segment_begin = int((pe_segment_id + segments_diff) * segment_size)
+
+                        curr_W[i, segment_begin_pe:segment_end_pe] = curr_W[i, segment_begin]  # Initialize PE to its corresponding segment
 
         if correlations_from_weights == 1 or correlations_from_weights == 3:  # Create matrices and compute correlations from them
 
