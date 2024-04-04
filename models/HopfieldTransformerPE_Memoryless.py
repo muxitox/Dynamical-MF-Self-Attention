@@ -4,53 +4,10 @@ from scipy.special import softmax
 from utils import bitfield, bool2int
 
 
-class Embedding:
-
-    def __init__(self, se_bit_size, pe_bit_size):
-        self.vocab_size = 2 ** se_bit_size
-        self.se_bit_size = se_bit_size
-        self.pe_bit_size = pe_bit_size
-
-    def initialize(self):
-        self.idx2word = np.zeros((self.vocab_size, self.se_bit_size + self.pe_bit_size))
-        for i in range(self.vocab_size):
-            self.idx2word[i, :self.se_bit_size] = (bitfield(i, self.se_bit_size) * 2) - 1
-
-    def encode(self, idx):
-        return self.idx2word[idx]
-
-    def encode_force(self, idx, pos):
-        # Make position with modular arithmetics to avoid a possible error
-        pos = pos % self.pe_bit_size ** 2
-
-        se = bitfield(idx, self.se_bit_size) * 2 - 1
-        pe = bitfield(pos, self.pe_bit_size) * 2 - 1
-
-        return np.concatenate((se, pe))
-
-    def add_pe(self, x, pos):
-        # Make position with modular arithmetics to avoid a possible error
-        pos = pos % self.pe_bit_size ** 2
-        pe = bitfield(pos, self.pe_bit_size) * 2 - 1
-        x[self.se_bit_size:] = pe
-        return x
-
-    def encode_w_pos(self, idx, pos):
-        x = self.encode(idx)
-        x = self.add_pe(x, pos)
-
-        return x
-
-    def decode(self, x):
-        x = x[:self.se_bit_size]
-        x = (x + 1) / 2
-        return bool2int(x)
-
-
 class HopfieldTransformer:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
-                 normalize_weights_str="1", reorder_weights=False):
+                 normalize_weights_str="1", reorder_weights=False, pe_mode=0):
         self.beta_o = beta_o
         self.beta_att = beta_att
         self.se_bit_size = vocab.se_bit_size
@@ -102,10 +59,17 @@ class HopfieldTransformer:
             self.Wq[:, :self.se_bit_size] = self.Wq_SE
             self.Wk[:, :self.se_bit_size] = self.Wk_SE
 
-            self.Wo[:, -self.pe_bit_size:] = self.Wo_SE[:, -self.pe_bit_size:]
-            self.Wv[:, -self.pe_bit_size:] = self.Wv_SE[:, -self.pe_bit_size:]
-            self.Wq[:, -self.pe_bit_size:] = self.Wq_SE[:, -self.pe_bit_size:]
-            self.Wk[:, -self.pe_bit_size:] = self.Wk_SE[:, -self.pe_bit_size:]
+            if pe_mode == 0:
+                self.Wo[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                self.Wv[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                self.Wq[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                self.Wk[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
+
+            else:
+                self.Wo[:, -self.pe_bit_size:] = self.Wo_SE[:, -self.pe_bit_size:]
+                self.Wv[:, -self.pe_bit_size:] = self.Wv_SE[:, -self.pe_bit_size:]
+                self.Wq[:, -self.pe_bit_size:] = self.Wq_SE[:, -self.pe_bit_size:]
+                self.Wk[:, -self.pe_bit_size:] = self.Wk_SE[:, -self.pe_bit_size:]
 
             self.W = self.Wo
 
@@ -121,6 +85,16 @@ class HopfieldTransformer:
         self.vocab = vocab
         self.max_sim_steps = max_sim_steps
 
+
+        # Create variables for the memory-less version computations for the mean-fields and positional embeddings
+
+        self.mo_window = np.zeros(num_feat_patterns)
+        self.mv_window = np.zeros((num_feat_patterns, context_size))
+        self.mq_window = np.zeros(num_feat_patterns)
+        self.mk_window = np.zeros((num_feat_patterns, context_size))
+        self.pe_window = np.zeros((self.pe_bit_size, context_size))
+
+
         # Create variables for saving the statistics of the standard model
         self.std_statistics = {}
         self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
@@ -135,7 +109,6 @@ class HopfieldTransformer:
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((max_sim_steps, num_feat_patterns))
 
-
     def set_betas(self, beta_o, beta_att):
         self.beta_o = beta_o
         self.beta_att = beta_att
@@ -146,6 +119,15 @@ class HopfieldTransformer:
         for name_i in self.statistics_names:
             self.std_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
             self.mf_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+
+        self.mo_window = np.zeros(self.num_feat_patterns)
+        self.mo_window = np.zeros(self.num_feat_patterns)
+        self.mq_window = np.zeros(self.num_feat_patterns, self.context_size)
+        self.mk_window = np.zeros(self.num_feat_patterns, self.context_size)
+        self.pe_window = np.zeros(self.pe_bit_size, self.context_size)
+
+        for d in range(0, self.context_size):
+            self.pe_window[:, d] = self.vocab.encode_pos(d % self.context_size)
 
     def reset_data_keep_context(self):
         x_list_copy = copy.deepcopy(self.x_list)
@@ -219,29 +201,19 @@ class HopfieldTransformer:
 
         return att_t
 
-    def qk_f_mf(self, t, tau):
+    def qk_f_mf(self, t, d):
 
-        mqk = self.mf_statistics["mq"][t] @ self.mf_statistics["mk"][tau]
+        mqk = self.mq_window @ self.mk_window[:, d]
         return self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
 
     def attention_mf(self, t):
 
-        idx_ctx_start = max(0, t - self.context_size + 1)
-        effective_context_size = min(self.context_size, t + 1)
-
-        key_prob = np.zeros(effective_context_size)
-        for tau in range(0, effective_context_size):
-            key_prob[tau] = self.qk_f_mf(t, idx_ctx_start + tau)
+        key_prob = np.zeros(self.context_size)
+        for d in range(0, self.context_size):
+            key_prob[d] = self.qk_f_mf(t, d)
         key_prob = softmax(key_prob)
 
-        att_t = self.embedding_size * (self.mf_statistics["mv"][idx_ctx_start:t + 1].T @ key_prob)
-
-        # # Loopy implementation for testing
-        #
-        # att_t_loopy = np.zeros(self.num_feat_patterns)
-        # for b in range(0, self.num_feat_patterns):
-        #     for tau in range(0, t+1):
-        #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
+        att_t = self.embedding_size * (self.mv_window.T @ key_prob)
 
         self.mf_statistics["att"][t] = att_t
 
@@ -272,59 +244,17 @@ class HopfieldTransformer:
 
         return att_t
 
-    def simulate(self, x0, max_steps, verbose=False):
-
-        self.x_list[0, :] = x0
-
-        # Save for comparison with MF
-        self.std_statistics["mo"][0] = x0 @ self.Wo.T / self.embedding_size
-        self.std_statistics["mo_se"][0] = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.embedding_size
-
-        selected_tokens = []
-
-        for t in range(0, max_steps):
-            att = self.attention(t)
-
-            if t < max_steps - 1:  # We'll compute att once more for computing statistics
-
-                # We project all possible tokens in the vocabulary through Wo
-                o = self.vocab.idx2word @ self.Wo.T
-
-                # We multiply by the attention score
-                prob_unnormalized = self.beta_o * (1 / self.normalizing_constant) * o @ att
-
-                prob_normalized = softmax(prob_unnormalized)
-
-                if verbose == True:
-                    print("Num tokens with max probability in time", t, ":",
-                          np.sum(np.isclose(prob_normalized, max(prob_normalized))), "/", self.vocab.vocab_size)
-
-                # Convert the above result into a probability and get the idx of the most probable token
-                sample = True
-                if sample:
-                    new_x_idx = np.random.choice(range(len(prob_normalized)), p=prob_normalized)
-                else:
-                    new_x_idx = np.argmax(prob_normalized)
-
-                # Encode token and add it to the list
-                # new_x = self.vocab.encode(new_x_idx)
-                self.x_list[t + 1, :] = self.vocab.encode_w_pos(new_x_idx, (t + 1) % self.context_size)
-
-                # Save for comparison with MF
-                self.std_statistics["mo"][t + 1] = self.x_list[t + 1, :] @ self.Wo.T / self.embedding_size
-                self.std_statistics["mo_se"][t + 1] = self.x_list[t + 1, :][:self.se_bit_size] @ self.Wo[:,
-                                                                    :self.se_bit_size].T / self.embedding_size
-
-                selected_tokens.append(new_x_idx)
-
-        return selected_tokens
-
     def compute_means_from_data(self, t):
         self.mf_statistics["mo"][t] = self.x_list[t] @ self.Wo.T / self.embedding_size
         self.mf_statistics["mo_se"][t] = self.x_list[t, :self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
         self.mf_statistics["mv"][t] = self.x_list[t] @ self.Wv.T / self.embedding_size
         self.mf_statistics["mq"][t] = self.x_list[t] @ self.Wq.T / self.embedding_size
         self.mf_statistics["mk"][t] = self.x_list[t] @ self.Wk.T / self.embedding_size
+
+        self.mo_window = copy.copy(self.mf_statistics["mo"][t])
+        self.mv_window = copy.copy(self.mf_statistics["mv"][t])
+        self.mq_window = copy.copy(self.mf_statistics["mq"][t])
+        self.mk_window = copy.copy(self.mf_statistics["mk"][t])
 
     def compute_mf(self, t, att):
 
