@@ -6,8 +6,8 @@ from utils import bitfield, bool2int
 class HopfieldTransformerInfN:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, context_size, max_sim_steps=512,
-                 normalize_weights_str="1", reorder_weights=False, correlations_from_weights=True, semantic_embedding_bitsize=0,
-                 se_per_contribution=0.95):
+                 normalize_weights_str="1", reorder_weights=False, correlations_from_weights=True, num_segments_corrs=3,
+                 pe_mode=0, semantic_embedding_bitsize=0, se_per_contribution=0.95):
 
         self.beta_o = beta_o
         self.beta_att = beta_att
@@ -75,31 +75,30 @@ class HopfieldTransformerInfN:
 
         if correlations_from_weights == 3:  # correlations_from_weights = 3, create uniform +1 -1 matrices and combine them
 
-            num_segments = 3
-            segment_size = semantic_embedding_bitsize / num_segments
+            segment_size = semantic_embedding_bitsize / num_segments_corrs
 
             pe_num_segments = int(positional_embedding_bitsize / segment_size) + 1
-            segments_diff = num_segments - pe_num_segments
+            segments_diff = num_segments_corrs - pe_num_segments
 
             for curr_W in matrix_list:
                 for i in range(0, num_feat_patterns):
-                    for segment_id in range(0, num_segments):
+                    for segment_id in range(0, num_segments_corrs):
                         plus_minus_one = np.random.randint(2, size=1) * 2 - 1
 
                         segment_begin = int(segment_id * segment_size)
                         segment_end = int(segment_begin + segment_size)
                         curr_W[i, segment_begin:segment_end] = plus_minus_one  # Initialize that segment randomly to +-1
 
+                    if pe_mode == 1:
+                        # We want the positional encoding to be equal right to left to the segments
+                        for pe_segment_id in range(0, pe_num_segments):
 
-                    # We want the positional encoding to be equal right to left to the segments
-                    for pe_segment_id in range(0, pe_num_segments):
+                            segment_end_pe = int(self.embedding_size - pe_segment_id*segment_size + 1)
+                            segment_begin_pe = max(semantic_embedding_bitsize, int(positional_embedding_bitsize - (pe_segment_id+1)*segment_size))
 
-                        segment_end_pe = int(self.embedding_size - pe_segment_id*segment_size + 1)
-                        segment_begin_pe = max(semantic_embedding_bitsize, int(positional_embedding_bitsize - (pe_segment_id+1)*segment_size))
+                            segment_begin = int((pe_segment_id + segments_diff) * segment_size)
 
-                        segment_begin = int((pe_segment_id + segments_diff) * segment_size)
-
-                        curr_W[i, segment_begin_pe:segment_end_pe] = curr_W[i, segment_begin]  # Initialize PE to its corresponding segment
+                            curr_W[i, segment_begin_pe:segment_end_pe] = curr_W[i, segment_begin]  # Initialize PE to its corresponding segment
 
         if correlations_from_weights == 1 or correlations_from_weights == 3:  # Create matrices and compute correlations from them
 

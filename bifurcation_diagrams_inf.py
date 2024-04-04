@@ -7,7 +7,7 @@ import time
 
 def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
-           se_per_contribution, correlations_from_weights, keep_context, reverse_betas):
+           se_per_contribution, correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas):
 
 
 
@@ -29,6 +29,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                         positional_embedding_bitsize=positional_embedding_size, context_size=context_size,
                         max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
                         reorder_weights=reorder_weights, correlations_from_weights=correlations_from_weights,
+                        num_segments_corrs=num_segments_corrs, pe_mode=pe_mode,
                         semantic_embedding_bitsize=tentative_semantic_embedding_size, se_per_contribution=se_per_contribution)
 
 
@@ -78,7 +79,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                                    str(int(keep_context)))
 
 
-                    # Save/plot results for each ini_token, W config, and num_feat_patterns
+                # Save/plot results for each ini_token, W config, and num_feat_patterns
                 folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights) +
                                "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-" +
                                str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
@@ -105,7 +106,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 
 def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,
-            stats_to_save_plot, correlations_from_weights, se_per_contribution, keep_context, reverse_betas):
+            stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode, se_per_contribution, keep_context, reverse_betas):
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -120,6 +121,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
                                + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-" +
                                normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
+                               + "-num_segments_corrs-" + str(num_segments_corrs) + "-pe_mode-" + str(pe_mode)
                                + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-" + str(context_size) +
                                "/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1]) +
                                "-num_betas-" + str(len(beta_list)) + f"{reverse_betas_str}-keep_context-" + str(int(keep_context)))
@@ -146,32 +148,45 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                     stat_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
                                       str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
+                    title = f"CORR_MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed}"
+
                     plot_bifurcation_diagram(stat_results_beta_list, beta_list, num_feat_patterns, stat_save_path,
                                              num_transient_steps, feat_name=stat_name,
-                                             show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot)
+                                             show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot,
+                                             title=title)
 
 
 
 if __name__ == "__main__":
     # Instantiate vocabulary
     tentative_semantic_embedding_size = 100
-    positional_embedding_size = 4
+    positional_embedding_size = 2
     context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
-    seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    beta_list = np.linspace(0, 4, 1500)
-    se_per_contribution = 0.95
-    num_feat_patterns_list = [3]
-    num_transient_steps = 1024
-    max_sim_steps = 1536
+    seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    # seed_list = [0, 1, 2]
+    # seed_list = [3, 4, 5]
+    # seed_list = [6, 7]
+    # seed_list = [8, 9]
+
+    # seed_list = [0, 1, 2, 3, 4]
+    # seed_list = [5, 6, 7, 8, 9]
+
+    beta_list = np.linspace(0, 3, 1000)
+    se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
+    num_feat_patterns_list = [3, 2, 1]
+    num_transient_steps = 2560
+    max_sim_steps = 4068
     keep_context = True
     reverse_betas = False
 
-    num_ini_tokens = 3
+    num_ini_tokens = 1
     reorder_weights = False
     normalize_weights_str = "np.sqrt(N*M)"
-    correlations_from_weights = 2
+    correlations_from_weights = 0 # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means
+    pe_mode = 0
+    num_segments_corrs = 3
     save_not_plot = True
 
     if context_size > 2**positional_embedding_size:
@@ -180,16 +195,14 @@ if __name__ == "__main__":
         raise("You cannot discard more timesteps than you are simulating.")
 
 
-
-    beta_list = np.linspace(0, 4, 1500)
-    stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
+    stats_to_save_plot = ["mo", "mo_se", "att"]
     # stats_to_save_plot = ["mo", "mo_se"]
 
     start = time.time()
 
     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
-           se_per_contribution, correlations_from_weights, keep_context, reverse_betas)
+           se_per_contribution, correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas)
 
     end = time.time()
     elapsed_time = end - start
@@ -199,4 +212,4 @@ if __name__ == "__main__":
     ini_tokens_list = range(0, num_ini_tokens)
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,
-            stats_to_save_plot, correlations_from_weights, se_per_contribution, keep_context, reverse_betas)
+            stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode, se_per_contribution, keep_context, reverse_betas)
