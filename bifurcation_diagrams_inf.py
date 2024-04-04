@@ -85,6 +85,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                                str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
                                + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-" +
                                normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
+                               + "-num_segments_corrs-" + str(num_segments_corrs) + "-pe_mode-" + str(pe_mode)
                                + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-" + str(context_size)
                                + beta_string + "/stats")
 
@@ -159,12 +160,12 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 
 if __name__ == "__main__":
     # Instantiate vocabulary
-    tentative_semantic_embedding_size = 100
+    tentative_semantic_embedding_size = 99
     positional_embedding_size = 2
     context_size = 2**positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
-    seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    # seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     # seed_list = [0, 1, 2]
     # seed_list = [3, 4, 5]
     # seed_list = [6, 7]
@@ -173,9 +174,12 @@ if __name__ == "__main__":
     # seed_list = [0, 1, 2, 3, 4]
     # seed_list = [5, 6, 7, 8, 9]
 
+    seed_list = [18]
+
     beta_list = np.linspace(0, 3, 1000)
     se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
-    num_feat_patterns_list = [3, 2, 1]
+    # num_feat_patterns_list = [3, 2, 1]
+    num_feat_patterns_list = [2]
     num_transient_steps = 2560
     max_sim_steps = 4068
     keep_context = True
@@ -183,8 +187,8 @@ if __name__ == "__main__":
 
     num_ini_tokens = 1
     reorder_weights = False
-    normalize_weights_str = "np.sqrt(N*M)"
-    correlations_from_weights = 0 # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means
+    normalize_weights_str = "np.sqrt(N)"
+    correlations_from_weights = 3 # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means
     pe_mode = 0
     num_segments_corrs = 3
     save_not_plot = True
