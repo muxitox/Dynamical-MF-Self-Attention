@@ -41,10 +41,6 @@ class Embedding:
 
         return x
 
-    def encode_pos(self, pos):
-        return bitfield(pos, self.pe_bit_size) * 2 - 1
-
-
     def decode(self, x):
         x = x[:self.se_bit_size]
         x = (x + 1) / 2
@@ -54,7 +50,7 @@ class Embedding:
 class HopfieldTransformer:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
-                 normalize_weights_str="1", reorder_weights=False, pe_mode=0,):
+                 normalize_weights_str="1", reorder_weights=False):
         self.beta_o = beta_o
         self.beta_att = beta_att
         self.se_bit_size = vocab.se_bit_size
@@ -106,18 +102,10 @@ class HopfieldTransformer:
             self.Wq[:, :self.se_bit_size] = self.Wq_SE
             self.Wk[:, :self.se_bit_size] = self.Wk_SE
 
-            if pe_mode == 0:
-                self.Wo[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
-                self.Wv[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
-                self.Wq[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
-                self.Wk[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
-
-            else:
-                self.Wo[:, -self.pe_bit_size:] = self.Wo_SE[:, -self.pe_bit_size:]
-                self.Wv[:, -self.pe_bit_size:] = self.Wv_SE[:, -self.pe_bit_size:]
-                self.Wq[:, -self.pe_bit_size:] = self.Wq_SE[:, -self.pe_bit_size:]
-                self.Wk[:, -self.pe_bit_size:] = self.Wk_SE[:, -self.pe_bit_size:]
-
+            self.Wo[:, -self.pe_bit_size:] = self.Wo_SE[:, -self.pe_bit_size:]
+            self.Wv[:, -self.pe_bit_size:] = self.Wv_SE[:, -self.pe_bit_size:]
+            self.Wq[:, -self.pe_bit_size:] = self.Wq_SE[:, -self.pe_bit_size:]
+            self.Wk[:, -self.pe_bit_size:] = self.Wk_SE[:, -self.pe_bit_size:]
 
             self.W = self.Wo
 
