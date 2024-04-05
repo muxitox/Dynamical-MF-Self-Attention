@@ -4,7 +4,7 @@ from scipy.special import softmax
 from utils import bitfield, bool2int
 
 
-class HopfieldTransformer:
+class HopfieldTransformerPEML:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
                  normalize_weights_str="1", reorder_weights=False, pe_mode=0):
@@ -88,12 +88,12 @@ class HopfieldTransformer:
 
         # Create variables for the memory-less version computations for the mean-fields and positional embeddings
 
-        self.mo_window = np.zeros(num_feat_patterns)
-        self.mv_window = np.zeros((num_feat_patterns, context_size))
-        self.mq_window = np.zeros(num_feat_patterns)
-        self.mk_window = np.zeros((num_feat_patterns, context_size))
-        self.pe_window = np.zeros((self.pe_bit_size, context_size))
-
+        self.mo_window = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mo_se_window = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mv_window = np.zeros((self.max_sim_steps, self.context_size, self.num_feat_patterns))
+        self.mq_window = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mk_window = np.zeros((self.max_sim_steps, self.context_size, self.num_feat_patterns))
+        self.pe_window = np.zeros((self.max_sim_steps, self.context_size, self.pe_bit_size))
 
         # Create variables for saving the statistics of the standard model
         self.std_statistics = {}
@@ -120,14 +120,20 @@ class HopfieldTransformer:
             self.std_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
             self.mf_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
 
-        self.mo_window = np.zeros(self.num_feat_patterns)
-        self.mo_window = np.zeros(self.num_feat_patterns)
-        self.mq_window = np.zeros(self.num_feat_patterns, self.context_size)
-        self.mk_window = np.zeros(self.num_feat_patterns, self.context_size)
-        self.pe_window = np.zeros(self.pe_bit_size, self.context_size)
+        self.mo_window = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mo_se_window = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mv_window = np.zeros((self.max_sim_steps, self.context_size, self.num_feat_patterns))
+        self.mq_window = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mk_window = np.zeros((self.max_sim_steps, self.context_size, self.num_feat_patterns))
+        self.pe_window = np.zeros((self.max_sim_steps, self.context_size, self.pe_bit_size))
 
+
+        time_indices = list(range(0, self.context_size))
+        time_indices.reverse()
+        time_indices = np.roll(time_indices, 1)
         for d in range(0, self.context_size):
-            self.pe_window[:, d] = self.vocab.encode_pos(d % self.context_size)
+            # At d=0 we want position 1, not 0. Position 0 is already encoded
+            self.pe_window[0, d, :] = self.vocab.encode_pos(time_indices[d] % self.context_size)
 
     def reset_data_keep_context(self):
         x_list_copy = copy.deepcopy(self.x_list)
@@ -202,18 +208,19 @@ class HopfieldTransformer:
         return att_t
 
     def qk_f_mf(self, t, d):
-
-        mqk = self.mq_window @ self.mk_window[:, d]
+        mqk = self.mq_window[t] @ self.mk_window[t, d, :]
         return self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
 
     def attention_mf(self, t):
 
-        key_prob = np.zeros(self.context_size)
-        for d in range(0, self.context_size):
+        effective_context_size = min(self.context_size, t + 1)
+
+        key_prob = np.zeros(effective_context_size)
+        for d in range(0, effective_context_size):
             key_prob[d] = self.qk_f_mf(t, d)
         key_prob = softmax(key_prob)
 
-        att_t = self.embedding_size * (self.mv_window.T @ key_prob)
+        att_t = self.embedding_size * (self.mv_window[t, :effective_context_size,:].T @ key_prob)
 
         self.mf_statistics["att"][t] = att_t
 
@@ -245,27 +252,37 @@ class HopfieldTransformer:
         return att_t
 
     def compute_means_from_data(self, t):
-        self.mf_statistics["mo"][t] = self.x_list[t] @ self.Wo.T / self.embedding_size
-        self.mf_statistics["mo_se"][t] = self.x_list[t, :self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
-        self.mf_statistics["mv"][t] = self.x_list[t] @ self.Wv.T / self.embedding_size
-        self.mf_statistics["mq"][t] = self.x_list[t] @ self.Wq.T / self.embedding_size
-        self.mf_statistics["mk"][t] = self.x_list[t] @ self.Wk.T / self.embedding_size
+        # self.mf_statistics["mo"][t] = self.x_list[t] @ self.Wo.T / self.embedding_size
+        # self.mf_statistics["mo_se"][t] = self.x_list[t, :self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+        # self.mf_statistics["mv"][t] = self.x_list[t] @ self.Wv.T / self.embedding_size
+        # self.mf_statistics["mq"][t] = self.x_list[t] @ self.Wq.T / self.embedding_size
+        # self.mf_statistics["mk"][t] = self.x_list[t] @ self.Wk.T / self.embedding_size
 
-        self.mo_window = copy.copy(self.mf_statistics["mo"][t])
-        self.mv_window = copy.copy(self.mf_statistics["mv"][t])
-        self.mq_window = copy.copy(self.mf_statistics["mq"][t])
-        self.mk_window = copy.copy(self.mf_statistics["mk"][t])
+        self.mo_window[0] = self.x_list[t] @ self.Wo.T / self.embedding_size
+        self.mo_se_window[0] = self.x_list[t, :self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+        self.mv_window[0, 0, :] = self.x_list[t] @ self.Wv.T / self.embedding_size
+        self.mq_window[0] = self.x_list[t] @ self.Wq.T / self.embedding_size
+        self.mk_window[0, 0, :] = self.x_list[t] @ self.Wk.T / self.embedding_size
+
+    def shift_d_window(self, t):
+        # Roll the window of d copies by 1 position
+        self.mv_window[t] = np.roll(self.mv_window[t-1], 1, axis=0)
+        self.mk_window[t] = np.roll(self.mk_window[t-1], 1, axis=0)
+        self.pe_window[t] = np.roll(self.pe_window[t-1], 1, axis=0)
+        print()
+
 
     def compute_mf(self, t, att):
 
         # Compute the mean of every (semantic) spin i at time t
         att_Wo_i = np.tanh(self.beta_o * (1 / self.normalizing_constant) * np.einsum('b,bi -> i', att, self.Wo[:, :self.se_bit_size], optimize=True))
         # Concatenate semantic information with positional encoding
-        att_Wo_i = np.concatenate((att_Wo_i, bitfield(t % self.context_size, self.pe_bit_size) * 2 - 1))
+        att_Wo_i = np.concatenate((att_Wo_i, self.pe_window[t,:,0]))
+
         # Compute mean fields
-        self.mf_statistics["mo"][t] = np.einsum('bi,i ->b', self.Wo, att_Wo_i, optimize=True) / self.embedding_size
+        self.mo_window[t] = np.einsum('bi,i ->b', self.Wo, att_Wo_i, optimize=True) / self.embedding_size
         # Compute only semantic information
-        self.mf_statistics["mo_se"][t] = np.einsum('bi,i ->b', self.Wo[:, :self.se_bit_size], att_Wo_i[:self.se_bit_size],
+        self.mo_se_window[t] = np.einsum('bi,i ->b', self.Wo[:, :self.se_bit_size], att_Wo_i[:self.se_bit_size],
                                      optimize=True) / self.se_bit_size
 
         # # Loopy implementation for testing
@@ -276,9 +293,14 @@ class HopfieldTransformer:
         # mo_t /= self.embedding_size
         # print(np.allclose(self.mo[t], mo_t))
 
-        self.mf_statistics["mv"][t] = np.einsum('bi,i ->b', self.Wv, att_Wo_i, optimize=True) / self.embedding_size
-        self.mf_statistics["mq"][t] = np.einsum('bi,i ->b', self.Wq, att_Wo_i, optimize=True) / self.embedding_size
-        self.mf_statistics["mk"][t] = np.einsum('bi,i ->b', self.Wk, att_Wo_i, optimize=True) / self.embedding_size
+        self.mv_window[t, :, 0] = np.einsum('bi,i ->b', self.Wv, att_Wo_i, optimize=True) / self.embedding_size
+        self.mq_window[t] = np.einsum('bi,i ->b', self.Wq, att_Wo_i, optimize=True) / self.embedding_size
+        self.mk_window[t, :, 0] = np.einsum('bi,i ->b', self.Wk, att_Wo_i, optimize=True) / self.embedding_size
+
+        # self.mf_statistics["mo"][t] = self.mo_window
+        # self.mf_statistics["mv"][t] = self.mv_window[:, 0]
+        # self.mf_statistics["mq"][t] = self.mq_window
+        # self.mf_statistics["mk"][t] = self.mk_window[:, 0]
 
     def simulate_mf_from_context(self, max_steps):
         # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
@@ -298,8 +320,16 @@ class HopfieldTransformer:
 
         # Initialize attention with the info from the initial token
         self.compute_means_from_data(t=0)
-        att = self.attention_mf_optimized(t=0)
+        # att = self.attention_mf_optimized(t=0)
+        att = self.attention_mf(t=0)
+
+        self.shift_d_window(1)
 
         for t in range(1, max_steps):
             self.compute_mf(t, att)
-            att = self.attention_mf_optimized(t)
+
+            # att = self.attention_mf_optimized(t)
+            att = self.attention_mf(t)
+
+            self.shift_d_window(t+1)
+
