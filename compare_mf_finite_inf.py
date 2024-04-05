@@ -74,6 +74,10 @@ if __name__ == "__main__":
     print("Simulating MF Transformer...")
     HTPEML.reset_data()
     HTPEML.simulate_mf(x0, max_steps=max_sim_steps)
+
+    print(HT.mf_statistics["mo"] - HTPEML.mf_statistics["mo"][:, :])
+    print(HT.mf_statistics["mv"] - HTPEML.mf_statistics["mv"][:, 0, :])
+
     print("Done.")
 
 
@@ -103,7 +107,18 @@ if __name__ == "__main__":
     num_plotting_steps = max_sim_steps
     label_tag = ["finite", "inf"]
     beta_str = r" $\beta$ =" + str(beta)
+
     for stat_name in HT.statistics_names:
-        plot_2_statistics(HT.mf_statistics[stat_name], HTInf.mf_statistics[stat_name], stat_name, num_feat_patterns,
+
+        if stat_name == "mk" or stat_name == "mv":
+            statML = HTPEML.mf_statistics[stat_name][:, 0, :]
+        else:
+            statML = HTPEML.mf_statistics[stat_name]
+
+        plot_2_statistics(HT.mf_statistics[stat_name], statML, stat_name, num_feat_patterns,
                       num_plotting_steps, label_tag, additional_msg=beta_str)
+
+    # for stat_name in HT.statistics_names:
+    #     plot_2_statistics(HT.mf_statistics[stat_name], HTInf.mf_statistics[stat_name], stat_name, num_feat_patterns,
+    #                   num_plotting_steps, label_tag, additional_msg=beta_str)
     print("Done.")
