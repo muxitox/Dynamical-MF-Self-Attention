@@ -64,12 +64,13 @@ class HopfieldTransformerInfN:
             self.Wq[:, :self.se_bit_size] = self.Wq_SE
             self.Wk[:, :self.se_bit_size] = self.Wk_SE
 
-            if pe_mode == 1 and correlations_from_weights != 3:
+            if pe_mode == 1 or (pe_mode==0 and correlations_from_weights == 3):
+                # If pe_mode==0 and correlations_from_weighst=3. We use this (its like setting them random below but found seeds are more interesting)
                 self.Wo[:, -self.pe_bit_size:] = self.Wo_SE[:, -self.pe_bit_size:]
                 self.Wv[:, -self.pe_bit_size:] = self.Wv_SE[:, -self.pe_bit_size:]
                 self.Wq[:, -self.pe_bit_size:] = self.Wq_SE[:, -self.pe_bit_size:]
                 self.Wk[:, -self.pe_bit_size:] = self.Wk_SE[:, -self.pe_bit_size:]
-            else:
+            elif pe_mode == 0:
                 self.Wo[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
                 self.Wv[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
                 self.Wq[:, -self.pe_bit_size:] = np.random.randint(2, size=(num_feat_patterns, self.pe_bit_size)) * 2 - 1
