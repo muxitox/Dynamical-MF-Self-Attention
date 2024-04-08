@@ -2,7 +2,7 @@ import copy
 import numpy as np
 from scipy.special import softmax
 
-class HopfieldTransformerInfN:
+class HopfieldTransformerInfNML:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size, max_sim_steps=512,
                  normalize_weights_str="1", reorder_weights=False, correlations_from_weights=True, num_segments_corrs=3,
@@ -240,11 +240,18 @@ class HopfieldTransformerInfN:
         self.num_feat_patterns = num_feat_patterns
         self.max_sim_steps = max_sim_steps
 
-        self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
-        # Create variables for saving the statistics of the mean-field model
+        # Create variables for the memory-less version computations for the mean-fields and positional embeddings
+
         self.mf_statistics = {}
-        for name_i in self.statistics_names:
-            self.mf_statistics[name_i] = np.zeros((max_sim_steps, num_feat_patterns))
+        self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
+
+        self.mf_statistics["mo"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mf_statistics["mo_se"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mf_statistics["mv"] = np.zeros((self.max_sim_steps, self.context_size, self.num_feat_patterns))
+        self.mf_statistics["mq"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mf_statistics["mk"] = np.zeros((self.max_sim_steps, self.context_size, self.num_feat_patterns))
+        self.mf_statistics["pe"] = np.zeros((self.max_sim_steps, self.context_size, self.pe_bit_size))
+        self.mf_statistics["att"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
 
 
     def set_betas(self, beta_o, beta_att):
@@ -252,8 +259,21 @@ class HopfieldTransformerInfN:
         self.beta_att = beta_att
 
     def reset_data(self):
-        for name_i in self.statistics_names:
-            self.mf_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+
+        self.mf_statistics["mo"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mf_statistics["mo_se"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mf_statistics["mv"] = np.zeros((self.max_sim_steps, self.context_size, self.num_feat_patterns))
+        self.mf_statistics["mq"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+        self.mf_statistics["mk"] = np.zeros((self.max_sim_steps, self.context_size, self.num_feat_patterns))
+        self.mf_statistics["pe"] = np.zeros((self.max_sim_steps, self.context_size, self.pe_bit_size))
+        self.mf_statistics["att"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+
+        time_indices = list(range(0, self.context_size))
+        time_indices.reverse()
+        time_indices = np.roll(time_indices, 1)
+        for d in range(0, self.context_size):
+            # At d=0 we want position 1, not 0. Position 0 is already encoded
+            self.mf_statistics["pe"][0, d, :] = self.vocab.encode_pos(time_indices[d] % self.context_size)
 
 
     def reset_data_keep_context(self):
@@ -265,31 +285,22 @@ class HopfieldTransformerInfN:
         self.reset_data()
 
         for name_i in self.statistics_names:
-            self.mf_statistics[name_i][:self.context_size, :] = mf_statistics_copy[name_i][-self.context_size:, :]
+            self.mf_statistics[name_i][self.context_size] = mf_statistics_copy[name_i][-1]
 
-    def qk_f_mf(self, t, tau):
-
-        mqk = self.mf_statistics["mq"][t] @ self.mf_statistics["mk"][tau]
+    def qk_f_mf(self, t, d):
+        mqk = self.mf_statistics["mq"][t] @ self.mf_statistics["mk"][t, d, :]
         return self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
 
     def attention_mf(self, t):
 
-        idx_ctx_start = max(0, t - self.context_size + 1)
         effective_context_size = min(self.context_size, t + 1)
 
         key_prob = np.zeros(effective_context_size)
-        for tau in range(0, effective_context_size):
-            key_prob[tau] = self.qk_f_mf(t, idx_ctx_start + tau)
+        for d in range(0, effective_context_size):
+            key_prob[d] = self.qk_f_mf(t, d)
         key_prob = softmax(key_prob)
 
-        att_t = self.embedding_size * (self.mf_statistics["mv"][idx_ctx_start:t + 1].T @ key_prob)
-
-        # # Loopy implementation for testing
-        #
-        # att_t_loopy = np.zeros(self.num_feat_patterns)
-        # for b in range(0, self.num_feat_patterns):
-        #     for tau in range(0, t+1):
-        #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
+        att_t = self.embedding_size * (self.mf_statistics["mv"][t, :effective_context_size, :].T @ key_prob)
 
         self.mf_statistics["att"][t] = att_t
 
@@ -297,51 +308,52 @@ class HopfieldTransformerInfN:
 
     def attention_mf_optimized(self, t):
 
-        idx_ctx_start = max(0, t - self.context_size + 1)
+        effective_context_size = min(self.context_size, t + 1)
 
-        mqk = np.einsum('b,tb -> t', self.mf_statistics["mq"][t], self.mf_statistics["mk"][idx_ctx_start:t + 1], optimize=True)
+        mqk = np.einsum('b,tb -> t', self.mf_statistics["mq"][t],
+                        self.mf_statistics["mk"][t, :effective_context_size, :], optimize=True)
 
-        # key_prob = self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
         key_prob = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
-        # key_prob = self.beta_att * self.embedding_size ** 2 * mqk
-
         key_prob = softmax(key_prob)
 
-        att_t = self.embedding_size * (self.mf_statistics["mv"][idx_ctx_start:t + 1].T @ key_prob)
-
-        # # Loopy implementation for testing
-        #
-        # att_t_loopy = np.zeros(self.num_feat_patterns)
-        # for b in range(0, self.num_feat_patterns):
-        #     for tau in range(0, t+1):
-        #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
+        att_t = self.embedding_size * (self.mf_statistics["mv"][t,:effective_context_size].T @ key_prob)
 
         self.mf_statistics["att"][t] = att_t
 
         return att_t
 
-    def compute_means_from_data(self, x0, t):
-        self.mf_statistics["mo"][t] = x0 @ self.Wo.T / self.embedding_size
-        self.mf_statistics["mo_se"][t] = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
-        self.mf_statistics["mv"][t] = x0 @ self.Wv.T / self.embedding_size
-        self.mf_statistics["mq"][t] = x0 @ self.Wq.T / self.embedding_size
-        self.mf_statistics["mk"][t] = x0 @ self.Wk.T / self.embedding_size
+    def compute_means_from_data(self, x, t):
+        self.mf_statistics["mo"][t] = x @ self.Wo.T / self.embedding_size
+        self.mf_statistics["mo_se"][t] = x[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+        self.mf_statistics["mv"][t, 0, :] = x @ self.Wv.T / self.embedding_size
+        self.mf_statistics["mq"][t] = x @ self.Wq.T / self.embedding_size
+        self.mf_statistics["mk"][t, 0, :] = x @ self.Wk.T / self.embedding_size
 
+
+    def shift_d_window(self, t):
+        # Roll the window of d copies by 1 position
+        self.mf_statistics["mv"][t] = np.roll(self.mf_statistics["mv"][t-1], 1, axis=0)
+        self.mf_statistics["mk"][t] = np.roll(self.mf_statistics["mk"][t-1], 1, axis=0)
+        self.mf_statistics["pe"][t] = np.roll(self.mf_statistics["pe"][t-1], 1, axis=0)
 
     def compute_mf_optimized(self, t, att):
 
         pos_vec = self.vocab.encode_pos(t % self.context_size)
         pe_contribution_o = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:],
-                                    pos_vec, optimize=True) / self.pe_bit_size
+                                    pos_vec,
+                                    optimize=True) / self.pe_bit_size
 
         pe_contribution_v = np.einsum('bi,i ->b', self.Wv[:, self.se_bit_size:],
-                                    pos_vec, optimize=True) / self.pe_bit_size
+                                    pos_vec,
+                                    optimize=True) / self.pe_bit_size
 
         pe_contribution_q = np.einsum('bi,i ->b', self.Wq[:, self.se_bit_size:],
-                                    pos_vec, optimize=True) / self.pe_bit_size
+                                    pos_vec,
+                                    optimize=True) / self.pe_bit_size
 
         pe_contribution_k = np.einsum('bi,i ->b', self.Wk[:, self.se_bit_size:],
-                                    pos_vec, optimize=True) / self.pe_bit_size
+                                    pos_vec,
+                                    optimize=True) / self.pe_bit_size
 
 
         tanh_j_sings = np.tanh(
@@ -360,7 +372,7 @@ class HopfieldTransformerInfN:
 
         mv_se = self.se_per_contribution * np.einsum("jb,j->b", corr_signed_v, tanh_j_sings) / 2 ** (
                     self.num_feat_patterns - 1)
-        self.mf_statistics["mv"][t] = mv_se + (1 - self.se_per_contribution) * pe_contribution_v
+        self.mf_statistics["mv"][t, 0, :] = mv_se + (1 - self.se_per_contribution) * pe_contribution_v
 
         mq_se = self.se_per_contribution * np.einsum("jb,j->b", corr_signed_q, tanh_j_sings) / 2 ** (
                     self.num_feat_patterns - 1)
@@ -368,113 +380,8 @@ class HopfieldTransformerInfN:
 
         mk_se = self.se_per_contribution * np.einsum("jb,j->b", corr_signed_k, tanh_j_sings) / 2 ** (
                     self.num_feat_patterns - 1)
-        self.mf_statistics["mk"][t] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
+        self.mf_statistics["mk"][t, 0, :] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
 
-    def compute_mf(self, t, att):
-
-        pos_vec = self.vocab.encode_pos(t % self.context_size)
-        pe_contribution_o = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:],
-                                      pos_vec, optimize=True) / self.pe_bit_size
-
-        pe_contribution_v = np.einsum('bi,i ->b', self.Wv[:, self.se_bit_size:],
-                                      pos_vec, optimize=True) / self.pe_bit_size
-
-        pe_contribution_q = np.einsum('bi,i ->b', self.Wq[:, self.se_bit_size:],
-                                      pos_vec, optimize=True) / self.pe_bit_size
-
-        pe_contribution_k = np.einsum('bi,i ->b', self.Wk[:, self.se_bit_size:],
-                                      pos_vec, optimize=True) / self.pe_bit_size
-
-        if self.num_feat_patterns == 1:
-            tanh_b = np.tanh(self.beta_o * (1 / self.normalizing_constant) * att[0])
-
-            self.mf_statistics["mo_se"][t] = self.se_per_contribution * self.pair_corr_o_o * tanh_b
-            self.mf_statistics["mo"][t] = self.mf_statistics["mo_se"][t] + (1 - self.se_per_contribution) * pe_contribution_o
-            self.mf_statistics["mv"][t] = (self.se_per_contribution * self.pair_corr_o_v * tanh_b +
-                                           (1 - self.se_per_contribution) * pe_contribution_v)
-            self.mf_statistics["mq"][t] = (self.se_per_contribution * self.pair_corr_o_q * tanh_b +
-                                           (1 - self.se_per_contribution) * pe_contribution_q)
-            self.mf_statistics["mk"][t] = (self.se_per_contribution * self.pair_corr_o_k * tanh_b +
-                                           (1 - self.se_per_contribution) * pe_contribution_k)
-
-        elif self.num_feat_patterns == 2:
-
-            tanh_b_plus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] + att[1]))
-            tanh_b_minus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] - att[1]))
-
-            for b in range(0, self.num_feat_patterns):
-
-                self.mf_statistics["mo_se"][t, b] = (self.se_per_contribution *
-                            ((self.pair_corr_o_o[0,b] + self.pair_corr_o_o[1,b]) * tanh_b_plus
-                             + (self.pair_corr_o_o[0,b] - self.pair_corr_o_o[1,b]) * tanh_b_minus) / 2 )
-
-                self.mf_statistics["mo"][t, b] = (self.mf_statistics["mo_se"][t,b] +
-                                                  (1 - self.se_per_contribution) * pe_contribution_o[b])
-
-                self.mf_statistics["mv"][t, b] = (self.se_per_contribution *
-                            ((self.pair_corr_o_v[0,b] + self.pair_corr_o_v[1,b]) * tanh_b_plus +
-                             (self.pair_corr_o_v[0,b] - self.pair_corr_o_v[1,b]) * tanh_b_minus ) / 2
-                                + (1 - self.se_per_contribution) * pe_contribution_v[b])
-
-                self.mf_statistics["mq"][t, b] = (self.se_per_contribution *
-                            ((self.pair_corr_o_q[0, b] + self.pair_corr_o_q[1, b]) * tanh_b_plus +
-                             (self.pair_corr_o_q[0, b] - self.pair_corr_o_q[1, b]) * tanh_b_minus ) / 2
-                                + (1 - self.se_per_contribution) * pe_contribution_q[b])
-
-                self.mf_statistics["mk"][t, b] = (self.se_per_contribution *
-                            ((self.pair_corr_o_k[0, b] + self.pair_corr_o_k[1, b]) * tanh_b_plus +
-                             (self.pair_corr_o_k[0, b] - self.pair_corr_o_k[1, b]) * tanh_b_minus ) / 2
-                              + (1 - self.se_per_contribution) * pe_contribution_k[b])
-
-        else:
-            tanh_b_plus_plus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] + att[1] + att[2]))
-            tanh_b_plus_minus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] + att[1] - att[2]))
-            tanh_b_minus_plus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] - att[1] + att[2]))
-            tanh_b_minus_minus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] - att[1] - att[2]))
-
-            for b in range(0, self.num_feat_patterns):
-                self.mf_statistics["mo_se"][t, b] = (self.se_per_contribution *
-                                                     ((self.pair_corr_o_o[0, b] + self.pair_corr_o_o[1, b] + self.pair_corr_o_o[2, b] + self.quad_corr_o_o[b]) * tanh_b_plus_plus
-                                                      + (self.pair_corr_o_o[0, b] + self.pair_corr_o_o[1, b] - self.pair_corr_o_o[2, b] - self.quad_corr_o_o[b]) * tanh_b_plus_minus
-                                                      + (self.pair_corr_o_o[0, b] - self.pair_corr_o_o[1, b] + self.pair_corr_o_o[2, b] - self.quad_corr_o_o[b]) * tanh_b_minus_plus
-                                                      + (self.pair_corr_o_o[0, b] - self.pair_corr_o_o[1, b] - self.pair_corr_o_o[2, b] +
-                                                         self.quad_corr_o_o[b]) * tanh_b_minus_minus) / 4)
-
-                self.mf_statistics["mo"][t, b] = (self.mf_statistics["mo_se"][t,b] +
-                                                  (1 - self.se_per_contribution) * pe_contribution_o[b])
-
-                self.mf_statistics["mv"][t, b] = (self.se_per_contribution *
-                                                  ((self.pair_corr_o_v[0, b] + self.pair_corr_o_v[1, b] + self.pair_corr_o_v[2, b]
-                                                    + self.quad_corr_o_v[b]) * tanh_b_plus_plus
-                                                   + (self.pair_corr_o_v[0, b] + self.pair_corr_o_v[1, b] - self.pair_corr_o_v[2, b]
-                                                      - self.quad_corr_o_v[b]) * tanh_b_plus_minus
-                                                   + (self.pair_corr_o_v[0, b] - self.pair_corr_o_v[1, b] + self.pair_corr_o_v[2, b]
-                                                      - self.quad_corr_o_v[b]) * tanh_b_minus_plus
-                                                   + (self.pair_corr_o_v[0, b] - self.pair_corr_o_v[1, b] - self.pair_corr_o_v[2, b]
-                                                      + self.quad_corr_o_v[b]) * tanh_b_minus_minus) / 4 +
-                                                  (1 - self.se_per_contribution) * pe_contribution_v[b])
-
-                self.mf_statistics["mq"][t, b] = (self.se_per_contribution *
-                                                  ((self.pair_corr_o_q[0, b] + self.pair_corr_o_q[1, b] + self.pair_corr_o_q[2, b]
-                                                    + self.quad_corr_o_q[b]) * tanh_b_plus_plus
-                                                   + (self.pair_corr_o_q[0, b] + self.pair_corr_o_q[1, b] - self.pair_corr_o_q[2, b]
-                                                      - self.quad_corr_o_q[b]) * tanh_b_plus_minus
-                                                   + (self.pair_corr_o_q[0, b] - self.pair_corr_o_q[1, b] + self.pair_corr_o_q[2, b]
-                                                      - self.quad_corr_o_q[b]) * tanh_b_minus_plus
-                                                   + (self.pair_corr_o_q[0, b] - self.pair_corr_o_q[1, b] - self.pair_corr_o_q[2, b]
-                                                      + self.quad_corr_o_q[b]) * tanh_b_minus_minus) / 4 +
-                                                  (1 - self.se_per_contribution) * pe_contribution_q[b])
-
-                self.mf_statistics["mk"][t, b] = (self.se_per_contribution *
-                                                  ((self.pair_corr_o_k[0, b] + self.pair_corr_o_k[1, b] + self.pair_corr_o_k[2, b]
-                                                    + self.quad_corr_o_k[b]) * tanh_b_plus_plus
-                                                   + (self.pair_corr_o_k[0, b] + self.pair_corr_o_k[1, b] - self.pair_corr_o_k[2, b]
-                                                      - self.quad_corr_o_k[b]) * tanh_b_plus_minus
-                                                   + (self.pair_corr_o_k[0, b] - self.pair_corr_o_k[1, b] + self.pair_corr_o_k[2, b]
-                                                      - self.quad_corr_o_k[b]) * tanh_b_minus_plus
-                                                   + (self.pair_corr_o_k[0, b] - self.pair_corr_o_k[1, b] - self.pair_corr_o_k[2, b]
-                                                      + self.quad_corr_o_k[b]) * tanh_b_minus_minus) / 4 +
-                                                  (1 - self.se_per_contribution) * pe_contribution_k[b])
 
     def simulate_mf_from_context(self, max_steps):
         # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
@@ -486,6 +393,8 @@ class HopfieldTransformerInfN:
         # We initialize the model at the end of the previous
         ini_t = self.context_size
         for t in range(ini_t, max_steps):
+            self.shift_d_window(t)
+
             self.compute_mf_optimized(t, att)
             att = self.attention_mf_optimized(t)
 
@@ -496,5 +405,7 @@ class HopfieldTransformerInfN:
         att = self.attention_mf_optimized(t=0)
 
         for t in range(1, max_steps):
+            self.shift_d_window(t)
+
             self.compute_mf_optimized(t, att)
             att = self.attention_mf_optimized(t)

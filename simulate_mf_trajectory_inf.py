@@ -50,7 +50,7 @@ if __name__ == "__main__":
         np.random.seed(seed)
 
         HT = HopfieldTransformerInfN(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                                     positional_embedding_bitsize=positional_embedding_size, context_size=context_size,
+                                     positional_embedding_bitsize=positional_embedding_size, vocab=vocab, context_size=context_size,
                                      max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
                                      reorder_weights=reorder_weights, correlations_from_weights=correlations_from_weights,
                                      semantic_embedding_bitsize=tentative_semantic_embedding_size,

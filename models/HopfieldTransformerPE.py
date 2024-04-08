@@ -341,14 +341,28 @@ class HopfieldTransformer:
     def compute_mf(self, t, att):
 
         # Compute the mean of every (semantic) spin i at time t
-        att_Wo_i = np.tanh(self.beta_o * (1 / self.normalizing_constant) * np.einsum('b,bi -> i', att, self.Wo[:, :self.se_bit_size], optimize=True))
+        att_Wo_i = np.tanh(self.beta_o * (1 / self.normalizing_constant) *
+                           np.einsum('b,bi -> i', att, self.Wo[:, :self.se_bit_size], optimize=True))
+
         # Concatenate semantic information with positional encoding
-        att_Wo_i = np.concatenate((att_Wo_i, bitfield(t % self.context_size, self.pe_bit_size) * 2 - 1))
-        # Compute mean fields
-        self.mf_statistics["mo"][t] = np.einsum('bi,i ->b', self.Wo, att_Wo_i, optimize=True) / self.embedding_size
+        pos_vec = self.vocab.encode_pos(t % self.context_size)
+        att_Wo_i = np.concatenate((att_Wo_i, pos_vec))
+
         # Compute only semantic information
-        self.mf_statistics["mo_se"][t] = np.einsum('bi,i ->b', self.Wo[:, :self.se_bit_size], att_Wo_i[:self.se_bit_size],
-                                     optimize=True) / self.se_bit_size
+        unnorm_mo_se = np.einsum('bi,i ->b', self.Wo[:, :self.se_bit_size],
+                                 att_Wo_i[:self.se_bit_size], optimize=True)
+
+        # Normalize and save it. m^o is computed differently without PE since we want to analyze it separately.
+        self.mf_statistics["mo_se"][t] = unnorm_mo_se / self.se_bit_size
+
+        # Compute position information for m^o
+        pe_contribution_o = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:], pos_vec, optimize=True)
+
+        # Compute mean-fields
+        self.mf_statistics["mo"][t] = (unnorm_mo_se + pe_contribution_o) / self.embedding_size
+        self.mf_statistics["mv"][t] = np.einsum('bi,i ->b', self.Wv, att_Wo_i, optimize=True) / self.embedding_size
+        self.mf_statistics["mq"][t] = np.einsum('bi,i ->b', self.Wq, att_Wo_i, optimize=True) / self.embedding_size
+        self.mf_statistics["mk"][t] = np.einsum('bi,i ->b', self.Wk, att_Wo_i, optimize=True) / self.embedding_size
 
         # # Loopy implementation for testing
         # mo_t = np.zeros(self.num_feat_patterns)
@@ -357,10 +371,6 @@ class HopfieldTransformer:
         #         mo_t[b] += self.Wo[b, i] * np.tanh(self.beta_o * (1 / self.normalizing_constant) *  self.Wo[:, i] @ att)
         # mo_t /= self.embedding_size
         # print(np.allclose(self.mo[t], mo_t))
-
-        self.mf_statistics["mv"][t] = np.einsum('bi,i ->b', self.Wv, att_Wo_i, optimize=True) / self.embedding_size
-        self.mf_statistics["mq"][t] = np.einsum('bi,i ->b', self.Wq, att_Wo_i, optimize=True) / self.embedding_size
-        self.mf_statistics["mk"][t] = np.einsum('bi,i ->b', self.Wk, att_Wo_i, optimize=True) / self.embedding_size
 
     def simulate_mf_from_context(self, max_steps):
         # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for

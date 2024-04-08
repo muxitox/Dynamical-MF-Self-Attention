@@ -1,4 +1,5 @@
 import numpy as np
+from models.HopfieldTransformerPE import Embedding
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from plotting.plotting import plot_bifurcation_diagram
 import os
@@ -9,7 +10,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
            se_per_contribution, correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas):
 
-
+    vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
 
     np.random.seed(0)
     ini_tokens_list = np.random.randint(2, size=(num_ini_tokens, tentative_semantic_embedding_size + positional_embedding_size)) * 2 - 1
@@ -26,7 +27,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 
             # Initialize transformer weights and create variables for storing results
             HT = HopfieldTransformerInfN(0, 0, num_feat_patterns=num_feat_patterns,
-                        positional_embedding_bitsize=positional_embedding_size, context_size=context_size,
+                        positional_embedding_bitsize=positional_embedding_size, vocab=vocab, context_size=context_size,
                         max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
                         reorder_weights=reorder_weights, correlations_from_weights=correlations_from_weights,
                         num_segments_corrs=num_segments_corrs, pe_mode=pe_mode,
