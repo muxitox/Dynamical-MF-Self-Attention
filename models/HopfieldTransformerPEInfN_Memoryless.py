@@ -253,10 +253,57 @@ class HopfieldTransformerInfNML:
         self.mf_statistics["pe"] = np.zeros((self.max_sim_steps, self.context_size, self.pe_bit_size))
         self.mf_statistics["att"] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
 
+        self.create_der_matrix()
 
     def set_betas(self, beta_o, beta_att):
         self.beta_o = beta_o
         self.beta_att = beta_att
+
+    def create_der_matrix(self):
+        self.datt_dmv = np.zeros((self.max_sim_steps, self.context_size))
+        self.datt_dmq = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.num_feat_patterns))
+        self.datt_dmk = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.num_feat_patterns * self.context_size))
+
+        self.dmo_dmo = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.num_feat_patterns))
+        self.dmo_dmv = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.num_feat_patterns * self.context_size))
+        self.dmo_dmq = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.num_feat_patterns))
+        self.dmo_dmk = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.num_feat_patterns * self.context_size))
+        self.dmo_dpe = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.pe_bit_size * self.context_size))
+
+        self.dmv_dmo = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size, self.num_feat_patterns))
+        self.dmv_dmv = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size,
+                            self.num_feat_patterns * self.context_size))
+        self.dmv_dmq = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size, self.num_feat_patterns))
+        self.dmv_dmk = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size,
+                            self.num_feat_patterns * self.context_size))
+        self.dmv_dpe = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size,
+                            self.pe_bit_size * self.context_size))
+
+        self.dmq_dmo = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.num_feat_patterns))
+        self.dmq_dmv = np.zeros((self.max_sim_steps, self.num_feat_patterns,
+                            self.num_feat_patterns * self.context_size))
+        self.dmq_dmq = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.num_feat_patterns))
+        self.dmq_dmk = np.zeros((self.max_sim_steps, self.num_feat_patterns,
+                            self.num_feat_patterns * self.context_size))
+        self.dmq_dpe = np.zeros((self.max_sim_steps, self.num_feat_patterns, self.pe_bit_size * self.context_size))
+
+        self.dmk_dmo = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size, self.num_feat_patterns))
+        self.dmk_dmv = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size,
+                            self.num_feat_patterns * self.context_size))
+        self.dmk_dmq = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size, self.num_feat_patterns))
+        self.dmk_dmk = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size,
+                            self.num_feat_patterns * self.context_size))
+        self.dmk_dpe = np.zeros((self.max_sim_steps, self.num_feat_patterns * self.context_size,
+                            self.pe_bit_size * self.context_size))
+
+        self.dpe_dmo = np.zeros((self.max_sim_steps, self.pe_bit_size * self.context_size, self.num_feat_patterns))  # This is zero
+        self.dpe_dmv = np.zeros((self.max_sim_steps, self.pe_bit_size * self.context_size,
+                            self.num_feat_patterns * self.context_size))                # This is zero
+        self.dpe_dmq = np.zeros((self.max_sim_steps, self.pe_bit_size * self.context_size, self.num_feat_patterns))  # This is zero
+        self.dpe_dmk = np.zeros((self.max_sim_steps, self.pe_bit_size * self.context_size,   # This is zero
+                            self.num_feat_patterns * self.context_size))                # This is zero
+        self.dpe_dpe = np.zeros((self.max_sim_steps, self.pe_bit_size * self.context_size,
+                            self.pe_bit_size * self.context_size))
 
     def reset_data(self):
 
@@ -274,7 +321,6 @@ class HopfieldTransformerInfNML:
         for d in range(0, self.context_size):
             # At d=0 we want position 1, not 0. Position 0 is already encoded
             self.mf_statistics["pe"][0, d, :] = self.vocab.encode_pos(time_indices[d] % self.context_size)
-
 
     def reset_data_keep_context(self):
 
@@ -398,14 +444,91 @@ class HopfieldTransformerInfNML:
             self.compute_mf_optimized(t, att)
             att = self.attention_mf_optimized(t)
 
+    def der_att_dmv(self, t):
+
+        effective_context_size = min(self.context_size, t + 1)
+
+        mqk = np.einsum('b,tb -> t', self.mf_statistics["mq"][t],
+                        self.mf_statistics["mk"][t, :effective_context_size, :], optimize=True)
+
+        key_prob = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
+        key_prob = softmax(key_prob)
+
+        datt_dmv = self.embedding_size * key_prob
+
+        # The derivative of the attention wrt mv has the form (1,context_size) since the derivative is the same for
+        # different b indices
+
+        return datt_dmv
+
+
+    def der_att_dmq(self, t):
+
+        effective_context_size = min(self.context_size, t + 1)
+
+        mqk = np.einsum('b,tb -> t', self.mf_statistics["mq"][t],
+                        self.mf_statistics["mk"][t, :effective_context_size, :], optimize=True)
+
+        key_prob = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
+        key_prob = softmax(key_prob)
+
+        derv_part_12 = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        for b in range(self.num_feat_patterns):
+            for c in range(self.num_feat_patterns):
+                for d in range(effective_context_size):
+                    derv_part_12[b, c] += (self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 3 *
+                                           (self.mf_statistics["mv"][t, d, b] * self.mf_statistics["mk"][t, d, c]
+                                            * key_prob[d]))
+
+        derv_part_22 = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        for b in range(self.num_feat_patterns):
+            for c in range(self.num_feat_patterns):
+                for d in range(effective_context_size):
+                    prod1 = self.embedding_size * (self.mf_statistics["mv"][t, d, b] * key_prob[d])
+                    prod2 = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * (self.mf_statistics["mk"][t, d, c] * key_prob[d])
+                    derv_part_22[b, c] += prod1 * prod2
+
+        mvd_mkd_1 = np.einsum("di,dj->dij", self.mf_statistics["mk"][t, :effective_context_size],
+                           self.mf_statistics["mv"][t, :effective_context_size])
+        derv_part_1 = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 3 * mvd_mkd_1.T @ key_prob
+
+
+        att_mk_t = (self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 *
+                    (self.mf_statistics["mk"][t, :effective_context_size].T @ key_prob))
+
+        att_mv_t = self.embedding_size * (self.mf_statistics["mv"][t, :effective_context_size].T @ key_prob)
+        derv_part_2 = np.einsum("i,j->ij", att_mk_t, att_mv_t).T
+
+
+        print("Test1", derv_part_1 - derv_part_12)
+        print("Test2", derv_part_2 - derv_part_22)
+
+
+        derv = derv_part_1 - derv_part_2
+        print(derv)
+        # The derivative of the attention wrt mv has the form (1,context_size) since the derivative is the same for
+        # different b indices
+
+        return derv  # Dimensions are (att_b, mq_c)
+
+    def der_mf_d0(self, t):
+        datt_dmv = self.der_att_dmv(t)
+        datt_dmq = self.der_att_dmq(t)
+
+    def compute_jacobians(self, t):
+        self.der_mf_d0(t)
+
     def simulate_mf(self, x0, max_steps):
 
         # Initialize attention with the info from the initial token
         self.compute_means_from_data(x0, t=0)
         att = self.attention_mf_optimized(t=0)
+        self.compute_jacobians(t=0)
 
         for t in range(1, max_steps):
             self.shift_d_window(t)
 
             self.compute_mf_optimized(t, att)
+            self.compute_jacobians(t)   # Compute jacobians of mf and PE at time t, wrt vars at t-1
+
             att = self.attention_mf_optimized(t)
