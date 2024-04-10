@@ -1,5 +1,5 @@
 import numpy as np
-from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
+from models.HopfieldTransformerPEInfN_Memoryless import HopfieldTransformerInfNML
 from models.HopfieldTransformerPE import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         # Create seed for reproducibility
         np.random.seed(seed)
 
-        HT = HopfieldTransformerInfN(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
+        HT = HopfieldTransformerInfNML(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
                                      positional_embedding_bitsize=positional_embedding_size, vocab=vocab, context_size=context_size,
                                      max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
                                      reorder_weights=reorder_weights, correlations_from_weights=correlations_from_weights,
