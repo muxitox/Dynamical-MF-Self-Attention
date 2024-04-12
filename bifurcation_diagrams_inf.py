@@ -21,6 +21,10 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
     if reverse_betas:      # Flip vector to avoid falling in the same fixed points due to the mean-field 0 a low beta
         beta_list = np.flip(beta_list)
 
+    min_saved_step = 0
+    if not save_non_transient:
+        min_saved_step = num_transient_steps
+
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
 
@@ -65,7 +69,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 
                     for stat_name in stats_to_save_plot:
                         # Accumulate results in a var of beta_list length
-                        results_beta_list[stat_name].append(np.copy(HT.mf_statistics[stat_name]))
+                        results_beta_list[stat_name].append(np.copy(HT.mf_statistics[stat_name][min_saved_step:, :]))
 
                 if reverse_betas:
                     for stat_name in stats_to_save_plot:
@@ -85,6 +89,11 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                 else:
                     gaussian_scale_name_str = f"-gaussian_scale-{gaussian_scale_str}"
 
+                if save_non_transient == True:
+                    save_non_transient_str = ""
+                else:
+                    save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
+
                 # Save/plot results for each ini_token, W config, and num_feat_patterns
                 folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights)
                                + "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-"
@@ -92,8 +101,9 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                                + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-"
                                + normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
                                + "-num_segments_corrs-" + str(num_segments_corrs) + "-pe_mode-" + str(pe_mode)
-                               + gaussian_scale_name_str + "/max_sim_steps-" + str(max_sim_steps) + "-context_size-"
-                               + str(context_size) + beta_string + "/stats")
+                               + gaussian_scale_name_str + "/max_sim_steps-" + str(max_sim_steps)
+                               + save_non_transient_str + "-context_size-" + str(context_size)
+                               + beta_string + "/stats")
 
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
@@ -114,7 +124,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,
             stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode, se_per_contribution, keep_context,
-            reverse_betas, gaussian_scale_str):
+            reverse_betas, gaussian_scale_str, save_non_transient):
 
 
     reverse_betas_str = ""
@@ -125,6 +135,13 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
         gaussian_scale_name_str = ""
     else:
         gaussian_scale_name_str = f"-gaussian_scale-{gaussian_scale_str}"
+
+    if save_non_transient == True:
+        save_non_transient_str = ""
+        num_transient_steps_plot_arg = num_transient_steps
+    else:
+        save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
+        num_transient_steps_plot_arg = 0
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -138,7 +155,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                + normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
                                + "-num_segments_corrs-" + str(num_segments_corrs) + "-pe_mode-" + str(pe_mode)
                                + gaussian_scale_name_str + "/max_sim_steps-" + str(max_sim_steps)
-                               + "-context_size-" + str(context_size)
+                               + save_non_transient_str + "-context_size-" + str(context_size)
                                + "/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1])
                                + "-num_betas-" + str(len(beta_list)) + f"{reverse_betas_str}-keep_context-"
                                + str(int(keep_context)))
@@ -167,11 +184,11 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 
                     title = f"CORR_MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed}"
 
-                    plot_bifurcation_diagram(stat_results_beta_list, beta_list, num_feat_patterns, stat_save_path,
-                                             num_transient_steps, feat_name=stat_name,
-                                             show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot,
-                                             title=title)
 
+                    plot_bifurcation_diagram(stat_results_beta_list, beta_list, num_feat_patterns, stat_save_path,
+                                         num_transient_steps_plot_arg, feat_name=stat_name,
+                                         show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot,
+                                         title=title)
 
 
 if __name__ == "__main__":
@@ -202,13 +219,13 @@ if __name__ == "__main__":
 
     num_ini_tokens = 1
     reorder_weights = False
-    normalize_weights_str = "np.sqrt(N*M)"
+    normalize_weights_str = "np.sqrt(N)*M"
     correlations_from_weights = 1  # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means, 3 segments
     gaussian_scale = "0.5"         # Only applicable if correlations_from_weights=0
     pe_mode = 0
     num_segments_corrs = 3         # Only applicable if correlations_from_weights=3
     save_non_transient = False
-    save_not_plot = True
+    save_not_plot = False
 
     if context_size > 2**positional_embedding_size:
         raise("The positional embedding cannot cover the whole context size.")
