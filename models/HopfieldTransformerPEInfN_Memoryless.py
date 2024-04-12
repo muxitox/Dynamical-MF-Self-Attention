@@ -6,7 +6,7 @@ class HopfieldTransformerInfNML:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size, max_sim_steps=512,
                  normalize_weights_str="1", reorder_weights=False, correlations_from_weights=True, num_segments_corrs=3,
-                 pe_mode=0, semantic_embedding_bitsize=0, se_per_contribution=0.95):
+                 pe_mode=0, semantic_embedding_bitsize=0, se_per_contribution=0.95, gaussian_scale_str=None):
 
         self.beta_o = beta_o
         self.beta_att = beta_att
@@ -25,9 +25,11 @@ class HopfieldTransformerInfNML:
         # Dynamically compute the normalize_weights_str string
         try:
             exec_str = f"self.normalizing_constant = {normalize_weights_str}"
+            exec_str2 = f"self.gaussian_scale = {gaussian_scale_str}"
             exec(exec_str)
+            exec(exec_str2)
         except:
-            print("The exec_str string is not well defined")
+            print("Either the exec_str for the normalizing_constant or for the gaussian_scale are not well defined")
             raise
 
         self.W = np.zeros((num_feat_patterns, self.embedding_size))
@@ -152,7 +154,7 @@ class HopfieldTransformerInfNML:
                 self.quad_corr_o_k /= semantic_embedding_bitsize
 
         elif correlations_from_weights == 0:  #  Normal weights and 4 correlations come from individual corrs
-            sc = 0.5
+            sc = self.gaussian_scale
             # Create random correlations
             self.pair_corr_o_o = np.random.normal(0, sc, (num_feat_patterns, num_feat_patterns))
             self.pair_corr_o_v = np.random.normal(0, sc, (num_feat_patterns, num_feat_patterns))
