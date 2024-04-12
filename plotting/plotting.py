@@ -133,12 +133,15 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
     nrows = (num_feat_patterns + 1) // 2
 
+
+    col_size = 12
+
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(col_size*num_feat_patterns, 4), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(col_size*num_feat_patterns, 4), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, 4 * nrows), constrained_layout=True)
 
     num_plotting_steps_arange = np.arange(num_plotting_steps)
 
@@ -182,7 +185,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
     plt.close()
 
 
-def plot_save_plane(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
+def plot_save_plane(stat1, stat2, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
                          save_not_plot=False, save_path=None, tag_names=[], beta=None):
 
     # Plot show_max_num_patterns subfigures if defined
@@ -198,9 +201,11 @@ def plot_save_plane(stat1, stat2, stat_name, num_feat_patterns, num_plotting_ste
     else:
         fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
 
-    num_plotting_steps_arange = np.arange(num_plotting_steps)
+    # num_plotting_steps_arange = np.arange(num_plotting_steps)
 
-    latex_str = feat_name_to_latex(stat_name)
+    latex_strs = []
+    for tag in tag_names:
+        latex_strs.append(feat_name_to_latex(tag))
 
     for feat in range(0, num_feat_patterns):
 
@@ -214,17 +219,17 @@ def plot_save_plane(stat1, stat2, stat_name, num_feat_patterns, num_plotting_ste
         else:
             local_ax = ax[row, feat % 2]
 
-        local_ax.plot(stat1[:num_plotting_steps], stat2[:num_plotting_steps], '.', ms='0.08')
+        local_ax.plot(stat1[:num_plotting_steps, feat], stat2[:num_plotting_steps, feat], '.', ms='0.4')
 
-        local_ax.set_xlabel(tag_names[0])
-        local_ax.set_ylabel(tag_names[1])
+        local_ax.set_xlabel(rf"${latex_strs[0]}_{feat}(t)$")
+        local_ax.set_ylabel(rf"${latex_strs[1]}_{(feat + 1)%num_feat_patterns}(t)$" )
 
 
         # local_ax.legend()
 
     # fig.tight_layout(pad=0.1)
     # fig.suptitle(f"Evolution of {stat_name}")
-    fig.suptitle(rf"$\beta${beta}")
+    fig.suptitle(rf"$\beta$ = {beta}")
 
 
     if save_not_plot:

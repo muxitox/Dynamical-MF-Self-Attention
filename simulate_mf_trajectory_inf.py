@@ -7,26 +7,27 @@ if __name__ == "__main__":
 
     # Instantiate vocabulary
     tentative_semantic_embedding_size = 99
-    positional_embedding_size = 2
+    positional_embedding_size = 4
     context_size = 2 ** positional_embedding_size
     embedding_size = tentative_semantic_embedding_size + positional_embedding_size
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
     # vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    beta = 0.8
+    beta = 0.55
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 2
-    max_sim_steps = 3600
-    num_transient_steps = 3450
+    num_feat_patterns = 3
+    num_transient_steps_traj = 1070000 - 500  # 0 if we want to show the trajectory since the beginning
+    num_transient_steps_plane = 1000000  # 0 if we want to show the trajectory since the beginning
+    max_sim_steps = 1070000
     correlations_from_weights = 3
     pe_mode = 0
     se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
 
 
-    normalize_weights_str = "np.sqrt(N*M)"
+    normalize_weights_str = "np.sqrt(N)*M"
     reorder_weights = False
 
     num_ini_tokens = 1
@@ -41,9 +42,9 @@ if __name__ == "__main__":
 
 
     # Interesting seeds: 18, 26
-    seed_list = range(30, 60)
+    # seed_list = range(30, 60)
 
-    seed_list = [18, 26]
+    seed_list = [1]
     for seed in seed_list:
 
         # Create seed for reproducibility
@@ -68,14 +69,26 @@ if __name__ == "__main__":
         print("Plotting statistics...")
         num_plotting_steps = max_sim_steps
 
-        title = f"MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed} BETA={beta} NUM_TRANSIENT={num_transient_steps}"
+        title = (f"MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed} "
+                 f"BETA={beta} NUM_TRANSIENT={num_transient_steps_traj}")
 
         stats_to_show = ["mo_se"]
         for stat_name in stats_to_show:
-            plot_save_statistics(HT.mf_statistics[stat_name][num_transient_steps:,:], stat_name,
-                                 num_feat_patterns, max_sim_steps-num_transient_steps, title=title)
+            plot_save_statistics(HT.mf_statistics[stat_name][num_transient_steps_traj:,:], stat_name,
+                                 num_feat_patterns, max_sim_steps-num_transient_steps_traj, title=title)
         print("Done.")
 
+
+        # 3 feats
+
+        stats_to_plot = ["mo_se", "mo_se"]
+        stat_results_beta_list_0 = HT.mf_statistics[stats_to_plot[0]]
+        stat_results_beta_list_1 = HT.mf_statistics[stats_to_plot[1]]
+        feats_reorder = [1, 2, 0]
+        plot_save_plane(stat_results_beta_list_0[num_transient_steps_plane:],
+                        stat_results_beta_list_1[num_transient_steps_plane:, feats_reorder],
+                        num_feat_patterns, max_sim_steps - num_transient_steps_plane, show_max_num_patterns=num_feat_patterns,
+                        tag_names=stats_to_plot, beta=beta)
 
         # save_not_plot = False
         # save_path = ""

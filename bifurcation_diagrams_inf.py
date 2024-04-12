@@ -9,7 +9,7 @@ import time
 def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
            se_per_contribution, correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas,
-           gaussian_scale_str):
+           gaussian_scale_str, save_non_transient):
 
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
 
@@ -176,7 +176,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 
 if __name__ == "__main__":
     # Instantiate vocabulary
-    tentative_semantic_embedding_size = 100
+    tentative_semantic_embedding_size = 99
     positional_embedding_size = 2
     context_size = 2**positional_embedding_size
 
@@ -207,6 +207,7 @@ if __name__ == "__main__":
     gaussian_scale = "0.5"         # Only applicable if correlations_from_weights=0
     pe_mode = 0
     num_segments_corrs = 3         # Only applicable if correlations_from_weights=3
+    save_non_transient = False
     save_not_plot = True
 
     if context_size > 2**positional_embedding_size:
@@ -223,7 +224,7 @@ if __name__ == "__main__":
     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, max_sim_steps,
            context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights, stats_to_save_plot,
            se_per_contribution, correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas,
-           gaussian_scale)
+           gaussian_scale, save_non_transient)
 
     end = time.time()
     elapsed_time = end - start
@@ -234,4 +235,4 @@ if __name__ == "__main__":
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights, save_not_plot,
             stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode, se_per_contribution, keep_context,
-            reverse_betas, gaussian_scale)
+            reverse_betas, gaussian_scale, save_non_transient)
