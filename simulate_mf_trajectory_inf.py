@@ -7,25 +7,25 @@ if __name__ == "__main__":
 
     # Instantiate vocabulary
     tentative_semantic_embedding_size = 99
-    positional_embedding_size = 4
+    positional_embedding_size = 2
     context_size = 2 ** positional_embedding_size
     embedding_size = tentative_semantic_embedding_size + positional_embedding_size
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
     # vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    beta = 0.55
+    beta = 2.3
     beta_o = beta
     beta_att = beta
 
-    num_feat_patterns = 3
-    num_transient_steps_traj = 1070000 - 500  # 0 if we want to show the trajectory since the beginning
-    num_transient_steps_plane = 1000000  # 0 if we want to show the trajectory since the beginning
-    max_sim_steps = 1070000
+    num_feat_patterns = 2
+    max_sim_steps = 4500
+    num_transient_steps = 2556  # 0 if we want to show the trajectory since the beginning
+    num_transient_steps_traj = max_sim_steps - num_transient_steps - 50  # 0 if we want to show the trajectory since the beginning
+
     correlations_from_weights = 3
     pe_mode = 0
     se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
-
 
     normalize_weights_str = "np.sqrt(N)*M"
     reorder_weights = False
@@ -40,22 +40,23 @@ if __name__ == "__main__":
     ini_token_idx = 0
     x0 = ini_tokens_list[ini_token_idx, :]
 
-
     # Interesting seeds: 18, 26
     # seed_list = range(30, 60)
 
-    seed_list = [1]
+    seed_list = [18]
     for seed in seed_list:
 
         # Create seed for reproducibility
         np.random.seed(seed)
 
         HT = HopfieldTransformerInfN(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                                     positional_embedding_bitsize=positional_embedding_size, vocab=vocab, context_size=context_size,
-                                     max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
-                                     reorder_weights=reorder_weights, correlations_from_weights=correlations_from_weights,
+                                     positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
+                                     context_size=context_size, max_sim_steps=max_sim_steps,
+                                     min_saved_step=num_transient_steps, normalize_weights_str=normalize_weights_str,
+                                     reorder_weights=reorder_weights,
+                                     correlations_from_weights=correlations_from_weights,
                                      semantic_embedding_bitsize=tentative_semantic_embedding_size,
-                                     se_per_contribution=se_per_contribution, pe_mode = pe_mode)
+                                     se_per_contribution=se_per_contribution, pe_mode=pe_mode)
 
         HT.reset_data()
 
@@ -75,7 +76,8 @@ if __name__ == "__main__":
         stats_to_show = ["mo_se"]
         for stat_name in stats_to_show:
             plot_save_statistics(HT.mf_statistics[stat_name][num_transient_steps_traj:,:], stat_name,
-                                 num_feat_patterns, max_sim_steps-num_transient_steps_traj, title=title)
+                                 num_feat_patterns, max_sim_steps-num_transient_steps-num_transient_steps_traj,
+                                 min_num_step=num_transient_steps+num_transient_steps_traj, title=title)
         print("Done.")
 
 
@@ -84,10 +86,10 @@ if __name__ == "__main__":
         stats_to_plot = ["mo_se", "mo_se"]
         stat_results_beta_list_0 = HT.mf_statistics[stats_to_plot[0]]
         stat_results_beta_list_1 = HT.mf_statistics[stats_to_plot[1]]
-        feats_reorder = [1, 2, 0]
-        plot_save_plane(stat_results_beta_list_0[num_transient_steps_plane:],
-                        stat_results_beta_list_1[num_transient_steps_plane:, feats_reorder],
-                        num_feat_patterns, max_sim_steps - num_transient_steps_plane, show_max_num_patterns=num_feat_patterns,
+        feats_reorder = np.roll(np.arange(num_feat_patterns), -1)
+        plot_save_plane(stat_results_beta_list_0,
+                        stat_results_beta_list_1[:, feats_reorder],
+                        num_feat_patterns, max_sim_steps - num_transient_steps, show_max_num_patterns=num_feat_patterns,
                         tag_names=stats_to_plot, beta=beta)
 
         # save_not_plot = False
