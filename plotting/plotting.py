@@ -47,10 +47,9 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
             unique_values_feat = mo_results_beta_list[b_idx][num_transient_steps:, feat]
             beta_values_feat = np.ones(len(unique_values_feat)) * beta_list[b_idx]
 
-            feat_Y_values.extend(unique_values_feat)
-            feat_X_values.extend(beta_values_feat)
+            local_ax.plot(beta_values_feat, unique_values_feat, c='tab:blue', ls='', marker='.', ms='0.05')
 
-        local_ax.plot(feat_X_values, feat_Y_values, ls='', marker='.', ms='0.05')
+
         if feat_name != "att" and beta_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
 
