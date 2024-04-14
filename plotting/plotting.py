@@ -40,9 +40,6 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
         else:
             local_ax = ax[row, feat % 2]
 
-        feat_Y_values = []
-        feat_X_values = []
-
         for b_idx in range(0, len(beta_list)):
             unique_values_feat = mo_results_beta_list[b_idx][num_transient_steps:, feat]
             beta_values_feat = np.ones(len(unique_values_feat)) * beta_list[b_idx]
