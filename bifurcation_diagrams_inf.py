@@ -125,12 +125,11 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 
 
 def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-            num_transient_steps,
-            max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str, reorder_weights,
-            save_not_plot,
-            stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode, se_per_contribution,
-            keep_context,
-            reverse_betas, gaussian_scale_str, save_non_transient):
+            num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str,
+            reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights, num_segments_corrs,
+            pe_mode, se_per_contribution, keep_context, reverse_betas, gaussian_scale_str, save_non_transient,
+            min_max_beta_to_show=None):
+
     reverse_betas_str = ""
     if reverse_betas:
         reverse_betas_str = "-reverse_betas"
@@ -146,6 +145,13 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
     else:
         save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
         num_transient_steps_plot_arg = 0
+
+    if min_max_beta_to_show is None:
+        min_beta_idx = 0
+        max_beta_idx = -1
+    else:
+        min_beta_idx = np.searchsorted(beta_list, min_max_beta_to_show[0])
+        max_beta_idx = np.searchsorted(beta_list, min_max_beta_to_show[1]) + 1
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -188,7 +194,8 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 
                     title = f"CORR_MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed}"
 
-                    plot_bifurcation_diagram(stat_results_beta_list, beta_list, num_feat_patterns, stat_save_path,
+                    plot_bifurcation_diagram(stat_results_beta_list[min_beta_idx:max_beta_idx],
+                                             beta_list[min_beta_idx:max_beta_idx], num_feat_patterns, stat_save_path,
                                              num_transient_steps_plot_arg, feat_name=stat_name,
                                              show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot,
                                              title=title)
@@ -202,25 +209,25 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     # seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 26]
-    seed_list = [0]
+    seed_list = [2]
     # seed_list = [0, 1, 2]
     # seed_list = [3, 4, 5]
     # seed_list = [6, 7]
     # seed_list = [8, 9]
 
-    # seed_list = [0, 1, 2, 3, 4]
-    # seed_list = [5, 6, 7, 8, 9]
-
-    # seed_list = [18]
+    # New
+    # 1 pat: seed 2 0.25, 0.27
+    # 2 pat: seed 18 0.8, 1.3
+    # 3 pat: seed 1 0.35, 0.8
 
     # beta_list = np.linspace(0, 3, 1000)
-    beta_list = np.linspace(1, 3, 2)
-    se_per_contribution = tentative_semantic_embedding_size / (
-                tentative_semantic_embedding_size + positional_embedding_size)
+    beta_list = np.linspace(0.25, 0.27, 1000)
+    se_per_contribution = (tentative_semantic_embedding_size /
+                           (tentative_semantic_embedding_size + positional_embedding_size))
     # num_feat_patterns_list = [3, 2, 1]
     num_feat_patterns_list = [1]
-    num_transient_steps = 10
-    max_sim_steps = num_transient_steps + 30
+    num_transient_steps = 100000
+    max_sim_steps = num_transient_steps + 20000
 
     keep_context = False
     reverse_betas = False
@@ -233,7 +240,7 @@ if __name__ == "__main__":
     pe_mode = 0
     num_segments_corrs = 3  # Only applicable if correlations_from_weights=3
     save_non_transient = False
-    save_not_plot = False
+    save_not_plot = True
 
     if context_size > 2 ** positional_embedding_size:
         raise ("The positional embedding cannot cover the whole context size.")
