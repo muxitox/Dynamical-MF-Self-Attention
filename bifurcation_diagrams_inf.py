@@ -204,12 +204,12 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 if __name__ == "__main__":
     # Instantiate vocabulary
     tentative_semantic_embedding_size = 99
-    positional_embedding_size = 2
+    positional_embedding_size = 4
     context_size = 2 ** positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
     # seed_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 26]
-    seed_list = [2]
+    seed_list = [1]
     # seed_list = [0, 1, 2]
     # seed_list = [3, 4, 5]
     # seed_list = [6, 7]
@@ -218,18 +218,20 @@ if __name__ == "__main__":
     # New
     # 1 pat: seed 2 0.25, 0.27
     # 2 pat: seed 18 0.8, 1.3
-    # 3 pat: seed 1 0.35, 0.8
+    # 2 pat: seed 10. pe 2: beta 2.2 - 2.8, pe:4 1.5 - 2.2
+    # 3 pat: seed 1 (0.35,0.3) - 0.8, 0.37 - 0.45
+
 
     # beta_list = np.linspace(0, 3, 1000)
-    beta_list = np.linspace(0.25, 0.27, 1000)
+    beta_list = np.linspace(0.3, 0.8, 1000)
     se_per_contribution = (tentative_semantic_embedding_size /
                            (tentative_semantic_embedding_size + positional_embedding_size))
     # num_feat_patterns_list = [3, 2, 1]
-    num_feat_patterns_list = [1]
+    num_feat_patterns_list = [3]
     num_transient_steps = 100000
     max_sim_steps = num_transient_steps + 20000
 
-    keep_context = False
+    keep_context = True
     reverse_betas = False
 
     num_ini_tokens = 1

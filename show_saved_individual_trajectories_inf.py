@@ -43,6 +43,7 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
 
     # Load data
     data = np.load(stats_data_path)
+    image_format = ".jpeg"
 
     # Load each stat and plot/save it
     for stat_name in stats_to_save_plot:
@@ -50,7 +51,6 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
         stat_results_beta_list = data[f"{stat_name}_results_beta_list"]
         stat_results = stat_results_beta_list[beta_to_show_idx]
 
-        image_format = ".jpeg"
 
         plot_save_path_traj = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/beta-{beta_to_show}-ini_token_idx-" +
                           str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
@@ -58,24 +58,27 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
         plot_save_path_fft = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/fft-beta-{beta_to_show}-ini_token_idx-" +
                           str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
-
         plot_save_folder_path = os.path.dirname(plot_save_path_traj)
 
         # Create folder if it does not exist and we are saving the image
         if save_not_plot and (not os.path.exists(plot_save_folder_path)):
             os.makedirs(plot_save_folder_path)
 
+        title = (
+            f"MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed} "
+            f"BETA={beta_to_show} NUM_TRANSIENT={num_transient_steps}")
+
 
         if plot_range is None:
             plot_save_statistics(stat_results[num_transient_steps:, :], stat_name, num_feat_patterns,
                                  max_sim_steps-num_transient_steps, show_max_num_patterns=num_feat_patterns,
-                                 save_not_plot=save_not_plot, save_path=plot_save_path_traj)
+                                 save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title)
         else:
             rg = range(plot_range[0], plot_range[1])
             plot_save_statistics(stat_results[rg, :], stat_name, num_feat_patterns,
                                  len(rg), min_num_step=max_sim_steps+plot_range[0],
                                  show_max_num_patterns=num_feat_patterns,
-                                 save_not_plot=save_not_plot, save_path=plot_save_path_traj)
+                                 save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title)
 
         plot_save_fft(stat_results[num_transient_steps_plot_arg:, :], stat_name, num_feat_patterns,
                       max_sim_steps - num_transient_steps,
@@ -84,14 +87,24 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
 
     # 3 feats
 
-    stats_to_plot = ["mo_se", "mo_se"]
+    stats_to_plot = ["att", "att"]
+
+    plot_save_path_plane = ( folder_path + f"/indiv_traj/seed-{str(seed)}/{stats_to_plot[0]}-{stats_to_plot[1]}"
+                           + f"/plane-beta-{beta_to_show}-ini_token_idx-" +
+                           str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
+
+    # Create folder if it does not exist and we are saving the image
+    if save_not_plot and (not os.path.exists(os.path.dirname(plot_save_path_plane))):
+        os.makedirs(os.path.dirname(plot_save_path_plane))
+
     stat_results_beta_list_0 = data[f"{stats_to_plot[0]}_results_beta_list"][beta_to_show_idx]
     stat_results_beta_list_1 = data[f"{stats_to_plot[1]}_results_beta_list"][beta_to_show_idx]
     feats_reorder = np.roll(np.arange(num_feat_patterns), -1)
     plot_save_plane(stat_results_beta_list_0,
                     stat_results_beta_list_1[:, feats_reorder],
                     num_feat_patterns, max_sim_steps - num_transient_steps, show_max_num_patterns=num_feat_patterns,
-                    tag_names=stats_to_plot, beta=beta_to_show)
+                    tag_names=stats_to_plot, beta=beta_to_show,
+                    save_not_plot=save_not_plot, save_path=plot_save_path_plane)
 
 
 if __name__ == "__main__":
@@ -106,19 +119,19 @@ if __name__ == "__main__":
     # 3 pat: seed 1 0.35, 0.8
 
     # Create variables for the Hopfield Transformer (HT)
-    seed = 18
-    beta_list = np.linspace(0.8, 1.3, 1000)
+    seed = 1
+    beta_list = np.linspace(0.35, 0.8, 1000)
     se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
-    num_feat_patterns = 2
+    num_feat_patterns = 3
     num_transient_steps = 100000
     saved_steps = 20000
     max_sim_steps = num_transient_steps + saved_steps
     keep_context = False
     reverse_betas = False
-    beta_to_show = 1.11   # We'll find the nearest beta in the defined range
+    beta_to_show = 0.3729   # We'll find the nearest beta in the defined range
 
-    plot_window = 500
-    offset = 19500 + plot_window
+    plot_window = 5000
+    offset = 15000 + plot_window
     plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window -1]    # Index of the range of steps want to plot within the trajectory
 
     ini_token_idx = 0
@@ -129,7 +142,7 @@ if __name__ == "__main__":
     pe_mode = 0
     gaussian_scale = "0.50"         # Only applicable if correlations_from_weights=0
     save_not_transient = False
-    save_not_plot = False
+    save_not_plot = True
 
     if context_size > 2**positional_embedding_size:
         raise("The positional embedding cannot cover the whole context size.")

@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from utils import feat_name_to_latex
 import numpy as np
+from scipy.signal import hilbert, chirp
 
 # LaTeX macros
 plt.rc('text', usetex=True)
@@ -121,14 +122,13 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
     plt.show()
 
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                         save_not_plot=False, save_path=None, title=None):
+                         save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=True):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
 
     nrows = (num_feat_patterns + 1) // 2
-
 
     col_size = 12
 
@@ -139,7 +139,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
     else:
         fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, 4 * nrows), constrained_layout=True)
 
-    num_plotting_steps_arange = np.arange(num_plotting_steps)
+    num_plotting_steps_arange = np.arange(num_plotting_steps) + min_num_step
 
     latex_str = feat_name_to_latex(stat_name)
 
@@ -156,7 +156,11 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
             local_ax = ax[row, feat % 2]
 
 
-        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat])
+        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label="Signal")
+        if plot_hilbert:
+            analytic_signal = hilbert(stat1[:num_plotting_steps, feat])
+            local_ax.plot(num_plotting_steps_arange, np.abs(analytic_signal), label="Hilbert tr")
+
 
         if num_feat_patterns == 3:
             local_ax.set_xlabel(r"$t$")
@@ -167,8 +171,8 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
         local_ax.set_xlim(num_plotting_steps_arange[0], num_plotting_steps_arange[-1])
 
-
-        # local_ax.legend()
+        if plot_hilbert:
+            local_ax.legend()
 
     # fig.tight_layout(pad=0.1)
     if title is not None:
@@ -180,46 +184,38 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         plt.show()
     plt.close()
 
-
-def plot_save_plane(stat1, stat2, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                         save_not_plot=False, save_path=None, tag_names=[], beta=None):
+def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
+                    save_not_plot=False, save_path=None, tag_names=[], beta=None):
 
     # Plot show_max_num_patterns subfigures if defined
-    if (show_max_num_patterns is not None):
-        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
 
-    nrows = (num_feat_patterns + 1) // 2
+    ncols = len(stats1)
+    if ncols != len(stats2):
+        raise Exception("The length of the input stats does not coincide")
 
-    if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
-    elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
-    else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+    fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 4), constrained_layout=True)
 
     # num_plotting_steps_arange = np.arange(num_plotting_steps)
 
+    # Convert stat names to latex style
     latex_strs = []
-    for tag in tag_names:
-        latex_strs.append(feat_name_to_latex(tag))
+    for col_name in tag_names:
+        strs = []
+        for tag in col_name:
+            strs.append(feat_name_to_latex(tag))
+        latex_strs.append(strs)
 
-    for feat in range(0, num_feat_patterns):
+    for feat in range(0, ncols):
 
-        row = feat // 2
-        if num_feat_patterns == 1:
+        if ncols == 1:
             local_ax = ax
-        elif num_feat_patterns == 2:
-            local_ax = ax[feat % 2]
-        elif num_feat_patterns == 3:
-            local_ax = ax[feat % 3]
         else:
-            local_ax = ax[row, feat % 2]
+            local_ax = ax[feat % ncols]
 
-        local_ax.plot(stat1[:num_plotting_steps, feat], stat2[:num_plotting_steps, feat], '.', ms='0.4')
+        local_ax.plot(stats1[feat][:num_plotting_steps, feat_idx[0][feat]], stats2[feat][:num_plotting_steps, feat_idx[1][feat]], '.', ms='0.4')
 
-        local_ax.set_xlabel(rf"${latex_strs[0]}_{feat}(t)$")
-        local_ax.set_ylabel(rf"${latex_strs[1]}_{(feat + 1)%num_feat_patterns}(t)$" )
-
+        local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]}(t)$")
+        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]}(t)$" )
 
         # local_ax.legend()
 
@@ -236,7 +232,9 @@ def plot_save_plane(stat1, stat2, num_feat_patterns, num_plotting_steps, show_ma
 
 
 def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                  save_not_plot=False, save_path=None):
+                  save_not_plot=False, save_path=None, mode="sq"):
+
+    # mode may be sq or real
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -250,8 +248,6 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
     else:
         fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
-
-    num_plotting_steps_arange = np.arange(num_plotting_steps)
 
     latex_str = feat_name_to_latex(stat_name)
 
@@ -267,8 +263,13 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         else:
             local_ax = ax[row, feat % 2]
 
-        stat_fft = np.fft.rfft(stat1[:num_plotting_steps, feat]).real
-        freqs = np.fft.rfftfreq(num_plotting_steps)
+        stat_fft = np.fft.fft(stat1[:num_plotting_steps, feat])
+        if mode == "real":
+            stat_fft = stat_fft.real
+        else:
+            stat_fft = stat_fft.real**2 + stat_fft.imag**2
+
+        freqs = np.fft.fftfreq(num_plotting_steps)
         local_ax.plot(freqs, stat_fft)
         # local_ax.specgram(stat1[:num_plotting_steps, feat], Fs=1)
 
@@ -277,7 +278,11 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         elif feat > num_feat_patterns - 3:
             local_ax.set_xlabel(r"$Hz$")
 
-        local_ax.set_ylabel(fr"Mag. of ${latex_str}_{{{feat},t}}$")
+        if mode == "real":
+            local_ax.set_ylabel(fr"Mag. of re(${latex_str}_{{{feat},t}}$)")
+        else:
+            local_ax.set_ylabel(fr"Mag. of ${latex_str}_{{{feat},t}}$")
+
 
         local_ax.set_xlim(freqs[0], freqs[-1])
 
