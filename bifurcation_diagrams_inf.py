@@ -128,7 +128,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str,
             reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights, num_segments_corrs,
             pe_mode, se_per_contribution, keep_context, reverse_betas, gaussian_scale_str, save_non_transient,
-            min_max_beta_to_show=None):
+            min_max_beta_to_show=None, show_title=False):
 
     reverse_betas_str = ""
     if reverse_betas:
@@ -192,7 +192,10 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                       str(ini_token_idx) + "-transient_steps-" + str(
                                 num_transient_steps) + image_format)
 
-                    title = f"CORR_MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed}"
+                    if show_title:
+                        title = f"CORR_MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed}"
+                    else:
+                        title = None
 
                     plot_bifurcation_diagram(stat_results_beta_list[min_beta_idx:max_beta_idx],
                                              beta_list[min_beta_idx:max_beta_idx], num_feat_patterns, stat_save_path,

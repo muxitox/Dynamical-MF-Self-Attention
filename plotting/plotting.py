@@ -122,7 +122,7 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
     plt.show()
 
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                         save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=True):
+                         save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=False):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -130,7 +130,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
     nrows = (num_feat_patterns + 1) // 2
 
-    col_size = 12
+    col_size = 9
 
     if num_feat_patterns == 1:
         fig, ax = plt.subplots(1, 1, figsize=(col_size*num_feat_patterns, 4), constrained_layout=True)
@@ -159,7 +159,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label="Signal")
         if plot_hilbert:
             analytic_signal = hilbert(stat1[:num_plotting_steps, feat])
-            local_ax.plot(num_plotting_steps_arange, np.abs(analytic_signal), label="Hilbert tr")
+            local_ax.plot(num_plotting_steps_arange, np.abs(analytic_signal), alpha=0.5, label="Hilbert tr")
 
 
         if num_feat_patterns == 3:
@@ -263,13 +263,14 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         else:
             local_ax = ax[row, feat % 2]
 
-        stat_fft = np.fft.fft(stat1[:num_plotting_steps, feat])
+        stat_fft = np.fft.rfft(stat1[:num_plotting_steps, feat])
         if mode == "real":
             stat_fft = stat_fft.real
+
         else:
             stat_fft = stat_fft.real**2 + stat_fft.imag**2
 
-        freqs = np.fft.fftfreq(num_plotting_steps)
+        freqs = np.fft.rfftfreq(num_plotting_steps)
         local_ax.plot(freqs, stat_fft)
         # local_ax.specgram(stat1[:num_plotting_steps, feat], Fs=1)
 
@@ -279,9 +280,9 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
             local_ax.set_xlabel(r"$Hz$")
 
         if mode == "real":
-            local_ax.set_ylabel(fr"Mag. of re(${latex_str}_{{{feat},t}}$)")
+            local_ax.set_ylabel(fr"re(Mag.) of ${latex_str}_{{{feat},t}}$")
         else:
-            local_ax.set_ylabel(fr"Mag. of ${latex_str}_{{{feat},t}}$")
+            local_ax.set_ylabel(fr"Mag.$^2$ of ${latex_str}_{{{feat},t}}$")
 
 
         local_ax.set_xlim(freqs[0], freqs[-1])
