@@ -38,7 +38,8 @@ if __name__ == "__main__":
     pe_mode = 0
     se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
 
-    normalize_weights_str = "np.sqrt(N)*M"
+    normalize_weights_str = "N*M"
+    compute_inf_normalization = True
     reorder_weights = False
 
     save_not_plot = True
@@ -69,7 +70,8 @@ if __name__ == "__main__":
                                      reorder_weights=reorder_weights,
                                      correlations_from_weights=correlations_from_weights,
                                      semantic_embedding_bitsize=tentative_semantic_embedding_size,
-                                     se_per_contribution=se_per_contribution, pe_mode=pe_mode)
+                                     se_per_contribution=se_per_contribution, pe_mode=pe_mode,
+                                     compute_inf_normalization=compute_inf_normalization)
 
         HT.reset_data()
 

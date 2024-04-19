@@ -8,7 +8,7 @@ class HopfieldTransformerInfN:
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size,
                  max_sim_steps=512, min_saved_step=0, normalize_weights_str="1", reorder_weights=False,
                  correlations_from_weights=True, num_segments_corrs=3, pe_mode=0, semantic_embedding_bitsize=0,
-                 se_per_contribution=0.95, gaussian_scale_str=None):
+                 se_per_contribution=0.95, gaussian_scale_str=None, compute_inf_normalization=True):
 
         self.beta_o = beta_o
         self.beta_att = beta_att
@@ -20,9 +20,17 @@ class HopfieldTransformerInfN:
         self.embedding_size = semantic_embedding_bitsize + positional_embedding_bitsize
 
         self.context_size = context_size
+        self.num_feat_patterns = num_feat_patterns
+        self.max_sim_steps = max_sim_steps
+        self.min_saved_step = min_saved_step
+        self.num_saved_steps = max_sim_steps - min_saved_step
 
+
+        self.run_exact_inf = compute_inf_normalization
         N = self.embedding_size
         M = num_feat_patterns
+        self.normalize_weights_str = normalize_weights_str
+        self.inf_normalization = self.define_normalization_inf()
 
         # Dynamically compute the normalize_weights_str string
         try:
@@ -250,10 +258,6 @@ class HopfieldTransformerInfN:
         self.corr_signed_q = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_q)
         self.corr_signed_k = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_k)
 
-        self.num_feat_patterns = num_feat_patterns
-        self.max_sim_steps = max_sim_steps
-        self.min_saved_step = min_saved_step
-        self.num_saved_steps = max_sim_steps - min_saved_step
 
         self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))
         self.mq_window = np.zeros(self.num_feat_patterns)
@@ -295,16 +299,31 @@ class HopfieldTransformerInfN:
         mqk = self.mq_window @ self.mk_window["mk"][tau]
         return self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
 
-    def attention_mf(self, t):
+    def softmax(self, key_prob_unnorm, effective_context_size):
+
+        if self.run_exact_inf:
+            # In infty the softmax saturates and evolves into argmax
+            max_val = max(key_prob_unnorm)
+            max_ids = np.argwhere(key_prob_unnorm == max_val)
+            selected_mvs = self.mv_window[max_ids]
+
+            # The array created has 1 more empty dimension than we need, so we index by 0
+            self.att_window = np.mean(selected_mvs, axis=0)[0]
+            # We'll deal with normalization in the mf_computation function
+
+        else:
+            key_prob = softmax(key_prob_unnorm)
+            self.att_window = self.embedding_size * (self.mv_window[:effective_context_size].T @ key_prob)
+
+    def attention_mf_unoptimized(self, t):
 
         effective_context_size = min(self.context_size, t + 1)
 
-        key_prob = np.zeros(effective_context_size)
+        key_prob_unnorm = np.zeros(effective_context_size)
         for tau in range(0, effective_context_size):
-            key_prob[tau] = self.qk_f_mf(tau)
-        key_prob = softmax(key_prob)
+            key_prob_unnorm[tau] = self.qk_f_mf(tau)
 
-        self.att_window = self.embedding_size * (self.mv_window[:effective_context_size].T @ key_prob)
+        self.softmax(key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
         #
@@ -316,7 +335,7 @@ class HopfieldTransformerInfN:
         if t >= self.min_saved_step:
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
 
-    def attention_mf_optimized(self, t):
+    def attention_mf(self, t):
 
         effective_context_size = min(self.context_size, t + 1)
 
@@ -324,9 +343,7 @@ class HopfieldTransformerInfN:
                         optimize=True)
 
         key_prob_unnorm = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
-        key_prob = softmax(key_prob_unnorm)
-
-        self.att_window = self.embedding_size * (self.mv_window[:effective_context_size].T @ key_prob)
+        self.softmax(key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
         #
@@ -361,7 +378,19 @@ class HopfieldTransformerInfN:
             self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
-    def compute_mf_optimized(self, t):
+    def define_normalization_inf(self):
+        if self.normalize_weights_str == "N":
+            total_normalization = 1
+        elif self.normalize_weights_str == "N*M" or self.normalize_weights_str == "M*N":
+            total_normalization = 1 / self.num_feat_patterns
+        elif self.normalize_weights_str == "N*np.sqrt(M)" or self.normalize_weights_str == "np.sqrt(M)*N":
+            total_normalization = 1 / np.sqrt(self.num_feat_patterns)
+        else: # We are asuming normalization constant U < N in this case
+            total_normalization = np.inf
+
+        return total_normalization
+
+    def compute_mf(self, t):
 
         att = self.att_window
 
@@ -378,10 +407,19 @@ class HopfieldTransformerInfN:
         pe_contribution_k = np.einsum('bi,i ->b', self.Wk[:, self.se_bit_size:],
                                       pos_vec, optimize=True) / self.pe_bit_size
 
-        tanh_j_sings = np.tanh(
-            self.beta_o * (1 / self.normalizing_constant) * np.einsum("jb,b->j",
-                                                                      self.sign_matrix[:, :self.num_feat_patterns],
-                                                                      att))
+
+        if self.run_exact_inf:
+            # In infty, we are going to deal with the order of N in the attention divided by U
+
+            tanh_j_sings = np.tanh(
+                self.beta_o * self.inf_normalization * np.einsum("jb,b->j",
+                                                                 self.sign_matrix[:, :self.num_feat_patterns],
+                                                                 att))
+        else:
+            tanh_j_sings = np.tanh(
+                self.beta_o * (1 / self.normalizing_constant) * np.einsum("jb,b->j",
+                                                                          self.sign_matrix[:, :self.num_feat_patterns],
+                                                                          att))
 
         self.context_index = t % self.context_size
 
@@ -420,20 +458,20 @@ class HopfieldTransformerInfN:
         # We initialize the model at the end of the previous execution
         ini_t = self.context_size
         for t in range(ini_t, max_steps):
-            self.compute_mf_optimized(t)
-            self.attention_mf_optimized(t)
+            self.compute_mf(t)
+            self.attention_mf(t)
 
     def simulate_mf(self, x0, max_steps):
 
         # Initialize attention with the info from the initial token
         self.compute_means_from_data(x0, t=0)
-        self.attention_mf_optimized(t=0)
+        self.attention_mf(t=0)
 
         for t in range(1, max_steps):
-            self.compute_mf_optimized(t)
-            self.attention_mf_optimized(t)
+            self.compute_mf(t)
+            self.attention_mf(t)
 
-    # def compute_mf(self, t):
+    # def compute_mf_unoptimized(self, t):
     #
     #     att = self.att_window
     #     pos_vec = self.vocab.encode_pos(t % self.context_size)
