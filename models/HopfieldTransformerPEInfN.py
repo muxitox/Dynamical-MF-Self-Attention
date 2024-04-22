@@ -8,7 +8,7 @@ class HopfieldTransformerInfN:
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size,
                  max_sim_steps=512, min_saved_step=0, normalize_weights_str="1", reorder_weights=False,
                  correlations_from_weights=True, num_segments_corrs=3, pe_mode=0, semantic_embedding_bitsize=0,
-                 se_per_contribution=0.95, gaussian_scale_str=None, compute_inf_normalization=True):
+                 se_per_contribution=0.95, gaussian_scale_str=None, compute_inf_normalization=True, N_normalization=None):
 
         self.beta_o = beta_o
         self.beta_att = beta_att
@@ -25,12 +25,22 @@ class HopfieldTransformerInfN:
         self.min_saved_step = min_saved_step
         self.num_saved_steps = max_sim_steps - min_saved_step
 
+        self.N_normalization = N_normalization
+        if N_normalization is None:
+            self.N_normalization = semantic_embedding_bitsize
+
+        self.N_normalization += positional_embedding_bitsize
+
 
         self.run_exact_inf = compute_inf_normalization
-        N = self.embedding_size
+        N = self.N_normalization
         M = num_feat_patterns
         self.normalize_weights_str = normalize_weights_str
         self.inf_normalization = self.define_normalization_inf()
+
+        self.se_bit_size = 99
+        self.embedding_size = semantic_embedding_bitsize + positional_embedding_bitsize
+
 
         # Dynamically compute the normalize_weights_str string
         try:
@@ -297,7 +307,7 @@ class HopfieldTransformerInfN:
     def qk_f_mf(self, tau):
 
         mqk = self.mq_window @ self.mk_window["mk"][tau]
-        return self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
+        return self.beta_att * mqk
 
     def softmax(self, key_prob_unnorm, effective_context_size):
 
@@ -312,8 +322,8 @@ class HopfieldTransformerInfN:
             # We'll deal with normalization in the mf_computation function
 
         else:
-            key_prob = softmax(key_prob_unnorm)
-            self.att_window = self.embedding_size * (self.mv_window[:effective_context_size].T @ key_prob)
+            key_prob = softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant)
+            self.att_window = self.N_normalization * self.mv_window[:effective_context_size].T @ key_prob
 
     def attention_mf_unoptimized(self, t):
 
@@ -342,7 +352,7 @@ class HopfieldTransformerInfN:
         mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
                         optimize=True)
 
-        key_prob_unnorm = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
+        key_prob_unnorm = self.beta_att * mqk
         self.softmax(key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
@@ -354,6 +364,19 @@ class HopfieldTransformerInfN:
 
         if t >= self.min_saved_step:
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
+
+    # def attention_mf_optimized(self, t):
+    #
+    #     effective_context_size = min(self.context_size, t + 1)
+    #
+    #     mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
+    #                     optimize=True)
+    #
+    #     key_prob_unnorm = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
+    #     key_prob = softmax(key_prob_unnorm)
+    #
+    #     self.att_window = self.embedding_size * (self.mv_window[:effective_context_size].T @ key_prob)
+
 
     def save_stats(self, t, mo, mo_se, mv, mq, mk):
         index_t = t - self.min_saved_step
@@ -411,32 +434,38 @@ class HopfieldTransformerInfN:
         if self.run_exact_inf:
             # In infty, we are going to deal with the order of N in the attention divided by U
 
-            tanh_j_sings = np.tanh(
-                self.beta_o * self.inf_normalization * np.einsum("jb,b->j",
+
+            sign_att_patterns = self.beta_o *  np.einsum("jb,b->j",
                                                                  self.sign_matrix[:, :self.num_feat_patterns],
-                                                                 att))
+                                                                 att)
+
+            if not np.allclose(sign_att_patterns, 0):
+                # If result is not 0, normalize by inf
+                sign_att_patterns *= self.inf_normalization
+            tanh_j_signs = np.tanh(sign_att_patterns)
+
         else:
-            tanh_j_sings = np.tanh(
+            tanh_j_signs = np.tanh(
                 self.beta_o * (1 / self.normalizing_constant) * np.einsum("jb,b->j",
                                                                           self.sign_matrix[:, :self.num_feat_patterns],
                                                                           att))
 
         self.context_index = t % self.context_size
 
-        mv_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_v, tanh_j_sings)
+        mv_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_v, tanh_j_signs)
                  / 2 ** (self.num_feat_patterns - 1))
         self.mv_window[self.context_index] = mv_se + (1 - self.se_per_contribution) * pe_contribution_v
 
-        mq_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_q, tanh_j_sings)
+        mq_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_q, tanh_j_signs)
                  / 2 ** (self.num_feat_patterns - 1))
         self.mq_window = mq_se + (1 - self.se_per_contribution) * pe_contribution_q
 
-        mk_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_k, tanh_j_sings)
+        mk_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_k, tanh_j_signs)
                  / 2 ** (self.num_feat_patterns - 1))
         self.mk_window[self.context_index] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
 
         if t >= self.min_saved_step:
-            mo_se = (np.einsum("jb,j->b", self.corr_signed_o, tanh_j_sings)
+            mo_se = (np.einsum("jb,j->b", self.corr_signed_o, tanh_j_signs)
                      / 2 ** (self.num_feat_patterns - 1))
             mo = (self.se_per_contribution * mo_se + (1 - self.se_per_contribution) * pe_contribution_o)
 

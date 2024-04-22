@@ -22,7 +22,8 @@ if __name__ == "__main__":
     # vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    beta = 0.43825   # We'll find the nearest beta in the defined range
+    # 2.2 with seed 2 gives some cycles
+    beta = 2.2  # We'll find the nearest beta in the defined range
 
     # 2 patts: 2.4, 2.45
 
@@ -31,18 +32,19 @@ if __name__ == "__main__":
 
     num_feat_patterns = 3
     num_transient_steps = 100000  # 0 if we want to show the trajectory since the beginning
-    max_sim_steps = num_transient_steps + 20000
+    max_sim_steps = num_transient_steps + 200000
     num_transient_steps_traj = max_sim_steps - num_transient_steps - 250  # 0 if we want to show the trajectory since the beginning
 
     correlations_from_weights = 3
     pe_mode = 0
     se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
 
-    normalize_weights_str = "N*M"
+    N_normalization = 9999
+    normalize_weights_str = "N*np.sqrt(M)"
     compute_inf_normalization = True
     reorder_weights = False
 
-    save_not_plot = True
+    save_not_plot = False
 
     num_ini_tokens = 1
     # Select initial token with seed 0
@@ -71,11 +73,16 @@ if __name__ == "__main__":
                                      correlations_from_weights=correlations_from_weights,
                                      semantic_embedding_bitsize=tentative_semantic_embedding_size,
                                      se_per_contribution=se_per_contribution, pe_mode=pe_mode,
-                                     compute_inf_normalization=compute_inf_normalization)
+                                     compute_inf_normalization=compute_inf_normalization,
+                                     N_normalization=N_normalization)
 
         HT.reset_data()
 
         print(HT.even_corr_o_o)
+        print(HT.even_corr_o_v)
+        print(HT.even_corr_o_q)
+        print(HT.even_corr_o_k)
+
 
         print("Simulating MF Transformer...")
         HT.simulate_mf(x0, max_steps=max_sim_steps)
@@ -105,7 +112,7 @@ if __name__ == "__main__":
                        + str(int(keep_context)))
 
 
-
+        print(folder_path)
 
         # title = (f"MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed} "
         #          f"BETA={beta} NUM_TRANSIENT={num_transient_steps_traj}")
