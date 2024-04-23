@@ -11,8 +11,6 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
            stats_to_save_plot, se_per_contribution_list, correlations_from_weights, num_segments_corrs, pe_mode,
            keep_context, reverse_betas, gaussian_scale_str, save_non_transient, compute_inf_normalization):
 
-    import pdb; pdb.set_trace()
-
 
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
 
