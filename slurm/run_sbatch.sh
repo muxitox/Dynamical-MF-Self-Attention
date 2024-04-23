@@ -2,8 +2,8 @@
 #SBATCH --job-name="transformer-mf"
 #SBATCH -J serialjob
 #SBATCH -D /home/apoc/projects/TransformerMF
-#SBATCH --output /log/exec.%j.out
-#SBATCH --error /log/exec.%j.err
+#SBATCH --output ./log/exec.%j.out
+#SBATCH --error ./log/exec.%j.err
 #SBATCH -N 1
 #SBATCH -p short -t 00:20:00
 #SBATCH --mem=8G
