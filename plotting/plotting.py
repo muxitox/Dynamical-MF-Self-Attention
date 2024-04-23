@@ -4,11 +4,11 @@ import numpy as np
 from scipy.signal import hilbert, chirp
 
 # LaTeX macros
-plt.rc('text', usetex=True)
-plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
-font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
-plt.rc('font', **font)
-plt.rc('legend', **{'fontsize': 14})
+# plt.rc('text', usetex=True)
+# plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
+# font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
+# plt.rc('font', **font)
+# plt.rc('legend', **{'fontsize': 14})
 
 
 def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, num_transient_steps,
