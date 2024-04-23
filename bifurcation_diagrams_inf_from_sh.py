@@ -3,6 +3,15 @@ import time
 from bifurcation_diagrams_inf import runner, plotter
 import argparse
 
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", help="Specify the seed for the RNG", type=int)
 parser.add_argument("--num_feat_patterns", help="Specify the number of features/patterns", type=int)
@@ -12,15 +21,15 @@ parser.add_argument("--positional_embedding_size", help="Specify the PE size", t
 parser.add_argument("--num_transient_steps", help="Specify the number transient steps to discard", type=int)
 parser.add_argument("--max_sim_steps", help="Specify the number max steps to simulate", type=int)
 parser.add_argument("--keep_context", help="Specify whether to keep the context from one exec to another",
-                    type=bool, default=False)
+                    type=str2bool, default=False)
 parser.add_argument("--reverse_betas", help="Specify whether to reverse the order of the betas",
-                    type=bool, default=False)
+                    type=str2bool, default=False)
 parser.add_argument("--reorder_weights", help="Specify whether to create the weight matrices from a reorder of a first one",
-                    type=bool, default=False)
+                    type=str2bool, default=False)
 parser.add_argument("--num_ini_tokens", help="Specify number of initial tokens",
                     type=int, default=1)
 parser.add_argument("--compute_inf_normalization", help="Specify whether to compute the true inf normalization",
-                    type=bool, default=True)
+                    type=str2bool, default=True)
 parser.add_argument("--normalize_weights_str", help="Specify whether the normalization factor",
                     type=str, default="N*np.sqrt(M)")
 parser.add_argument("--correlations_from_weights", help="Specify whether the correlations mode",
@@ -32,7 +41,7 @@ parser.add_argument("--gaussian_scale", help="Specify the Gaussian scale (only a
 parser.add_argument("--num_segments_corrs", help="Specify number of segments when correlations_from_weights==3",
                     type=int, default=0)
 parser.add_argument("--save_non_transient", help="Specify whether to save the transient steps",
-                    type=bool, default=False)
+                    type=str2bool, default=False)
 parser.add_argument("--min_beta", help="Specify the min beta value",
                     type=float, default=3)
 parser.add_argument("--max_beta", help="Specify the max beta value",
@@ -46,9 +55,9 @@ parser.add_argument("--max_pe", help="Specify the max pe value",
 parser.add_argument("--num_pes", help="Specify the number of pe values",
                     type=int, default=3)
 parser.add_argument("--pe_proportion_from_size", help="Specify how to compute the pe importance",
-                    type=bool, default=True)
+                    type=str2bool, default=True)
 parser.add_argument("--save_not_plot", help="Specify the number of pe values",
-                    type=bool, default=True)
+                    type=str2bool, default=True)
 
 
 if __name__ == "__main__":
@@ -105,7 +114,6 @@ if __name__ == "__main__":
     # stats_to_save_plot = ["mo", "mo_se"]
 
     start = time.time()
-
     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights,
            stats_to_save_plot, se_per_contribution, correlations_from_weights, num_segments_corrs, pe_mode,
