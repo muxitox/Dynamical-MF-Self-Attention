@@ -13,4 +13,4 @@
 module load Python/3.9.5-GCCcore-10.3.0
 source venv/bin/activate
 
-python ../simulate_mf_trajectory_inf.py
+python simulate_mf_trajectory_inf.py
