@@ -44,7 +44,7 @@ if __name__ == "__main__":
     compute_inf_normalization = True
     reorder_weights = False
 
-    save_not_plot = False
+    save_not_plot = True
 
     num_ini_tokens = 1
     # Select initial token with seed 0
