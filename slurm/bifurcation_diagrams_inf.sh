@@ -61,3 +61,4 @@ ARGS=" \
 
 echo $ARGS
 python bifurcation_diagrams_inf_from_sh.py $ARGS
+#python ../bifurcation_diagrams_inf_from_sh.py $ARGS

@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
     start = time.time()
     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-           max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights,
+           num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights,
            stats_to_save_plot, se_per_contribution, correlations_from_weights, num_segments_corrs, pe_mode,
            keep_context, reverse_betas, gaussian_scale, save_non_transient, compute_inf_normalization)
 

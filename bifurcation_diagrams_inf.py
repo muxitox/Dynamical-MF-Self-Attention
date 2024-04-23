@@ -6,11 +6,10 @@ import os
 import time
 
 
-def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list, num_transient_steps,
            max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights,
            stats_to_save_plot, se_per_contribution_list, correlations_from_weights, num_segments_corrs, pe_mode,
            keep_context, reverse_betas, gaussian_scale_str, save_non_transient, compute_inf_normalization):
-
 
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
 
@@ -236,8 +235,8 @@ if __name__ == "__main__":
 
     # beta_list = np.linspace(0, 3, 1000)
     beta_list = np.linspace(0, 3.5, 1200)
-    se_per_contribution = (tentative_semantic_embedding_size /
-                           (tentative_semantic_embedding_size + positional_embedding_size))
+    se_per_contribution_list = [(tentative_semantic_embedding_size /
+                           (tentative_semantic_embedding_size + positional_embedding_size))]
 
     seed_list = [1]
     num_feat_patterns_list = [3]
@@ -269,8 +268,8 @@ if __name__ == "__main__":
     start = time.time()
 
     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-           max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights,
-           stats_to_save_plot, se_per_contribution, correlations_from_weights, num_segments_corrs, pe_mode,
+           num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str, reorder_weights,
+           stats_to_save_plot, se_per_contribution_list, correlations_from_weights, num_segments_corrs, pe_mode,
            keep_context, reverse_betas, gaussian_scale, save_non_transient, compute_inf_normalization)
 
     end = time.time()
@@ -282,5 +281,5 @@ if __name__ == "__main__":
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str,
             reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode,
-            se_per_contribution, keep_context, reverse_betas, gaussian_scale, save_non_transient,
+            se_per_contribution_list, keep_context, reverse_betas, gaussian_scale, save_non_transient,
             compute_inf_normalization)
