@@ -5,7 +5,7 @@
 #SBATCH --output /log/exec.%j.out
 #SBATCH --error /log/exec.%j.err
 #SBATCH -N 1
-#SBATCH -t 00:20:00
+#SBATCH -p short -t 00:20:00
 #SBATCH --mem=8G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=apoc@bcamath.org
