@@ -284,6 +284,9 @@ class HopfieldTransformerInfN:
         self.beta_o = beta_o
         self.beta_att = beta_att
 
+    def set_se_per_contribution(self, se_per):
+        self.se_per_contribution = se_per
+
     def reset_data(self):
 
         self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))
@@ -439,9 +442,9 @@ class HopfieldTransformerInfN:
                                                                  self.sign_matrix[:, :self.num_feat_patterns],
                                                                  att)
 
-            if not np.allclose(sign_att_patterns, 0):
-                # If result is not 0, normalize by inf
-                sign_att_patterns *= self.inf_normalization
+            idx_not_zero = np.where(sign_att_patterns != 0)
+            # If result is not 0, normalize by inf
+            sign_att_patterns[idx_not_zero] *= self.inf_normalization
             tanh_j_signs = np.tanh(sign_att_patterns)
 
         else:
