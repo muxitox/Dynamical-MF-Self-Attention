@@ -1,6 +1,6 @@
 #!/bin/bash
 module load Python/3.9.5-GCCcore-10.3.0
-source venv/bin/activate
+source ../venv/bin/activate
 
 SEED=$1
 NUM_FEAT_PATTERNS=$2
