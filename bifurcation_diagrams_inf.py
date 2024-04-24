@@ -58,7 +58,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                         beta_att = beta_list[beta_idx]
                         HT.set_betas(beta_o, beta_att)
 
-                        print(f"Computing seed {seed} beta {beta_idx}/{len(beta_list)}")
+                        print(f"Computing seed {seed} beta {beta_idx}/{len(beta_list)}", flush=True)
 
                         if beta_idx == 0 or not keep_context:
                             # For the first beta in the series reset everything and start from scratch
