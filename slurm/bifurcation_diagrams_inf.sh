@@ -3,8 +3,8 @@
 #SBATCH -D /home/apoc/projects/TransformerMF
 #SBATCH --output ./log/exec.%j.out
 #SBATCH --error ./log/exec.%j.err
-#SBATCH -N 1
-#SBATCH -p large -t 32:00:00
+#SBATCH -N 1 -c 2
+#SBATCH -p large -t 48:00:00
 #SBATCH --mem=8G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=apoc@bcamath.org

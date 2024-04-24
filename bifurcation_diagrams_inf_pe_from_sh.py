@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from bifurcation_diagrams_inf import runner, plotter
+from bifurcation_diagrams_inf_pe import runner, plotter
 import argparse
 
 def str2bool(v):
@@ -54,8 +54,6 @@ parser.add_argument("--max_pe", help="Specify the max pe value",
                     type=float, default=3)
 parser.add_argument("--num_pes", help="Specify the number of pe values",
                     type=int, default=3)
-parser.add_argument("--pe_proportion_from_size", help="Specify how to compute the pe importance",
-                    type=str2bool, default=True)
 parser.add_argument("--save_not_plot", help="Specify the number of pe values",
                     type=str2bool, default=True)
 
@@ -80,11 +78,8 @@ if __name__ == "__main__":
 
     # beta_list = np.linspace(0, 3, 1000)
     beta_list = np.linspace(args.min_beta, args.max_beta, args.num_betas)
-    if args.pe_proportion_from_size:
-        se_per_contribution = [(tentative_semantic_embedding_size /
-                           (tentative_semantic_embedding_size + positional_embedding_size))]
-    else:
-        se_per_contribution = [1 - np.linspace(args.min_pe, args.max_pe, args.num_pe)]
+
+    se_per_contribution = 1 - np.linspace(args.min_pe, args.max_pe, args.num_pes)
 
     seed_list = [args.seed]
     num_feat_patterns_list = [args.num_feat_patterns]

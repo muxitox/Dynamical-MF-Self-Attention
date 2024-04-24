@@ -29,7 +29,6 @@ MAX_PE=${14}
 NUM_PES=${15}
 TENTATIVE_SEMANTIC_EMBEDDING_SIZE=${16}
 POSITIONAL_EMBEDDING_SIZE=${17}
-PE_FROM_SIZE=${18}
 
 
 ARGS=" \
@@ -55,10 +54,9 @@ ARGS=" \
 --num_pes=$NUM_PES \
 --tentative_semantic_embedding_size=$TENTATIVE_SEMANTIC_EMBEDDING_SIZE \
 --positional_embedding_size=$POSITIONAL_EMBEDDING_SIZE \
---pe_proportion_from_size=$PE_FROM_SIZE \
 --save_not_plot=True
 "
 
 echo $ARGS
-python bifurcation_diagrams_inf_from_sh.py $ARGS
-#python ../bifurcation_diagrams_inf_from_sh.py $ARGS
+python bifurcation_diagrams_inf_pe_from_sh.py $ARGS
+#python ../bifurcation_diagrams_inf_pe_from_sh.py $ARGS

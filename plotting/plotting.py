@@ -11,8 +11,8 @@ from scipy.signal import hilbert, chirp
 # plt.rc('legend', **{'fontsize': 14})
 
 
-def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns, save_path, num_transient_steps,
-                             feat_name, show_max_num_patterns=None, save_not_plot=True, title=None):
+def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_path, num_transient_steps,
+                             feat_name, show_max_num_patterns=None, save_not_plot=True, title=None, is_beta=True):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -28,6 +28,9 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
         fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
 
     latex_str = feat_name_to_latex(feat_name)
+    x_label = r'$\beta$'
+    if not is_beta:
+        x_label = r'$SE\%$'
 
     for feat in range(0, num_feat_patterns):
 
@@ -41,23 +44,23 @@ def plot_bifurcation_diagram(mo_results_beta_list, beta_list, num_feat_patterns,
         else:
             local_ax = ax[row, feat % 2]
 
-        for b_idx in range(0, len(beta_list)):
-            unique_values_feat = mo_results_beta_list[b_idx][num_transient_steps:, feat]
-            beta_values_feat = np.ones(len(unique_values_feat)) * beta_list[b_idx]
+        for b_idx in range(0, len(x_list)):
+            unique_values_feat = results_y_list[b_idx][num_transient_steps:, feat]
+            beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
 
             local_ax.plot(beta_values_feat, unique_values_feat, c='tab:blue', ls='', marker='.', ms='0.05')
 
 
-        if feat_name != "att" and beta_list[-1] > 3.5:
+        if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
 
 
-        local_ax.set_xlim(beta_list[0], beta_list[-1])
+        local_ax.set_xlim(x_list[0], x_list[-1])
 
         if num_feat_patterns==3:
-            local_ax.set_xlabel(r"$\beta$")
+            local_ax.set_xlabel(x_label)
         elif feat > num_feat_patterns-3:
-            local_ax.set_xlabel(r"$\beta$")
+            local_ax.set_xlabel(x_label)
 
         local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
         # local_ax.legend(loc="upper center")
