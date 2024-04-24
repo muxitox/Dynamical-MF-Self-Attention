@@ -17,7 +17,7 @@ if __name__ == "__main__":
     # Create variables for the Hopfield Transformer (HT)
     seed_list = [1]
     beta_list = np.linspace(0.35, 0.8, 1000)
-    se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
+    se_per_contribution_list = [tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)]
     num_feat_patterns_list = [3]
     ini_tokens_list = [0]
     num_transient_steps = 100000
@@ -38,7 +38,8 @@ if __name__ == "__main__":
         raise ("You cannot discard more timesteps than you are simulating.")
 
     reorder_weights = False
-    normalize_weights_str = "np.sqrt(N)*M"
+    normalize_weights_str = "N*np.sqrt(M)"
+    compute_inf_normalization = True
     correlations_from_weights = 3  # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means, 3 segments
     num_segments_corrs = 3         # Only applicable if correlations_from_weights=3
     pe_mode = 0
@@ -51,6 +52,7 @@ if __name__ == "__main__":
 
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str,
-            reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights, num_segments_corrs,
-            pe_mode, se_per_contribution, keep_context, reverse_betas, gaussian_scale, save_non_transient,
-            min_max_beta_to_show=min_max_beta_to_show)
+            reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode,
+            se_per_contribution_list, keep_context, reverse_betas, gaussian_scale, save_non_transient,
+            compute_inf_normalization, min_max_beta_to_show=min_max_beta_to_show)
+
