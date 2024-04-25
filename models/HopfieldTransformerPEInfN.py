@@ -38,10 +38,6 @@ class HopfieldTransformerInfN:
         self.normalize_weights_str = normalize_weights_str
         self.inf_normalization = self.define_normalization_inf()
 
-        self.se_bit_size = 99
-        self.embedding_size = semantic_embedding_bitsize + positional_embedding_bitsize
-
-
         # Dynamically compute the normalize_weights_str string
         try:
             exec_str = f"self.normalizing_constant = {normalize_weights_str}"
@@ -502,6 +498,8 @@ class HopfieldTransformerInfN:
         for t in range(1, max_steps):
             self.compute_mf(t)
             self.attention_mf(t)
+            if t%10000 == 0:
+                print(t)
 
     # def compute_mf_unoptimized(self, t):
     #
