@@ -6,9 +6,10 @@ from scipy.special import softmax
 class HopfieldTransformerInfN:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size,
-                 max_sim_steps=512, min_saved_step=0, normalize_weights_str="1", reorder_weights=False,
-                 correlations_from_weights=True, num_segments_corrs=3, pe_mode=0, semantic_embedding_bitsize=0,
-                 se_per_contribution=0.95, gaussian_scale_str=None, compute_inf_normalization=True, N_normalization=None):
+                 max_sim_steps=512, min_saved_step=0, normalize_weights_str_att="N**2", normalize_weights_str_o="N",
+                 reorder_weights=False, correlations_from_weights=True, num_segments_corrs=3, pe_mode=0,
+                 semantic_embedding_bitsize=0, se_per_contribution=0.95, gaussian_scale_str=None,
+                 compute_inf_normalization=True, N_normalization=None):
 
         self.beta_o = beta_o
         self.beta_att = beta_att
@@ -35,15 +36,18 @@ class HopfieldTransformerInfN:
         self.run_exact_inf = compute_inf_normalization
         N = self.N_normalization
         M = num_feat_patterns
-        self.normalize_weights_str = normalize_weights_str
-        self.inf_normalization = self.define_normalization_inf()
+        self.normalize_weights_str_att = normalize_weights_str_att
+        self.normalize_weights_str_o = normalize_weights_str_o
+        self.inf_normalization = self.define_normalization_inf_o()
 
         # Dynamically compute the normalize_weights_str string
         try:
-            exec_str = f"self.normalizing_constant = {normalize_weights_str}"
+            exec_str = f"self.normalizing_constant_att = {self.normalize_weights_str_att}"
+            exec_str3 = f"self.normalizing_constant_o = {self.normalize_weights_str_o}"
             exec_str2 = f"self.gaussian_scale = {gaussian_scale_str}"
             exec(exec_str)
             exec(exec_str2)
+            exec(exec_str3)
         except:
             print("Either the exec_str for the normalizing_constant or for the gaussian_scale are not well defined")
             raise
@@ -310,7 +314,7 @@ class HopfieldTransformerInfN:
 
     def softmax(self, key_prob_unnorm, effective_context_size):
 
-        if self.run_exact_inf:
+        if self.run_exact_inf and self.normalize_weights_str_att!="N**2":
             # In infty the softmax saturates and evolves into argmax
             max_val = max(key_prob_unnorm)
             max_ids = np.argwhere(key_prob_unnorm == max_val)
@@ -320,8 +324,12 @@ class HopfieldTransformerInfN:
             self.att_window = np.mean(selected_mvs, axis=0)[0]
             # We'll deal with normalization in the mf_computation function
 
+        elif self.run_exact_inf:
+            key_prob = softmax(key_prob_unnorm)
+            # We'll deal with normalization in the mf_computation function
+            self.att_window = self.mv_window[:effective_context_size].T @ key_prob
         else:
-            key_prob = softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant)
+            key_prob = softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant_att)
             self.att_window = self.N_normalization * self.mv_window[:effective_context_size].T @ key_prob
 
     def attention_mf_unoptimized(self, t):
@@ -400,12 +408,12 @@ class HopfieldTransformerInfN:
             self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
-    def define_normalization_inf(self):
-        if self.normalize_weights_str == "N":
+    def define_normalization_inf_o(self):
+        if self.normalize_weights_str_o == "N":
             total_normalization = 1
-        elif self.normalize_weights_str == "N*M" or self.normalize_weights_str == "M*N":
+        elif self.normalize_weights_str_o == "N*M" or self.normalize_weights_str_o == "M*N":
             total_normalization = 1 / self.num_feat_patterns
-        elif self.normalize_weights_str == "N*np.sqrt(M)" or self.normalize_weights_str == "np.sqrt(M)*N":
+        elif self.normalize_weights_str_o == "N*np.sqrt(M)" or self.normalize_weights_str_o == "np.sqrt(M)*N":
             total_normalization = 1 / np.sqrt(self.num_feat_patterns)
         else: # We are asuming normalization constant U < N in this case
             total_normalization = np.inf
@@ -437,17 +445,16 @@ class HopfieldTransformerInfN:
             sign_att_patterns = self.beta_o *  np.einsum("jb,b->j",
                                                                  self.sign_matrix[:, :self.num_feat_patterns],
                                                                  att)
-
             idx_not_zero = np.where(sign_att_patterns != 0)
             # If result is not 0, normalize by inf
             sign_att_patterns[idx_not_zero] *= self.inf_normalization
             tanh_j_signs = np.tanh(sign_att_patterns)
-
         else:
             tanh_j_signs = np.tanh(
-                self.beta_o * (1 / self.normalizing_constant) * np.einsum("jb,b->j",
+                self.beta_o * (1 / self.normalizing_constant_o) * np.einsum("jb,b->j",
                                                                           self.sign_matrix[:, :self.num_feat_patterns],
                                                                           att))
+
 
         self.context_index = t % self.context_size
 
