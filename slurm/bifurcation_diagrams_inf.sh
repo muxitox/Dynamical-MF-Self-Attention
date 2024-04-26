@@ -9,15 +9,16 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=apoc@bcamath.org
 
-module load Python/3.9.5-GCCcore-10.3.0
-source venv/bin/activate
+#module load Python/3.9.5-GCCcore-10.3.0
+#source venv/bin/activate
 
 SEED=$1
 NUM_FEAT_PATTERNS=$2
 NUM_TRANSIENT_STEPS=$3
 MAX_SIM_STEPS=$4
 COMPUTE_INF_NORMALIZATION=$5
-NORMALIZE_WEIGHTS_STR=$6
+NORMALIZE_WEIGHTS_STR_ATT=$6
+NORMALIZE_WEIGHTS_STR_O=${19}
 CORRELATIONS_FROM_WEIGHTS=$7
 PE_MODE=$8
 NUM_SEGMENTS_CORRS=$9
@@ -42,7 +43,8 @@ ARGS=" \
 --reorder_weights=False \
 --num_ini_tokens=1 \
 --compute_inf_normalization=$COMPUTE_INF_NORMALIZATION \
---normalize_weights_str=$NORMALIZE_WEIGHTS_STR \
+--normalize_weights_str_att=$NORMALIZE_WEIGHTS_STR_ATT \
+--normalize_weights_str_o=$NORMALIZE_WEIGHTS_STR_O \
 --correlations_from_weights=$CORRELATIONS_FROM_WEIGHTS \
 --pe_mode=$PE_MODE \
 --num_segments_corrs=$NUM_SEGMENTS_CORRS \
