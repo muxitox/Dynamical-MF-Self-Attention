@@ -505,8 +505,6 @@ class HopfieldTransformerInfN:
         for t in range(1, max_steps):
             self.compute_mf(t)
             self.attention_mf(t)
-            if t%10000 == 0:
-                print(t)
 
     # def compute_mf_unoptimized(self, t):
     #
