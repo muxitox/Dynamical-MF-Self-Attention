@@ -9,7 +9,7 @@ class HopfieldTransformerInfN:
                  max_sim_steps=512, min_saved_step=0, normalize_weights_str_att="N**2", normalize_weights_str_o="N",
                  reorder_weights=False, correlations_from_weights=True, num_segments_corrs=3, pe_mode=0,
                  semantic_embedding_bitsize=0, se_per_contribution=0.95, gaussian_scale_str=None,
-                 compute_inf_normalization=True, N_normalization=None):
+                 compute_inf_normalization=True, N_normalization=None, scaling_o=1, scaling_att=1):
 
         self.beta_o = beta_o
         self.beta_att = beta_att
@@ -25,6 +25,9 @@ class HopfieldTransformerInfN:
         self.max_sim_steps = max_sim_steps
         self.min_saved_step = min_saved_step
         self.num_saved_steps = max_sim_steps - min_saved_step
+
+        self.scaling_o = scaling_o
+        self.scaling_att = scaling_att
 
         self.N_normalization = N_normalization
         if N_normalization is None:
@@ -359,7 +362,7 @@ class HopfieldTransformerInfN:
         mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
                         optimize=True)
 
-        key_prob_unnorm = self.beta_att * mqk
+        key_prob_unnorm = self.beta_att * self.scaling_att * mqk
         self.softmax(key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
@@ -441,20 +444,18 @@ class HopfieldTransformerInfN:
         if self.run_exact_inf:
             # In infty, we are going to deal with the order of N in the attention divided by U
 
+            sign_att_patterns = (self.beta_o * self.scaling_o *
+                                 np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
+                                           att))
 
-            sign_att_patterns = self.beta_o *  np.einsum("jb,b->j",
-                                                                 self.sign_matrix[:, :self.num_feat_patterns],
-                                                                 att)
             idx_not_zero = np.where(sign_att_patterns != 0)
             # If result is not 0, normalize by inf
             sign_att_patterns[idx_not_zero] *= self.inf_normalization
             tanh_j_signs = np.tanh(sign_att_patterns)
         else:
-            tanh_j_signs = np.tanh(
-                self.beta_o * (1 / self.normalizing_constant_o) * np.einsum("jb,b->j",
-                                                                          self.sign_matrix[:, :self.num_feat_patterns],
-                                                                          att))
-
+            tanh_j_signs = np.tanh(self.beta_o * self.scaling_o * (1 / self.normalizing_constant_o) *
+                                   np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
+                                             att))
 
         self.context_index = t % self.context_size
 

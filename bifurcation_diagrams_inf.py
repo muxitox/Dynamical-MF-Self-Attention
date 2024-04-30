@@ -6,11 +6,82 @@ import os
 import time
 
 
+def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+           num_transient_steps, max_sim_steps, context_size, normalize_weights_str_att,
+           normalize_weights_str_o, reorder_weights, se_per_contribution,
+           correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale_str,
+           save_non_transient, compute_inf_normalization, scaling_o, scaling_att):
+
+    if reverse_betas:
+        beta_string = ("/min_beta-" + str(beta_list[-1]) + "-max_beta-" + str(beta_list[0]) +
+                       "-num_betas-" + str(len(beta_list)) + "-reverse_betas-keep_context-" +
+                       str(int(keep_context)))
+    else:
+        beta_string = ("/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1]) +
+                       "-num_betas-" + str(len(beta_list)) + "-keep_context-" +
+                       str(int(keep_context)))
+
+    if correlations_from_weights != 0:
+        gaussian_scale_name_str = ""
+    else:
+        gaussian_scale_name_str = f"-gaussian_scale-{gaussian_scale_str}"
+
+    if save_non_transient == True:
+        save_non_transient_str = ""
+    else:
+        save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
+
+    if normalize_weights_str_o == normalize_weights_str_att:
+        normalize_weights_name_str = "-normalize_weights-" + normalize_weights_str_att
+    else:
+        normalize_weights_name_str = ("-normalize_weights_att-" + normalize_weights_str_att +
+                                      "-normalize_weights_o-" + normalize_weights_str_o)
+
+    scaling_str = ""
+    if scaling_o != 1:
+        scaling_str += "-scaling_o-" + str(scaling_o)
+    if scaling_att != 1:
+        scaling_str += "-scaling_att-" + str(scaling_att)
+
+    compute_inf_normalization_str = ""
+    if compute_inf_normalization:
+        compute_inf_normalization_str = "-inf_norm"
+
+    # Save/plot results for each ini_token, W config, and num_feat_patterns
+    folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights)
+                   + "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-"
+                   + str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
+                   + "/num_feat_patterns-" + str(num_feat_patterns) + normalize_weights_name_str + scaling_str +
+                   compute_inf_normalization_str + "-reorder_weights-" +
+                   str(int(reorder_weights)) + "-num_segments_corrs-" + str(num_segments_corrs)
+                   + "-pe_mode-" + str(pe_mode) + gaussian_scale_name_str + "/max_sim_steps-"
+                   + str(max_sim_steps) + save_non_transient_str + "-context_size-" + str(context_size)
+                   + beta_string)
+
+    return folder_path
+
+
+
+def define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list):
+    if ini_token_from_w == 0:
+        # Encode initial token with position 0
+        x0 = ini_tokens_list[ini_token_idx]
+    elif ini_token_from_w == 1:
+        x0 = HT.Wo[ini_token_idx]
+    elif ini_token_from_w == 2:
+        x0 = HT.Wv[ini_token_idx]
+    elif ini_token_from_w == 3:
+        x0 = HT.Wq[ini_token_idx]
+    elif ini_token_from_w == 4:
+        x0 = HT.Wk[ini_token_idx]
+
+    return x0
+
 def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
            normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
            correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale_str,
-           save_non_transient, compute_inf_normalization):
+           save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w):
 
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
 
@@ -66,8 +137,10 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                             # For the first beta in the series reset everything and start from scratch
                             # Reset the matrix for storing results
                             HT.reset_data()
-                            # Encode initial token with position 0
-                            x0 = ini_tokens_list[ini_token_idx]
+
+                            x0 = define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list)
+                            if ini_token_from_w != 0:
+                                x0[-positional_embedding_size:] = -1  # Initialize position to -1
 
                             # Simulate for max_sim_steps steps
                             HT.simulate_mf(x0, max_steps=max_sim_steps)
@@ -87,49 +160,26 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                             # Flip again the vector to keep the order
                             results_beta_list[stat_name] = np.flip(results_beta_list[stat_name])
 
-                        beta_string = ("/min_beta-" + str(beta_list[-1]) + "-max_beta-" + str(beta_list[0]) +
-                                       "-num_betas-" + str(len(beta_list)) + "-reverse_betas-keep_context-" +
-                                       str(int(keep_context)))
-                    else:
-                        beta_string = ("/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1]) +
-                                       "-num_betas-" + str(len(beta_list)) + "-keep_context-" +
-                                       str(int(keep_context)))
+                    folder_path = create_pathname(num_feat_patterns, tentative_semantic_embedding_size,
+                                                  positional_embedding_size, beta_list, num_transient_steps,
+                                                  max_sim_steps, context_size, normalize_weights_str_att,
+                                                  normalize_weights_str_o, reorder_weights, se_per_contribution,
+                                                  correlations_from_weights, num_segments_corrs, pe_mode, keep_context,
+                                                  reverse_betas, gaussian_scale_str, save_non_transient,
+                                                  compute_inf_normalization, scaling_o, scaling_att)
 
-                    if correlations_from_weights != 0:
-                        gaussian_scale_name_str = ""
-                    else:
-                        gaussian_scale_name_str = f"-gaussian_scale-{gaussian_scale_str}"
-
-                    if save_non_transient == True:
-                        save_non_transient_str = ""
-                    else:
-                        save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
-
-                    if normalize_weights_str_o == normalize_weights_str_att:
-                        normalize_weights_name_str = "-normalize_weights-" + normalize_weights_str_att
-                    else:
-                        normalize_weights_name_str = ("-normalize_weights_att-" + normalize_weights_str_att +
-                                                      "-normalize_weights_o-" + normalize_weights_str_o)
-
-                    compute_inf_normalization_str = ""
-                    if compute_inf_normalization:
-                        compute_inf_normalization_str = "-inf_norm"
-
-                    # Save/plot results for each ini_token, W config, and num_feat_patterns
-                    folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights)
-                                   + "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-"
-                                   + str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
-                                   + "/num_feat_patterns-" + str(num_feat_patterns) + normalize_weights_name_str +
-                                   compute_inf_normalization_str + "-reorder_weights-" +
-                                   str(int(reorder_weights)) + "-num_segments_corrs-" + str(num_segments_corrs)
-                                   + "-pe_mode-" + str(pe_mode) + gaussian_scale_name_str + "/max_sim_steps-"
-                                   + str(max_sim_steps) + save_non_transient_str + "-context_size-" + str(context_size)
-                                   + beta_string + "/stats")
+                    folder_path = folder_path + "/stats"
 
                     if not os.path.exists(folder_path):
                         os.makedirs(folder_path)
 
-                    stats_data_path = folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx) + ".npz"
+
+                    ini_token_mode_str = ""
+                    if ini_token_from_w != 0:
+                        ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
+                    stats_data_path = (folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx)
+                                       + ini_token_mode_str + ".npz")
+
                     np.savez_compressed(stats_data_path,
                                         mo_results_beta_list=results_beta_list["mo"],
                                         mo_se_results_beta_list=results_beta_list["mo_se"],
@@ -145,33 +195,8 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str_att,
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
             num_segments_corrs, pe_mode, se_per_contribution_list, keep_context, reverse_betas, gaussian_scale_str,
-            save_non_transient, compute_inf_normalization, min_max_beta_to_show=None, show_title=False):
-
-    reverse_betas_str = ""
-    if reverse_betas:
-        reverse_betas_str = "-reverse_betas"
-
-    if correlations_from_weights != 0:
-        gaussian_scale_name_str = ""
-    else:
-        gaussian_scale_name_str = f"-gaussian_scale-{gaussian_scale_str}"
-
-    if save_non_transient == True:
-        save_non_transient_str = ""
-        num_transient_steps_plot_arg = num_transient_steps
-    else:
-        save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
-        num_transient_steps_plot_arg = 0
-
-    if normalize_weights_str_o == normalize_weights_str_att:
-        normalize_weights_name_str = "-normalize_weights-" + normalize_weights_str_att
-    else:
-        normalize_weights_name_str = ("-normalize_weights_att-" + normalize_weights_str_att +
-                                     "-normalize_weights_o-" + normalize_weights_str_o)
-
-    compute_inf_normalization_str = ""
-    if compute_inf_normalization:
-        compute_inf_normalization_str = "-inf_norm"
+            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w,
+            min_max_beta_to_show=None, show_title=False):
 
     if min_max_beta_to_show is None:
         min_beta_idx = 0
@@ -180,26 +205,29 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
         min_beta_idx = np.searchsorted(beta_list, min_max_beta_to_show[0])
         max_beta_idx = np.searchsorted(beta_list, min_max_beta_to_show[1]) + 1
 
+    if save_non_transient == True:
+        num_transient_steps_plot_arg = num_transient_steps
+    else:
+        num_transient_steps_plot_arg = 0
+
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
             for se_per_contribution in se_per_contribution_list:
                 for ini_token_idx in ini_tokens_list:
 
-                    folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights)
-                                   + "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-"
-                                   + str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
-                                   + "/num_feat_patterns-" + str(num_feat_patterns) + normalize_weights_name_str
-                                   + compute_inf_normalization_str +
-                                   "-reorder_weights-" + str(int(reorder_weights))
-                                   + "-num_segments_corrs-" + str(num_segments_corrs) + "-pe_mode-" + str(pe_mode)
-                                   + gaussian_scale_name_str + "/max_sim_steps-" + str(max_sim_steps)
-                                   + save_non_transient_str + "-context_size-" + str(context_size)
-                                   + "/min_beta-" + str(beta_list[0]) + "-max_beta-" + str(beta_list[-1])
-                                   + "-num_betas-" + str(len(beta_list)) + f"{reverse_betas_str}-keep_context-"
-                                   + str(int(keep_context)))
+                    folder_path = create_pathname(num_feat_patterns, tentative_semantic_embedding_size,
+                                                  positional_embedding_size, beta_list, num_transient_steps,
+                                                  max_sim_steps, context_size, normalize_weights_str_att,
+                                                  normalize_weights_str_o, reorder_weights, se_per_contribution,
+                                                  correlations_from_weights, num_segments_corrs, pe_mode, keep_context,
+                                                  reverse_betas, gaussian_scale_str, save_non_transient,
+                                                  compute_inf_normalization, scaling_o, scaling_att)
 
+                    ini_token_mode_str = ""
+                    if ini_token_from_w != 0:
+                        ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
                     stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                                       + str(ini_token_idx) + ".npz")
+                                       + str(ini_token_idx) + ini_token_mode_str + ".npz")
 
                     # Load data
                     data = np.load(stats_data_path)
@@ -236,7 +264,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 if __name__ == "__main__":
     # Instantiate vocabulary
     tentative_semantic_embedding_size = 99
-    positional_embedding_size = 4
+    positional_embedding_size = 2
     context_size = 2 ** positional_embedding_size
 
     # Create variables for the Hopfield Transformer (HT)
@@ -249,23 +277,27 @@ if __name__ == "__main__":
     # 3 pat: seed 1 (0.35,0.3) - 0.8, 0.37 - 0.45
 
 
-    # beta_list = np.linspace(0, 3, 1000)
-    beta_list = np.linspace(0, 3.5, 1200)
+    beta_list = np.linspace(0, 3, 1000)
+    # beta_list = np.linspace(1.25, 2.4, 1000)
+    # beta_list = np.linspace(1.75, 2.75, 1200)
     se_per_contribution_list = [(tentative_semantic_embedding_size /
                            (tentative_semantic_embedding_size + positional_embedding_size))]
 
-    seed_list = [1]
-    num_feat_patterns_list = [3]
+    seed_list = [18]
+    num_feat_patterns_list = [2]
     num_transient_steps = 100000
     max_sim_steps = num_transient_steps + 20000
 
-    keep_context = True
+    keep_context = False
     reverse_betas = False
 
     num_ini_tokens = 1
+    ini_token_from_w = 1
     reorder_weights = False
     normalize_weights_str_o = "N"
     normalize_weights_str_att = "N**2"
+    scaling_o = 1
+    scaling_att = 100
     compute_inf_normalization = True
     correlations_from_weights = 3  # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means, 3 segments
     gaussian_scale = "0.5"  # Only applicable if correlations_from_weights=0
@@ -286,9 +318,9 @@ if __name__ == "__main__":
 
     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-           normalize_weights_str_o, reorder_weights,
-           stats_to_save_plot, se_per_contribution_list, correlations_from_weights, num_segments_corrs, pe_mode,
-           keep_context, reverse_betas, gaussian_scale, save_non_transient, compute_inf_normalization)
+           normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+           correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale,
+           save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w)
 
     end = time.time()
     elapsed_time = end - start
@@ -298,7 +330,6 @@ if __name__ == "__main__":
     ini_tokens_list = range(0, num_ini_tokens)
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str_att,
-            normalize_weights_str_o,
-            reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode,
-            se_per_contribution_list, keep_context, reverse_betas, gaussian_scale, save_non_transient,
-            compute_inf_normalization)
+            normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
+            num_segments_corrs, pe_mode, se_per_contribution_list, keep_context, reverse_betas, gaussian_scale,
+            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w)
