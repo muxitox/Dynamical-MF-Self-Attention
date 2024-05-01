@@ -117,7 +117,9 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                                              semantic_embedding_bitsize=tentative_semantic_embedding_size,
                                              se_per_contribution=se_per_contribution,
                                              compute_inf_normalization=compute_inf_normalization,
-                                             N_normalization=9999)
+                                             N_normalization=9999,
+                                             scaling_o=scaling_o,
+                                             scaling_att=scaling_att)
 
                 for ini_token_idx in range(0, num_ini_tokens):
 
@@ -283,12 +285,14 @@ if __name__ == "__main__":
     se_per_contribution_list = [(tentative_semantic_embedding_size /
                            (tentative_semantic_embedding_size + positional_embedding_size))]
 
+    # seed_list = [1, 2, 4, 6]
+    # seed_list = [10, 14, 18]
     seed_list = [18]
-    num_feat_patterns_list = [2]
+    num_feat_patterns_list = [3]
     num_transient_steps = 100000
     max_sim_steps = num_transient_steps + 20000
 
-    keep_context = False
+    keep_context = True
     reverse_betas = False
 
     num_ini_tokens = 1
