@@ -19,34 +19,55 @@ if __name__ == "__main__":
     context_size = 2 ** positional_embedding_size
     embedding_size = tentative_semantic_embedding_size + positional_embedding_size
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
+    vocab.initialize_pos_encoder()
     # vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
     # 2.2 with seed 2 gives some cycles
-    beta = 2.2  # We'll find the nearest beta in the defined range
+    # beta = 0.3779 # We'll find the nearest beta in the defined range
+    beta = 1.265965
 
     # 2 patts: 2.4, 2.45
 
-    beta_o = beta
-    beta_att = beta
 
     num_feat_patterns = 3
     num_transient_steps = 100000  # 0 if we want to show the trajectory since the beginning
-    max_sim_steps = num_transient_steps + 200000
-    num_transient_steps_traj = max_sim_steps - num_transient_steps - 250  # 0 if we want to show the trajectory since the beginning
+    saved_steps = 20000
+    max_sim_steps = num_transient_steps + saved_steps
+    # num_transient_steps_traj = max_sim_steps - num_transient_steps - 250  # 0 if we want to show the trajectory since the beginning
+
+    plot_window = 1000
+    offset = 10000 + plot_window
+    plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window - 1]
+
 
     correlations_from_weights = 3
     pe_mode = 0
     se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
+    # se_per_contribution = 0.99
 
-    N_normalization = 9999
-    normalize_weights_str = "N*np.sqrt(M)"
+    N_normalization = 99
+    # multiplier_o = N_normalization + positional_embedding_size
+    # multiplier_att = N_normalization + positional_embedding_size
+    scaling_o = 1
+    scaling_att = 100
+    # beta_o = beta * scaling_o * np.sqrt(multiplier_o) / num_feat_patterns
+    # beta_att = (beta * scaling_att * (multiplier_att)**2 / (np.sqrt(multiplier_att) * num_feat_patterns))
+    beta_o = beta * scaling_o
+    beta_att = (beta * scaling_att)
+    # beta_att = beta
+    print(beta_o, beta_att)
+
+    # normalize_weights_str_att = "np.sqrt(N)*M"
+    # normalize_weights_str_o = "np.sqrt(N)*M"
+    normalize_weights_str_att = "N**2"
+    normalize_weights_str_o = "N"
     compute_inf_normalization = True
     reorder_weights = False
 
-    save_not_plot = True
+    save_not_plot = False
 
-    num_ini_tokens = 1
+    num_ini_tokens = 10
     # Select initial token with seed 0
     np.random.seed(0)
     ini_tokens_list = np.random.randint(2, size=(num_ini_tokens, tentative_semantic_embedding_size + positional_embedding_size)) * 2 - 1
@@ -68,13 +89,18 @@ if __name__ == "__main__":
         HT = HopfieldTransformerInfN(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
                                      positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
                                      context_size=context_size, max_sim_steps=max_sim_steps,
-                                     min_saved_step=num_transient_steps, normalize_weights_str=normalize_weights_str,
+                                     min_saved_step=num_transient_steps,
+                                     normalize_weights_str_att=normalize_weights_str_att,
+                                     normalize_weights_str_o=normalize_weights_str_o,
                                      reorder_weights=reorder_weights,
                                      correlations_from_weights=correlations_from_weights,
                                      semantic_embedding_bitsize=tentative_semantic_embedding_size,
                                      se_per_contribution=se_per_contribution, pe_mode=pe_mode,
                                      compute_inf_normalization=compute_inf_normalization,
                                      N_normalization=N_normalization)
+
+        x0 = HT.Wo[ini_token_idx]
+        x0[-positional_embedding_size:] = -1  # Initialize position to -1
 
         HT.reset_data()
 
@@ -92,6 +118,11 @@ if __name__ == "__main__":
         print("Plotting statistics...")
         num_plotting_steps = max_sim_steps
 
+        if normalize_weights_str_o == normalize_weights_str_att:
+            normalize_weights_name_str = "-normalize_weights-" + normalize_weights_str_att
+        else:
+            normalize_weights_name_str = ("-normalize_weights_att-" + normalize_weights_str_att +
+                                          "-normalize_weights_o-" + normalize_weights_str_o)
 
         num_segments_corrs = 3
         gaussian_scale_name_str= ""
@@ -102,8 +133,8 @@ if __name__ == "__main__":
         folder_path = ("results/infN-correlations_from_weights-" + str(correlations_from_weights)
                        + "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-"
                        + str(positional_embedding_size) + "-se_per_contribution-" + str(se_per_contribution)
-                       + "/num_feat_patterns-" + str(num_feat_patterns) + "-normalize_weights-"
-                       + normalize_weights_str + "-reorder_weights-" + str(int(reorder_weights))
+                       + "/num_feat_patterns-" + str(num_feat_patterns) + normalize_weights_name_str
+                       + "-reorder_weights-" + str(int(reorder_weights))
                        + "-num_segments_corrs-" + str(num_segments_corrs) + "-pe_mode-" + str(pe_mode)
                        + gaussian_scale_name_str + "/max_sim_steps-" + str(max_sim_steps)
                        + save_non_transient_str + "-context_size-" + str(context_size)
@@ -114,9 +145,9 @@ if __name__ == "__main__":
 
         print(folder_path)
 
-        # title = (f"MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed} "
-        #          f"BETA={beta} NUM_TRANSIENT={num_transient_steps_traj}")
-        title = fr"$\beta={beta}$"
+        title = (f"SEED={seed} BETA={beta} SE_PER={se_per_contribution} CONTEXT={context_size}  "
+                 f" NUM_TRANSIENT={num_transient_steps} MODE={correlations_from_weights}")
+        # title = fr"$\beta={beta}$"
 
 
         stats_to_show = ["mo_se"]
@@ -134,16 +165,27 @@ if __name__ == "__main__":
             create_dir(plot_save_path_traj)
             create_dir(plot_save_path_fft)
 
+            print(stat_name, len(np.unique(HT.mf_statistics[stat_name][:,0])),
+                  len(np.unique(HT.mf_statistics[stat_name][:,1])),
+                  len(np.unique(HT.mf_statistics[stat_name][:,2])),
+                  len(np.unique(HT.mf_statistics[stat_name], axis=0)))
 
-            plot_save_statistics(HT.mf_statistics[stat_name][num_transient_steps_traj:,:], stat_name,
-                                 num_feat_patterns, max_sim_steps-num_transient_steps-num_transient_steps_traj,
-                                 min_num_step=num_transient_steps+num_transient_steps_traj, title=title,
-                                 save_path=plot_save_path_traj, save_not_plot=save_not_plot)
+            rg = range(plot_range[0], plot_range[1])
+            plot_save_statistics(HT.mf_statistics[stat_name][rg, :], stat_name, num_feat_patterns,
+                                 len(rg), min_num_step=num_transient_steps + plot_range[0],
+                                 show_max_num_patterns=num_feat_patterns,
+                                 save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,
+                                 plot_hilbert=True)
 
-            plot_save_fft(HT.mf_statistics[stat_name][num_transient_steps_traj:,:], stat_name, num_feat_patterns,
-                          max_sim_steps - num_transient_steps - num_transient_steps_traj,
-                          show_max_num_patterns=num_feat_patterns, save_path=plot_save_path_fft,
-                          save_not_plot=save_not_plot)
+            plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns,
+                          saved_steps,
+                          show_max_num_patterns=num_feat_patterns,
+                          save_not_plot=save_not_plot, save_path=plot_save_path_fft)
+
+            # plot_save_fft(HT.mf_statistics[stat_name][num_transient_steps_traj:,:], stat_name, num_feat_patterns,
+            #               max_sim_steps - num_transient_steps - num_transient_steps_traj,
+            #               show_max_num_patterns=num_feat_patterns, save_path=plot_save_path_fft,
+            #               save_not_plot=save_not_plot)
 
         print("Done.")
 
