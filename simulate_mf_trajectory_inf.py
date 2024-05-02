@@ -1,7 +1,7 @@
 import numpy as np
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from models.HopfieldTransformerPE import Embedding
-from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft
+from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_3Dplane
 import os
 
 def create_dir(filepath):
@@ -25,19 +25,20 @@ if __name__ == "__main__":
     # Create variables for the Hopfield Transformer (HT)
     # 2.2 with seed 2 gives some cycles
     # beta = 0.3779 # We'll find the nearest beta in the defined range
-    beta = 1.265965
+    # beta 1.26 1.266 1.28 1.40
+    beta = 1.266
 
     # 2 patts: 2.4, 2.45
 
 
     num_feat_patterns = 3
-    num_transient_steps = 100000  # 0 if we want to show the trajectory since the beginning
-    saved_steps = 20000
+    num_transient_steps = 1000  # 0 if we want to show the trajectory since the beginning
+    saved_steps = 3000
     max_sim_steps = num_transient_steps + saved_steps
     # num_transient_steps_traj = max_sim_steps - num_transient_steps - 250  # 0 if we want to show the trajectory since the beginning
 
     plot_window = 1000
-    offset = 10000 + plot_window
+    offset = 1000 + plot_window
     plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window - 1]
 
 
@@ -51,10 +52,10 @@ if __name__ == "__main__":
     # multiplier_att = N_normalization + positional_embedding_size
     scaling_o = 1
     scaling_att = 100
-    # beta_o = beta * scaling_o * np.sqrt(multiplier_o) / num_feat_patterns
-    # beta_att = (beta * scaling_att * (multiplier_att)**2 / (np.sqrt(multiplier_att) * num_feat_patterns))
-    beta_o = beta * scaling_o
-    beta_att = (beta * scaling_att)
+
+    beta_o = beta
+    beta_att = beta
+    # beta_att = beta
     # beta_att = beta
     print(beta_o, beta_att)
 
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     normalize_weights_str_o = "N"
     compute_inf_normalization = True
     reorder_weights = False
-
+    ini_token_from_w = 1
     save_not_plot = False
 
     num_ini_tokens = 10
@@ -75,7 +76,8 @@ if __name__ == "__main__":
     ini_tokens_list[:, -positional_embedding_size:] = -1
 
     ini_token_idx = 0
-    x0 = ini_tokens_list[ini_token_idx, :]
+    if ini_token_from_w == 0:
+        x0 = ini_tokens_list[ini_token_idx, :]
 
     # Interesting seeds: 18, 26
     # seed_list = range(30, 60)
@@ -97,10 +99,13 @@ if __name__ == "__main__":
                                      semantic_embedding_bitsize=tentative_semantic_embedding_size,
                                      se_per_contribution=se_per_contribution, pe_mode=pe_mode,
                                      compute_inf_normalization=compute_inf_normalization,
-                                     N_normalization=N_normalization)
+                                     N_normalization=N_normalization,
+                                     scaling_o=scaling_o,
+                                     scaling_att=scaling_att)
 
-        x0 = HT.Wo[ini_token_idx]
-        x0[-positional_embedding_size:] = -1  # Initialize position to -1
+        if ini_token_from_w == 1:
+            x0 = HT.Wo[ini_token_idx]
+            x0[-positional_embedding_size:] = -1  # Initialize position to -1
 
         HT.reset_data()
 
@@ -165,10 +170,11 @@ if __name__ == "__main__":
             create_dir(plot_save_path_traj)
             create_dir(plot_save_path_fft)
 
-            print(stat_name, len(np.unique(HT.mf_statistics[stat_name][:,0])),
-                  len(np.unique(HT.mf_statistics[stat_name][:,1])),
-                  len(np.unique(HT.mf_statistics[stat_name][:,2])),
-                  len(np.unique(HT.mf_statistics[stat_name], axis=0)))
+            rounded = np.round(HT.mf_statistics[stat_name], decimals=5)
+            print(stat_name, len(np.unique(rounded[:,0])),
+                  len(np.unique(rounded[:,1])),
+                  len(np.unique(rounded[:,2])),
+                  len(np.unique(rounded, axis=0)))
 
             rg = range(plot_range[0], plot_range[1])
             plot_save_statistics(HT.mf_statistics[stat_name][rg, :], stat_name, num_feat_patterns,
@@ -214,3 +220,16 @@ if __name__ == "__main__":
         plot_save_plane(stat_results_beta_list_0,
                         stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
                         tag_names=stats_to_plot,  beta=beta, save_path=plot_save_path_plane, save_not_plot=save_not_plot)
+
+        if num_feat_patterns == 3:
+
+            # stats_to_plot = ["mo_se", "mk", "mv"]
+            # stat_results_beta_list = [HT.mf_statistics[stats_to_plot[0]], HT.mf_statistics[stats_to_plot[1]],
+            #                             HT.mf_statistics[stats_to_plot[2]]]
+
+            stats_to_plot = ["mo_se"]
+            stat_results_beta_list = [HT.mf_statistics[stats_to_plot[0]]]
+
+            plot_save_3Dplane(stat_results_beta_list, max_sim_steps - num_transient_steps,
+                              tag_names=stats_to_plot, beta=beta, save_path=plot_save_path_plane,
+                              save_not_plot=save_not_plot)
