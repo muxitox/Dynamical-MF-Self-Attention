@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     num_feat_patterns = 3
     num_transient_steps = 1000  # 0 if we want to show the trajectory since the beginning
-    saved_steps = 3000
+    saved_steps = 20000
     max_sim_steps = num_transient_steps + saved_steps
     # num_transient_steps_traj = max_sim_steps - num_transient_steps - 250  # 0 if we want to show the trajectory since the beginning
 
@@ -44,8 +44,8 @@ if __name__ == "__main__":
 
     correlations_from_weights = 3
     pe_mode = 0
-    se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
-    # se_per_contribution = 0.99
+    # se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
+    se_per_contribution = 0.98
 
     N_normalization = 99
     # multiplier_o = N_normalization + positional_embedding_size
@@ -54,14 +54,15 @@ if __name__ == "__main__":
     scaling_att = 100
 
     beta_o = beta
-    beta_att = beta
+    beta_att = 2.2
     # beta_att = beta
     # beta_att = beta
     print(beta_o, beta_att)
 
     # normalize_weights_str_att = "np.sqrt(N)*M"
     # normalize_weights_str_o = "np.sqrt(N)*M"
-    normalize_weights_str_att = "N**2"
+    # normalize_weights_str_att = "N**2"
+    normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
     compute_inf_normalization = True
     reorder_weights = False
@@ -219,7 +220,7 @@ if __name__ == "__main__":
         # feats_reorder = np.roll(np.arange(num_feat_patterns), -1)
         plot_save_plane(stat_results_beta_list_0,
                         stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
-                        tag_names=stats_to_plot,  beta=beta, save_path=plot_save_path_plane, save_not_plot=save_not_plot)
+                        tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot)
 
         if num_feat_patterns == 3:
 

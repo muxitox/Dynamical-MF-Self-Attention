@@ -69,7 +69,7 @@ if __name__ == "__main__":
         HT.reset_data()  # Reset the structures for saving data
 
 
-        print("Simulating MF Transformer...")
+        print(f"Simulating MF Transformer for beta {beta}...")
         HT.simulate_mf(x0, max_steps=max_sim_steps)
         print("Done.")
 
@@ -89,6 +89,7 @@ if __name__ == "__main__":
         create_dir(folder_path)
 
         title = fr"$\beta$ = {beta}"
+        # title = None
         stats_to_show = ["mo_se"]
         image_format = ".jpeg"
 
@@ -132,7 +133,7 @@ if __name__ == "__main__":
         stat_results_beta_list_1 = [HT.mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
         plot_save_plane(stat_results_beta_list_0,
                         stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
-                        tag_names=stats_to_plot, beta=beta, save_path=plot_save_path_plane, save_not_plot=save_not_plot)
+                        tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot)
 
 
         # # 3 feats
