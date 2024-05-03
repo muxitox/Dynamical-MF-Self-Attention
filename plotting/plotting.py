@@ -196,7 +196,7 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
     if ncols != len(stats2):
         raise Exception("The length of the input stats does not coincide")
 
-    fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 4), constrained_layout=True)
+    fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 8), constrained_layout=True)
 
     # num_plotting_steps_arange = np.arange(num_plotting_steps)
 
@@ -233,9 +233,58 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
         plt.show()
     plt.close()
 
+def plot_save_3Dplane(stats1, num_plotting_steps,
+                    save_not_plot=False, save_path=None, tag_names=[], beta=None):
+
+    # Plot show_max_num_patterns subfigures if defined
+
+    ncols = len(stats1)
+    # if ncols != len(stats2):
+    #     raise Exception("The length of the input stats does not coincide")
+
+    fig = plt.figure(figsize=(8*ncols, 4), constrained_layout=True)
+
+    # fig.add_subplot()
+    # num_plotting_steps_arange = np.arange(num_plotting_steps)
+
+    # Convert stat names to latex style
+    latex_strs = []
+
+    for tag in tag_names:
+        latex_strs.append(feat_name_to_latex(tag))
+
+    for stat_id in range(0, ncols):
+
+        # if ncols == 1:
+        #     local_ax = ax
+        # else:
+        #     local_ax = ax[stat_id % ncols]
+
+        local_ax = fig.add_subplot(1, ncols, 1, projection='3d')
+
+        local_ax.scatter(stats1[stat_id][:num_plotting_steps, 0], stats1[stat_id][:num_plotting_steps, 1],
+                         stats1[stat_id][:num_plotting_steps, 2])
+
+        local_ax.set_xlabel(rf"${latex_strs[stat_id]}_0(t)$")
+        local_ax.set_ylabel(rf"${latex_strs[stat_id]}_1(t)$" )
+        # local_ax.set_zlabel(rf"${latex_strs[stat_id]}_2(t)$" )
+
+        # local_ax.legend()
+
+    # fig.tight_layout(pad=0.1)
+    # fig.suptitle(f"Evolution of {stat_name}")
+    fig.suptitle(rf"$\beta$ = {beta}")
+
+
+    if save_not_plot:
+        fig.savefig(save_path)
+    else:
+        plt.show()
+    plt.close()
+
 
 def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                  save_not_plot=False, save_path=None, mode="sq"):
+                  save_not_plot=False, save_path=None, mode="sq", title=None):
 
     # mode may be sq or real
 
@@ -289,6 +338,9 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
 
 
         local_ax.set_xlim(freqs[0], freqs[-1])
+
+        if title is not None:
+            fig.suptitle(title)
 
         # local_ax.legend()
 
