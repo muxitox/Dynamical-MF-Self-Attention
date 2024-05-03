@@ -41,7 +41,8 @@ class HopfieldTransformerInfN:
         M = num_feat_patterns
         self.normalize_weights_str_att = normalize_weights_str_att
         self.normalize_weights_str_o = normalize_weights_str_o
-        self.inf_normalization = self.define_normalization_inf_o()
+        self.inf_normalization_o = self.define_normalization_inf_o()
+        self.inf_normalization_att = self.define_normalization_inf_att()
 
         # Dynamically compute the normalize_weights_str string
         try:
@@ -317,20 +318,24 @@ class HopfieldTransformerInfN:
 
     def softmax(self, key_prob_unnorm, effective_context_size):
 
-        if self.run_exact_inf and self.normalize_weights_str_att!="N**2":
-            # In infty the softmax saturates and evolves into argmax
-            max_val = max(key_prob_unnorm)
-            max_ids = np.argwhere(key_prob_unnorm == max_val)
-            selected_mvs = self.mv_window[max_ids]
 
-            # The array created has 1 more empty dimension than we need, so we index by 0
-            self.att_window = np.mean(selected_mvs, axis=0)[0]
-            # We'll deal with normalization in the mf_computation function
+        if self.run_exact_inf:
 
-        elif self.run_exact_inf:
-            key_prob = softmax(key_prob_unnorm)
-            # We'll deal with normalization in the mf_computation function
-            self.att_window = self.mv_window[:effective_context_size].T @ key_prob
+            if self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)":
+                key_prob = softmax(key_prob_unnorm)
+
+                # We'll deal with normalization in the mf_computation function
+                self.att_window = self.mv_window[:effective_context_size].T @ key_prob
+
+            elif self.normalize_weights_str_att != "N**2":
+                # In infty the softmax saturates and evolves into argmax
+                max_val = max(key_prob_unnorm)
+                max_ids = np.argwhere(key_prob_unnorm == max_val)
+                selected_mvs = self.mv_window[max_ids]
+
+                # The array created has 1 more empty dimension than we need, so we index by 0
+                self.att_window = np.mean(selected_mvs, axis=0)[0]
+                # We'll deal with normalization in the mf_computation function
         else:
             key_prob = softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant_att)
             self.att_window = self.N_normalization * self.mv_window[:effective_context_size].T @ key_prob
@@ -363,6 +368,10 @@ class HopfieldTransformerInfN:
                         optimize=True)
 
         key_prob_unnorm = self.beta_att * self.scaling_att * mqk
+
+        if self.run_exact_inf:
+            key_prob_unnorm *= self.inf_normalization_att
+
         self.softmax(key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
@@ -423,6 +432,17 @@ class HopfieldTransformerInfN:
 
         return total_normalization
 
+    def define_normalization_inf_att(self):
+
+        if self.normalize_weights_str_att == "N**2":
+            total_normalization = 1
+        elif self.normalize_weights_str_att == "N**2*np.sqrt(M)":
+            total_normalization = 1 / np.sqrt(self.num_feat_patterns)
+        else:
+            raise Exception("Define properly the attention normalization")
+        return total_normalization
+
+
     def compute_mf(self, t):
 
         att = self.att_window
@@ -450,7 +470,7 @@ class HopfieldTransformerInfN:
 
             idx_not_zero = np.where(sign_att_patterns != 0)
             # If result is not 0, normalize by inf
-            sign_att_patterns[idx_not_zero] *= self.inf_normalization
+            sign_att_patterns[idx_not_zero] *= self.inf_normalization_o
             tanh_j_signs = np.tanh(sign_att_patterns)
         else:
             tanh_j_signs = np.tanh(self.beta_o * self.scaling_o * (1 / self.normalizing_constant_o) *
