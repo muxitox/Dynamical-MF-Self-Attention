@@ -188,7 +188,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
     plt.close()
 
 def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
-                    save_not_plot=False, save_path=None, tag_names=[], beta=None):
+                    save_not_plot=False, save_path=None, tag_names=[], title=None):
 
     # Plot show_max_num_patterns subfigures if defined
 
@@ -224,8 +224,8 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
 
     # fig.tight_layout(pad=0.1)
     # fig.suptitle(f"Evolution of {stat_name}")
-    fig.suptitle(rf"$\beta$ = {beta}")
-
+    if title is not None:
+        fig.suptitle(title)
 
     if save_not_plot:
         fig.savefig(save_path)
