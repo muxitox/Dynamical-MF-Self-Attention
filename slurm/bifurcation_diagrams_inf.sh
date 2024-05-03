@@ -4,7 +4,7 @@
 #SBATCH --output ./log/exec.%j.out
 #SBATCH --error ./log/exec.%j.err
 #SBATCH -N 1 -c 2
-#SBATCH -p large -t 48:00:00
+#SBATCH -p large -t 50:00:00
 #SBATCH --mem=8G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=apoc@bcamath.org
@@ -18,7 +18,6 @@ NUM_TRANSIENT_STEPS=$3
 MAX_SIM_STEPS=$4
 COMPUTE_INF_NORMALIZATION=$5
 NORMALIZE_WEIGHTS_STR_ATT=$6
-NORMALIZE_WEIGHTS_STR_O=${19}
 CORRELATIONS_FROM_WEIGHTS=$7
 PE_MODE=$8
 NUM_SEGMENTS_CORRS=$9
@@ -31,6 +30,10 @@ NUM_PES=${15}
 TENTATIVE_SEMANTIC_EMBEDDING_SIZE=${16}
 POSITIONAL_EMBEDDING_SIZE=${17}
 PE_FROM_SIZE=${18}
+NORMALIZE_WEIGHTS_STR_O=${19}
+SCALING_O=${20}
+SCALING_ATT=${21}
+INI_TOKEN_FROM_W=${22}
 
 
 ARGS=" \
@@ -58,7 +61,10 @@ ARGS=" \
 --tentative_semantic_embedding_size=$TENTATIVE_SEMANTIC_EMBEDDING_SIZE \
 --positional_embedding_size=$POSITIONAL_EMBEDDING_SIZE \
 --pe_proportion_from_size=$PE_FROM_SIZE \
---save_not_plot=True
+--save_not_plot=True \
+--scaling_o=$SCALING_O \
+--scaling_att=$SCALING_ATT \
+--ini_token_from_w=$INI_TOKEN_FROM_W \
 "
 
 echo $ARGS

@@ -65,7 +65,7 @@ ARGS=" \
 --beta_att=$BETA_ATT \
 --scaling_o=$SCALING_O \
 --scaling_att=$SCALING_ATT \
---ini_token_from_w=$INI_TOKEN_FROM_W \
+--ini_token_from_w=$INI_TOKEN_FROM_W
 "
 
 echo $ARGS

@@ -50,6 +50,12 @@ parser.add_argument("--max_beta", help="Specify the max beta value",
                     type=float, default=3)
 parser.add_argument("--num_betas", help="Specify the number of beta values",
                     type=int, default=3)
+parser.add_argument("--scaling_o", help="Specify scaling for the tanh in the output",
+                    type=int, default=1)
+parser.add_argument("--scaling_att", help="Specify scaling for the att in the output",
+                    type=int, default=100)
+parser.add_argument("--ini_token_from_w", help="Specify how to select the initial token",
+                    type=int, default=1)
 parser.add_argument("--min_pe", help="Specify the min pe value",
                     type=float, default=3)
 parser.add_argument("--max_pe", help="Specify the max pe value",
@@ -83,10 +89,10 @@ if __name__ == "__main__":
     # beta_list = np.linspace(0, 3, 1000)
     beta_list = np.linspace(args.min_beta, args.max_beta, args.num_betas)
     if args.pe_proportion_from_size:
-        se_per_contribution = [(tentative_semantic_embedding_size /
+        se_per_contribution_list = [(tentative_semantic_embedding_size /
                            (tentative_semantic_embedding_size + positional_embedding_size))]
     else:
-        se_per_contribution = [1 - np.linspace(args.min_pe, args.max_pe, args.num_pes)]
+        se_per_contribution_list = [1 - np.linspace(args.min_pe, args.max_pe, args.num_pes)]
 
     seed_list = [args.seed]
     num_feat_patterns_list = [args.num_feat_patterns]
@@ -97,9 +103,12 @@ if __name__ == "__main__":
     reverse_betas = args.reverse_betas
 
     num_ini_tokens = args.num_ini_tokens
+    ini_token_from_w = args.ini_token_from_w
     reorder_weights = args.reorder_weights
     normalize_weights_str_att = args.normalize_weights_str_att
     normalize_weights_str_o = args.normalize_weights_str_o
+    scaling_o = args.scaling_o
+    scaling_att = args.scaling_att
     compute_inf_normalization = args.compute_inf_normalization
     correlations_from_weights = args.correlations_from_weights  # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means, 3 segments
     gaussian_scale = args.gaussian_scale  # Only applicable if correlations_from_weights=0
@@ -119,9 +128,9 @@ if __name__ == "__main__":
     start = time.time()
     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-           normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution, correlations_from_weights,
-           num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale, save_non_transient,
-           compute_inf_normalization)
+           normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+           correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale,
+           save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w)
 
     end = time.time()
     elapsed_time = end - start
@@ -132,5 +141,5 @@ if __name__ == "__main__":
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str_att,
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
-            num_segments_corrs, pe_mode, se_per_contribution, keep_context, reverse_betas, gaussian_scale,
-            save_non_transient, compute_inf_normalization)
+            num_segments_corrs, pe_mode, se_per_contribution_list, keep_context, reverse_betas, gaussian_scale,
+            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w)
