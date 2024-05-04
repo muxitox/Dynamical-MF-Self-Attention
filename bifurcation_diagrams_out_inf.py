@@ -182,6 +182,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                     stats_data_path = (folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx)
                                        + ini_token_mode_str + ".npz")
 
+                    print("Saving results in ", os.path.abspath(stats_data_path))
                     np.savez_compressed(stats_data_path,
                                         mo_results_beta_list=results_beta_list["mo"],
                                         mo_se_results_beta_list=results_beta_list["mo_se"],
@@ -256,7 +257,6 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                         else:
                             title = None
 
-                        import pdb; pdb.set_trace()
                         plot_bifurcation_diagram(stat_results_beta_list[min_beta_idx:max_beta_idx],
                                                  beta_list[min_beta_idx:max_beta_idx], num_feat_patterns, stat_save_path,
                                                  num_transient_steps_plot_arg, feat_name=stat_name,

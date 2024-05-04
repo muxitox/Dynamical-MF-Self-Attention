@@ -175,13 +175,13 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                     if not os.path.exists(folder_path):
                         os.makedirs(folder_path)
 
-
                     ini_token_mode_str = ""
                     if ini_token_from_w != 0:
                         ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
                     stats_data_path = (folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx)
                                        + ini_token_mode_str + ".npz")
 
+                    print("Saving results in ", os.path.abspath(stats_data_path))
                     np.savez_compressed(stats_data_path,
                                         mo_results_beta_list=results_beta_list["mo"],
                                         mo_se_results_beta_list=results_beta_list["mo_se"],

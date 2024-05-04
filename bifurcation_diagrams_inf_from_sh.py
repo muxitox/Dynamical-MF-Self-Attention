@@ -92,7 +92,7 @@ if __name__ == "__main__":
         se_per_contribution_list = [(tentative_semantic_embedding_size /
                            (tentative_semantic_embedding_size + positional_embedding_size))]
     else:
-        se_per_contribution_list = [1 - np.linspace(args.min_pe, args.max_pe, args.num_pes)]
+        se_per_contribution_list = 1 - np.linspace(args.min_pe, args.max_pe, args.num_pes)
 
     seed_list = [args.seed]
     num_feat_patterns_list = [args.num_feat_patterns]
