@@ -7,17 +7,17 @@ import time
 
 
 def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-           num_transient_steps, max_sim_steps, context_size, normalize_weights_str_att,
-           normalize_weights_str_o, reorder_weights, se_per_contribution,
-           correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale_str,
-           save_non_transient, compute_inf_normalization, scaling_o, scaling_att, beta_o):
+                    num_transient_steps, max_sim_steps, context_size, normalize_weights_str_att,
+                    normalize_weights_str_o, reorder_weights, se_per_contribution,
+                    correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale_str,
+                    save_non_transient, compute_inf_normalization, scaling_o, scaling_att, beta_att):
 
     if reverse_betas:
-        beta_string = ("/beta_o-" + (beta_o) + "-min_beta_att-" + str(beta_list[-1]) + "-max_beta_att-"
+        beta_string = ("/beta_att-" + (beta_att) + "-min_beta_att-" + str(beta_list[-1]) + "-max_beta_att-"
                        + str(beta_list[0]) + "-num_betas-" + str(len(beta_list)) + "-reverse_betas-keep_context-" +
                        str(int(keep_context)))
     else:
-        beta_string = ("/beta_o-" + str(beta_o) + "-min_beta_att-" + str(beta_list[0]) + "-max_beta_att-" +
+        beta_string = ("/beta_att-" + str(beta_att) + "-min_beta_att-" + str(beta_list[0]) + "-max_beta_att-" +
                        str(beta_list[-1]) + "-num_betas-" + str(len(beta_list)) + "-keep_context-" +
                        str(int(keep_context)))
 
