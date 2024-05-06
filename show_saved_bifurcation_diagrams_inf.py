@@ -16,13 +16,15 @@ if __name__ == "__main__":
     # VARS FOR LOADING CHECKPOINTS
     # Create variables for the Hopfield Transformer (HT)
     seed_list = [1]
-    beta_list = np.linspace(0.35, 0.8, 1000)
-    se_per_contribution_list = [tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)]
+    beta_list = np.linspace(0, 4, 1500)
+    # se_per_contribution_list = [tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)]
+    se_per_contribution_list =[0.98]
     num_feat_patterns_list = [3]
     ini_tokens_list = [0]
+    ini_token_from_w = 1
     num_transient_steps = 100000
     max_sim_steps = num_transient_steps + 20000
-    keep_context = False
+    keep_context = True
     reverse_betas = False
 
     # Specific stats for plotting
@@ -38,7 +40,10 @@ if __name__ == "__main__":
         raise ("You cannot discard more timesteps than you are simulating.")
 
     reorder_weights = False
-    normalize_weights_str = "N*np.sqrt(M)"
+    normalize_weights_str_o = "N"
+    normalize_weights_str_att = "N**2*np.sqrt(M)"
+    scaling_o = 1
+    scaling_att = 100
     compute_inf_normalization = True
     correlations_from_weights = 3  # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means, 3 segments
     num_segments_corrs = 3         # Only applicable if correlations_from_weights=3
@@ -50,9 +55,11 @@ if __name__ == "__main__":
     # stats_to_save_plot = ["mo", "mo_se", "mv", "mq", "mk", "att"]
     stats_to_save_plot = ["mo_se"]
 
+
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-            num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str,
-            reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights, num_segments_corrs, pe_mode,
-            se_per_contribution_list, keep_context, reverse_betas, gaussian_scale, save_non_transient,
-            compute_inf_normalization, min_max_beta_to_show=min_max_beta_to_show)
+            num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str_att,
+            normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
+            num_segments_corrs, pe_mode, se_per_contribution_list, keep_context, reverse_betas, gaussian_scale,
+            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w,
+            min_max_beta_to_show=min_max_beta_to_show)
 
