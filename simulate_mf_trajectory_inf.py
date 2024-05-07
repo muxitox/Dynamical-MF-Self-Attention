@@ -26,7 +26,8 @@ if __name__ == "__main__":
     # 2.2 with seed 2 gives some cycles
     # beta = 0.3779 # We'll find the nearest beta in the defined range
     # beta 1.26 1.266 1.28 1.40
-    beta = 1.266 / np.sqrt(3)
+    beta = 1.266
+    # beta = 1.266 / np.sqrt(3)
     print(beta)
 
     # 2 patts: 2.4, 2.45
@@ -52,18 +53,19 @@ if __name__ == "__main__":
     # multiplier_o = N_normalization + positional_embedding_size
     # multiplier_att = N_normalization + positional_embedding_size
     scaling_o = 1
-    scaling_att = 10
+    scaling_att = 100
 
     beta_o = beta
     # beta_att = beta * np.sqrt(num_feat_patterns)
-    beta_att = betagit
+    # beta_att = beta
+    beta_att = 2.2
     # beta_att = beta
     print(beta_o, beta_att)
 
     # normalize_weights_str_att = "np.sqrt(N)*M"
     # normalize_weights_str_o = "np.sqrt(N)*M"
+    normalize_weights_str_att = "N**2*np.sqrt(M)"
     # normalize_weights_str_att = "N**2"
-    normalize_weights_str_att = "N**2"
     normalize_weights_str_o = "N"
     compute_inf_normalization = True
     reorder_weights = False

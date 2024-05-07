@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from plotting.plotting import plot_save_statistics, plot_save_fft, plot_save_plane
-from bifurcation_diagrams_inf import create_pathname
+from bifurcation_diagrams_out_inf import create_pathname
 
 def create_dir(filepath):
     plot_save_folder_path = os.path.dirname(filepath)
@@ -14,7 +14,7 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
             num_transient_steps, max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str_att,
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
             se_per_contribution, keep_context, reverse_betas, beta_to_show, gaussian_scale_str, save_non_transient,
-            compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, plot_range=None):
+            compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att, plot_range=None):
 
     if save_non_transient == True:
         num_transient_steps_plot_arg = num_transient_steps
@@ -22,12 +22,12 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
         num_transient_steps_plot_arg = 0
 
     folder_path = create_pathname(num_feat_patterns, tentative_semantic_embedding_size,
-                                  positional_embedding_size, beta_list, num_transient_steps,
-                                  max_sim_steps, context_size, normalize_weights_str_att,
-                                  normalize_weights_str_o, reorder_weights, se_per_contribution,
-                                  correlations_from_weights, num_segments_corrs, pe_mode, keep_context,
-                                  reverse_betas, gaussian_scale_str, save_non_transient,
-                                  compute_inf_normalization, scaling_o, scaling_att)
+                                                  positional_embedding_size, beta_list, num_transient_steps,
+                                                  max_sim_steps, context_size, normalize_weights_str_att,
+                                                  normalize_weights_str_o, reorder_weights, se_per_contribution,
+                                                  correlations_from_weights, num_segments_corrs, pe_mode, keep_context,
+                                                  reverse_betas, gaussian_scale_str, save_non_transient,
+                                                  compute_inf_normalization, scaling_o, scaling_att, beta_att)
     ini_token_mode_str = ""
     if ini_token_from_w != 0:
         ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1
-    beta_list = np.linspace(0, 4, 1500)
+    beta_list = np.linspace(0, 3, 1000)
     # se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
     se_per_contribution = 0.98
     num_feat_patterns = 3
@@ -155,7 +155,8 @@ if __name__ == "__main__":
     max_sim_steps = num_transient_steps + saved_steps
     keep_context = True
     reverse_betas = False
-    beta_to_show = 1.226   # We'll find the nearest beta in the defined range
+    beta_to_show = 1.26   # We'll find the nearest beta in the defined range
+    beta_att = 2.2
 
     plot_window = 1000
     offset = 10000 + plot_window
@@ -190,4 +191,4 @@ if __name__ == "__main__":
            num_transient_steps, max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str_att,
            normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
            se_per_contribution, keep_context, reverse_betas, beta_to_show, gaussian_scale, save_not_transient,
-           compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, plot_range)
+           compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att, plot_range)

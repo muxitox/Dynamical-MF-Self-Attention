@@ -5,7 +5,6 @@ from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcatio
 import os
 import time
 
-
 def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            num_transient_steps, max_sim_steps, context_size, normalize_weights_str_att,
            normalize_weights_str_o, reorder_weights, se_per_contribution,
@@ -59,7 +58,6 @@ def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positi
                    + beta_string)
 
     return folder_path
-
 
 
 def define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list):
@@ -348,11 +346,11 @@ if __name__ == "__main__":
 
     start = time.time()
 
-    # runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-    #        num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-    #        normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-    #        correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale,
-    #        save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w)
+    runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+           num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+           normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+           correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale,
+           save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w)
 
     end = time.time()
     elapsed_time = end - start

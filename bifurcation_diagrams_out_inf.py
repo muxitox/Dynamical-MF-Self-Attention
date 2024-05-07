@@ -331,14 +331,14 @@ if __name__ == "__main__":
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     scaling_o = 1
     scaling_att = 100
-    filtering_range = 0.0005
+    filtering_range = 0.001
     compute_inf_normalization = True
     correlations_from_weights = 3  # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means, 3 segments
     gaussian_scale = "0.5"  # Only applicable if correlations_from_weights=0
     pe_mode = 0
     num_segments_corrs = 3  # Only applicable if correlations_from_weights=3
     save_non_transient = False
-    save_not_plot = True
+    save_not_plot = False
     show_title = True
 
     if context_size > 2 ** positional_embedding_size:
@@ -346,16 +346,16 @@ if __name__ == "__main__":
     if num_transient_steps > max_sim_steps:
         raise ("You cannot discard more timesteps than you are simulating.")
 
-    stats_to_save_plot = ["mo", "mo_se", "att"]
-    # stats_to_save_plot = ["mo", "mo_se"]
+    # stats_to_save_plot = ["mo", "mo_se", "att"]
+    stats_to_save_plot = ["mo_se"]
 
     start = time.time()
 
-    # runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-    #        num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-    #        normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-    #        correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale,
-    #        save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att)
+    runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+           num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+           normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+           correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale,
+           save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att)
 
     end = time.time()
     elapsed_time = end - start
