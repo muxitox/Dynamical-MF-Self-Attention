@@ -110,15 +110,21 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
             local_ax = ax[row, feat % 2]
 
         for b_idx in range(0, len(x_list)):
+
             filtering_values = filtering_variable[b_idx][num_transient_steps:, filter_idx]
             zero_intersect = np.where(np.logical_and(filtering_values >= -filtering_range,
                                                      filtering_values <= filtering_range))
             unique_values_feat = results_y_list[b_idx][num_transient_steps:, feat]
             unique_values_feat_filtered = unique_values_feat[zero_intersect]
 
-            beta_values_feat = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
+            unique_values_feat = np.unique(np.round(unique_values_feat, decimals=3))
+            unique_values_feat_filtered = np.unique(np.round(unique_values_feat_filtered, decimals=3))
 
-            local_ax.plot(beta_values_feat, unique_values_feat_filtered, c='tab:blue', ls='', marker='.', ms='0.5')
+            beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
+            beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
+
+            local_ax.plot(beta_values_feat, unique_values_feat, c='tab:blue', ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c='tab:orange', ls='', marker='.', ms='0.5')
 
         if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
