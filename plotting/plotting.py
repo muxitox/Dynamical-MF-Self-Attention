@@ -150,6 +150,91 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
     plt.close()
 
 
+def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
+                                          save_path, num_transient_steps, feat_name,
+                                          folder_path, seed, ini_token_idx, ini_token_mode_str,
+                                          filtering_range=0.05,
+                                          show_max_num_patterns=None, save_not_plot=True, title=None,
+                                          is_beta=True):
+
+    # Plot show_max_num_patterns subfigures if defined
+    if (show_max_num_patterns is not None):
+        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+
+    nrows = (num_feat_patterns + 1) // 2
+
+    if num_feat_patterns == 1:
+        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+    elif num_feat_patterns == 3:
+        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+    else:
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+
+    latex_str = feat_name_to_latex(feat_name)
+    x_label = r'$\beta$'
+    if not is_beta:
+        x_label = r'$SE\%$'
+
+    for feat in range(0, num_feat_patterns):
+
+        row = feat // 2
+        if num_feat_patterns == 1:
+            local_ax = ax
+        elif num_feat_patterns == 2:
+            local_ax = ax[feat % 2]
+        elif num_feat_patterns == 3:
+            local_ax = ax[feat % 3]
+        else:
+            local_ax = ax[row, feat % 2]
+
+        for b_idx in range(len(x_list)):
+            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
+                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+                               + ".npz")
+
+            # Load data
+            data = np.load(stats_data_path)
+            results_y_list = data[f"{feat_name}_results_beta"]
+
+            filtering_values = results_y_list[num_transient_steps:, filter_idx]
+            zero_intersect = np.where(np.logical_and(filtering_values >= -filtering_range,
+                                                     filtering_values <= filtering_range))
+            unique_values_feat = results_y_list[num_transient_steps:, feat]
+            unique_values_feat_filtered = unique_values_feat[zero_intersect]
+
+            dec = 3
+            unique_values_feat = np.unique(np.round(unique_values_feat, decimals=dec))
+            unique_values_feat_filtered = np.unique(np.round(unique_values_feat_filtered, decimals=dec))
+
+            beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
+            beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
+
+            local_ax.plot(beta_values_feat, unique_values_feat, c='tab:blue', ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c='tab:orange', ls='', marker='.', ms='0.5')
+
+        if feat_name != "att" and x_list[-1] > 3.5:
+            local_ax.set_ylim(-1, 1)
+
+        local_ax.set_xlim(x_list[0], x_list[-1])
+
+        if num_feat_patterns == 3:
+            local_ax.set_xlabel(x_label)
+        elif feat > num_feat_patterns-3:
+            local_ax.set_xlabel(x_label)
+
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
+        # local_ax.legend(loc="upper center")
+
+    # fig.tight_layout(pad=0.1)
+    if title is not None:
+        fig.suptitle(title)
+
+    if save_not_plot:
+        fig.savefig(save_path)
+    else:
+        plt.show()
+    plt.close()
+
 
 def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps, label_tag,
                       show_max_num_patterns=None, additional_msg=""):

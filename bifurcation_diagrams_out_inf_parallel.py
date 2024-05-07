@@ -2,6 +2,8 @@ import numpy as np
 from models.HopfieldTransformerPE import Embedding
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram
+from plotting.plotting import plot_filtered_bifurcation_diagram_par
+
 import os
 import time
 
@@ -212,29 +214,12 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                     if ini_token_from_w != 0:
                         ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
 
-                    # Create variables to unify the info from the workers
-                    results_beta_list = {}
-                    for stat_name in stats_to_save_plot:
-                        results_beta_list[stat_name] = []
-
-                    for worker_id in range(len(beta_list)):
-
-                        stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                                           + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(worker_id)
-                                           + ".npz")
-
-                        # Load data
-                        data = np.load(stats_data_path)
-
-                        for stat_name in stats_to_save_plot:
-                            results_beta_list[stat_name].append(data[f"{stat_name}_results_beta"])
+                    filtered_beta_list = beta_list[min_beta_idx:max_beta_idx]
 
                     show_max_num_patterns = 6
 
                     # Load each stat and plot/save it
                     for stat_name in stats_to_save_plot:
-
-                        stat_results_beta_list = results_beta_list[stat_name]
 
                         # Create folder if it does not exist and we are saving the image
                         if save_not_plot and (not os.path.exists(folder_path + f"/{stat_name}/")):
@@ -242,21 +227,6 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 
                         image_format = ".jpeg"
                         # image_format = ".pdf"
-
-                        stat_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
-                                          str(ini_token_idx) + "-transient_steps-" + str(
-                                    num_transient_steps) + image_format)
-
-                        if show_title:
-                            title = f"CORR_MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed}"
-                        else:
-                            title = None
-
-                        plot_bifurcation_diagram(stat_results_beta_list[min_beta_idx:max_beta_idx],
-                                                 beta_list[min_beta_idx:max_beta_idx], num_feat_patterns, stat_save_path,
-                                                 num_transient_steps_plot_arg, feat_name=stat_name,
-                                                 show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot,
-                                                 title=title)
 
                         for filter_idx in range(num_feat_patterns):
 
@@ -272,17 +242,12 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                         num_transient_steps) + "-filter_idx-" + str(filter_idx) +
                                                   "-filter_rg-" + str(filtering_range) + image_format)
 
-                            plot_filtered_bifurcation_diagram(stat_results_beta_list[min_beta_idx:max_beta_idx],
-                                                              stat_results_beta_list[min_beta_idx:max_beta_idx],
-                                                              filter_idx,
-                                                              beta_list[min_beta_idx:max_beta_idx], num_feat_patterns,
-                                                              filtered_save_path,
-                                                              num_transient_steps_plot_arg,
-                                                              filtering_range=filtering_range,
-                                                              feat_name=stat_name,
-                                                              show_max_num_patterns=show_max_num_patterns,
-                                                              save_not_plot=save_not_plot,
-                                                              title=title)
+                            plot_filtered_bifurcation_diagram_par(filter_idx, filtered_beta_list, num_feat_patterns,
+                                                                  filtered_save_path, num_transient_steps_plot_arg, stat_name,
+                                                                  folder_path, seed, ini_token_idx, ini_token_mode_str,
+                                                                  filtering_range=filtering_range,
+                                                                  show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot,
+                                                                  title=title)
 
 
 if __name__ == "__main__":
@@ -301,7 +266,7 @@ if __name__ == "__main__":
     # 3 pat: seed 1 (0.35,0.3) - 0.8, 0.37 - 0.45
 
     beta_att = 2.2
-    num_betas = 10
+    num_betas = 1000
     beta_list = np.linspace(0, 3, num_betas)
     # beta_list = np.linspace(1.25, 2.4, 1000)
     # beta_list = np.linspace(1.75, 2.75, 1200)
@@ -313,8 +278,8 @@ if __name__ == "__main__":
     # seed_list = [10, 14, 18]
     seed_list = [1]
     num_feat_patterns_list = [3]
-    num_transient_steps = 100
-    max_sim_steps = num_transient_steps + 200
+    num_transient_steps = 100000
+    max_sim_steps = num_transient_steps + 20000
 
     num_ini_tokens = 1
     ini_token_from_w = 1
@@ -338,19 +303,19 @@ if __name__ == "__main__":
     if num_transient_steps > max_sim_steps:
         raise ("You cannot discard more timesteps than you are simulating.")
 
-    stats_to_save_plot = ["mo", "mo_se", "att"]
-    # stats_to_save_plot = ["mo_se"]
+    # stats_to_save_plot = ["mo", "mo_se", "att"]
+    stats_to_save_plot = ["mo_se"]
 
     start = time.time()
 
-
-    for worker_id in range(num_betas):
-        runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-               num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-               normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-               correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
-               save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-               worker_id)
+    # worker_id = 1266
+    # for worker_id in range(num_betas):
+    #     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+    #            num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+    #            normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+    #            correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
+    #            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
+    #            worker_id)
 
     end = time.time()
     elapsed_time = end - start
