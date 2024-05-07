@@ -118,7 +118,7 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
 
             beta_values_feat = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat_filtered, c='tab:blue', ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat, unique_values_feat_filtered, c='tab:blue', ls='', marker='.', ms='0.5')
 
         if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
