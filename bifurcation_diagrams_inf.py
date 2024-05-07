@@ -317,7 +317,7 @@ if __name__ == "__main__":
     num_transient_steps = 100000
     max_sim_steps = num_transient_steps + 20000
 
-    keep_context = True
+    keep_context = False
     reverse_betas = False
 
     num_ini_tokens = 1
