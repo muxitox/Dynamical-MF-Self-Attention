@@ -65,7 +65,7 @@ ARGS=" \
 --scaling_o=$SCALING_O \
 --scaling_att=$SCALING_ATT \
 --ini_token_from_w=$INI_TOKEN_FROM_W \
---worker_id=$WORKER_ID
+--worker_id=$SLURM_ARRAY_TASK_ID
 "
 
 echo $ARGS
