@@ -1,7 +1,7 @@
 import numpy as np
 from models.HopfieldTransformerPE import Embedding
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
-from plotting.plotting import plot_bifurcation_diagram
+from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram
 import os
 import time
 
@@ -199,7 +199,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
             num_segments_corrs, pe_mode, se_per_contribution_list, keep_context, reverse_betas, gaussian_scale_str,
             save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_o,
-            min_max_beta_to_show=None, show_title=False):
+            filtering_range, min_max_beta_to_show=None, show_title=False):
 
     if min_max_beta_to_show is None:
         min_beta_idx = 0
@@ -246,7 +246,8 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                         if save_not_plot and (not os.path.exists(folder_path + f"/{stat_name}/")):
                             os.makedirs(folder_path + f"/{stat_name}/")
 
-                        image_format = ".jpeg"
+                        # image_format = ".jpeg"
+                        image_format = ".pdf"
 
                         stat_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
                                           str(ini_token_idx) + "-transient_steps-" + str(
@@ -262,6 +263,32 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                                  num_transient_steps_plot_arg, feat_name=stat_name,
                                                  show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot,
                                                  title=title)
+
+                        for filter_idx in range(num_feat_patterns):
+
+                            if show_title:
+                                title = (
+                                    f"CORRm={correlations_from_weights} CTX={context_size} NUM_PAT={num_feat_patterns} "
+                                    f"SEED={seed} Filter={filtering_range}")
+                            else:
+                                title = None
+
+                            filtered_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
+                                                  str(ini_token_idx) + "-transient_steps-" + str(
+                                        num_transient_steps) + "-filter_idx-" + str(filter_idx) +
+                                                  "-filter_rg-" + str(filtering_range) + image_format)
+
+                            plot_filtered_bifurcation_diagram(stat_results_beta_list[min_beta_idx:max_beta_idx],
+                                                              stat_results_beta_list[min_beta_idx:max_beta_idx],
+                                                              filter_idx,
+                                                              beta_list[min_beta_idx:max_beta_idx], num_feat_patterns,
+                                                              filtered_save_path,
+                                                              num_transient_steps_plot_arg,
+                                                              filtering_range=filtering_range,
+                                                              feat_name=stat_name,
+                                                              show_max_num_patterns=show_max_num_patterns,
+                                                              save_not_plot=save_not_plot,
+                                                              title=title)
 
 
 if __name__ == "__main__":
@@ -303,7 +330,8 @@ if __name__ == "__main__":
     normalize_weights_str_o = "N"
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     scaling_o = 1
-    scaling_att = 1
+    scaling_att = 100
+    filtering_range = 0.0005
     compute_inf_normalization = True
     correlations_from_weights = 3  # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means, 3 segments
     gaussian_scale = "0.5"  # Only applicable if correlations_from_weights=0
@@ -311,6 +339,7 @@ if __name__ == "__main__":
     num_segments_corrs = 3  # Only applicable if correlations_from_weights=3
     save_non_transient = False
     save_not_plot = True
+    show_title = True
 
     if context_size > 2 ** positional_embedding_size:
         raise ("The positional embedding cannot cover the whole context size.")
@@ -322,11 +351,11 @@ if __name__ == "__main__":
 
     start = time.time()
 
-    runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-           num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-           normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-           correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale,
-           save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att)
+    # runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+    #        num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+    #        normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+    #        correlations_from_weights, num_segments_corrs, pe_mode, keep_context, reverse_betas, gaussian_scale,
+    #        save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att)
 
     end = time.time()
     elapsed_time = end - start
@@ -338,4 +367,5 @@ if __name__ == "__main__":
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str_att,
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
             num_segments_corrs, pe_mode, se_per_contribution_list, keep_context, reverse_betas, gaussian_scale,
-            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att)
+            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
+            filtering_range, show_title=show_title)

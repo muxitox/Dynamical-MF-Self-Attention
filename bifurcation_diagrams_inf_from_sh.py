@@ -109,6 +109,7 @@ if __name__ == "__main__":
     normalize_weights_str_o = args.normalize_weights_str_o
     scaling_o = args.scaling_o
     scaling_att = args.scaling_att
+    filtering_range = 0.005
     compute_inf_normalization = args.compute_inf_normalization
     correlations_from_weights = args.correlations_from_weights  # 0 use gaussian corrs, 1 create from weight matrices, 2 uniform means, 3 segments
     gaussian_scale = args.gaussian_scale  # Only applicable if correlations_from_weights=0
@@ -142,4 +143,4 @@ if __name__ == "__main__":
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str_att,
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
             num_segments_corrs, pe_mode, se_per_contribution_list, keep_context, reverse_betas, gaussian_scale,
-            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w)
+            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, filtering_range)
