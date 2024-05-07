@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from plotting.plotting import plot_save_statistics, plot_save_fft, plot_save_plane
-from bifurcation_diagrams_out_inf import create_pathname
+from bifurcation_diagrams_out_inf_parallel import create_pathname
 
 def create_dir(filepath):
     plot_save_folder_path = os.path.dirname(filepath)
@@ -13,7 +13,7 @@ def create_dir(filepath):
 def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
             num_transient_steps, max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str_att,
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
-            se_per_contribution, keep_context, reverse_betas, beta_to_show, gaussian_scale_str, save_non_transient,
+            se_per_contribution, beta_to_show, gaussian_scale_str, save_non_transient,
             compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att, plot_range=None):
 
     if save_non_transient == True:
@@ -22,20 +22,23 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
         num_transient_steps_plot_arg = 0
 
     folder_path = create_pathname(num_feat_patterns, tentative_semantic_embedding_size,
-                                                  positional_embedding_size, beta_list, num_transient_steps,
-                                                  max_sim_steps, context_size, normalize_weights_str_att,
-                                                  normalize_weights_str_o, reorder_weights, se_per_contribution,
-                                                  correlations_from_weights, num_segments_corrs, pe_mode, keep_context,
-                                                  reverse_betas, gaussian_scale_str, save_non_transient,
-                                                  compute_inf_normalization, scaling_o, scaling_att, beta_att)
+                                  positional_embedding_size, beta_list, num_transient_steps,
+                                  max_sim_steps, context_size, normalize_weights_str_att,
+                                  normalize_weights_str_o, reorder_weights, se_per_contribution,
+                                  correlations_from_weights, num_segments_corrs, pe_mode,
+                                  gaussian_scale_str, save_non_transient,
+                                  compute_inf_normalization, scaling_o, scaling_att, beta_att)
+
+    # Search idx for the beta nearest to beta_to_show
+    beta_to_show_idx = np.searchsorted(beta_list, beta_to_show)
+    print("beta", beta_to_show_idx, beta_list[beta_to_show_idx])
+
     ini_token_mode_str = ""
     if ini_token_from_w != 0:
         ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
     stats_data_path = (folder_path + "/stats/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx)
-                       + ini_token_mode_str + ".npz")
+                       + ini_token_mode_str + "-beta_idx-" + str(beta_to_show_idx) + ".npz")
 
-    # Search idx for the beta nearest to beta_to_show
-    beta_to_show_idx = np.searchsorted(beta_list, beta_to_show)
 
     # Load data
     data = np.load(stats_data_path)
@@ -44,9 +47,8 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
     # Load each stat and plot/save it
     for stat_name in stats_to_save_plot:
 
-        stat_results_beta_list = data[f"{stat_name}_results_beta_list"]
-        stat_results = stat_results_beta_list[beta_to_show_idx]
-
+        stat_results_beta_list = data[f"{stat_name}_results_beta"]
+        stat_results = stat_results_beta_list
 
         plot_save_path_traj = (folder_path + f"/indiv_traj/seed-{str(seed)}/{stat_name}/beta-{beta_to_show}-ini_token_idx-" +
                           str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
@@ -101,12 +103,12 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
 
     create_dir(plot_save_path_plane)
 
-    stat_results_beta_list_0 = [data[f"{stats_to_plot[0][0]}_results_beta_list"][beta_to_show_idx],
-                                data[f"{stats_to_plot[0][1]}_results_beta_list"][beta_to_show_idx],
-                                data[f"{stats_to_plot[0][2]}_results_beta_list"][beta_to_show_idx]]
-    stat_results_beta_list_1 = [data[f"{stats_to_plot[1][0]}_results_beta_list"][beta_to_show_idx],
-                                data[f"{stats_to_plot[1][1]}_results_beta_list"][beta_to_show_idx],
-                                data[f"{stats_to_plot[1][2]}_results_beta_list"][beta_to_show_idx]]
+    stat_results_beta_list_0 = [data[f"{stats_to_plot[0][0]}_results_beta"],
+                                data[f"{stats_to_plot[0][1]}_results_beta"],
+                                data[f"{stats_to_plot[0][2]}_results_beta"]]
+    stat_results_beta_list_1 = [data[f"{stats_to_plot[1][0]}_results_beta"],
+                                data[f"{stats_to_plot[1][1]}_results_beta"],
+                                data[f"{stats_to_plot[1][2]}_results_beta"]]
 
     plot_save_plane(stat_results_beta_list_0,
                     stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
@@ -155,7 +157,7 @@ if __name__ == "__main__":
     max_sim_steps = num_transient_steps + saved_steps
     keep_context = True
     reverse_betas = False
-    beta_to_show = 1.26   # We'll find the nearest beta in the defined range
+    beta_to_show = 1.267   # We'll find the nearest beta in the defined range
     beta_att = 2.2
 
     plot_window = 1000
@@ -190,5 +192,5 @@ if __name__ == "__main__":
     plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            num_transient_steps, max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str_att,
            normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
-           se_per_contribution, keep_context, reverse_betas, beta_to_show, gaussian_scale, save_not_transient,
+           se_per_contribution, beta_to_show, gaussian_scale, save_not_transient,
            compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att, plot_range)
