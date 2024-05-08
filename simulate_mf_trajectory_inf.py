@@ -2,14 +2,7 @@ import numpy as np
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from models.HopfieldTransformerPE import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_3Dplane
-import os
-
-def create_dir(filepath):
-    plot_save_folder_path = os.path.dirname(filepath)
-
-    # Create folder if it does not exist and we are saving the image
-    if save_not_plot and (not os.path.exists(plot_save_folder_path)):
-        os.makedirs(plot_save_folder_path)
+from utils import create_dir
 
 if __name__ == "__main__":
 
@@ -26,7 +19,8 @@ if __name__ == "__main__":
     # 2.2 with seed 2 gives some cycles
     # beta = 0.3779 # We'll find the nearest beta in the defined range
     # beta 1.26 1.266 1.28 1.40
-    beta = 1.266
+    # new betas 1.226 1.29?
+    beta = 1.3
     # beta = 1.266 / np.sqrt(3)
     print(beta)
 
@@ -34,7 +28,7 @@ if __name__ == "__main__":
 
 
     num_feat_patterns = 3
-    num_transient_steps = 1000  # 0 if we want to show the trajectory since the beginning
+    num_transient_steps = 100000  # 0 if we want to show the trajectory since the beginning
     saved_steps = 20000
     max_sim_steps = num_transient_steps + saved_steps
     # num_transient_steps_traj = max_sim_steps - num_transient_steps - 250  # 0 if we want to show the trajectory since the beginning
@@ -201,7 +195,7 @@ if __name__ == "__main__":
 
 
         # 3 feats
-        stats_to_plot = [["mo", "mk", "mv"], ["mo", "mk", "mv"]]
+        stats_to_plot = [["mo_se", "att", "mo_se"], ["mo_se", "att", "mo_se"]]
         if num_feat_patterns == 3:
             feat_idx = [[0, 1, 2], [1, 0, 1]]
         elif num_feat_patterns == 2:

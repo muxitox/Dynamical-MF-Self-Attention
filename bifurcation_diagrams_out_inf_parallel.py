@@ -3,9 +3,10 @@ from models.HopfieldTransformerPE import Embedding
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram
 from plotting.plotting import plot_filtered_bifurcation_diagram_par
-
 import os
 import time
+from utils import create_dir
+from plotting.plotting import plot_save_plane
 
 
 def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
@@ -196,11 +197,13 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
     else:
         num_transient_steps_plot_arg = 0
 
+    image_format = ".jpeg"
+    # image_format = ".pdf"
+
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
             for se_per_contribution in se_per_contribution_list:
                 for ini_token_idx in ini_tokens_list:
-
 
                     folder_path = create_pathname(num_feat_patterns, tentative_semantic_embedding_size,
                                                   positional_embedding_size, beta_list, num_transient_steps,
@@ -225,9 +228,6 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                         if save_not_plot and (not os.path.exists(folder_path + f"/{stat_name}/")):
                             os.makedirs(folder_path + f"/{stat_name}/")
 
-                        image_format = ".jpeg"
-                        # image_format = ".pdf"
-
                         for filter_idx in range(num_feat_patterns):
 
                             if show_title:
@@ -243,11 +243,45 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                                   "-filter_rg-" + str(filtering_range) + image_format)
 
                             plot_filtered_bifurcation_diagram_par(filter_idx, filtered_beta_list, num_feat_patterns,
-                                                                  filtered_save_path, num_transient_steps_plot_arg, stat_name,
-                                                                  folder_path, seed, ini_token_idx, ini_token_mode_str,
-                                                                  filtering_range=filtering_range,
-                                                                  show_max_num_patterns=show_max_num_patterns, save_not_plot=save_not_plot,
-                                                                  title=title)
+                                                                  filtered_save_path, num_transient_steps_plot_arg,
+                                                                  stat_name, folder_path, seed, ini_token_idx,
+                                                                  ini_token_mode_str, filtering_range=filtering_range,
+                                                                  show_max_num_patterns=show_max_num_patterns,
+                                                                  save_not_plot=save_not_plot, title=title)
+
+                    plot_lowres_planes = True
+                    if plot_lowres_planes:
+                        for idx in range(len(filtered_beta_list)):
+
+                            print(f"Plotting lowres planes for beta {idx+1}/{len(filtered_beta_list)} ")
+
+                            beta_idx = min_beta_idx + idx
+                            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
+                                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(beta_idx)
+                                               + ".npz")
+
+                            # Load data
+                            data = np.load(stats_data_path)
+                            mo_se_results = data[f"mo_se_results_beta"]
+                            # 3 feats
+                            stats_to_plot = [["mo_se"], ["mo_se"]]
+                            feat_idx = [[0], [1]]
+
+                            plot_save_path_plane = (folder_path + f"/indiv_traj_lowres/seed-{str(seed)}/planes"
+                                                    + f"/plane-beta-{beta_list[beta_idx]}-ini_token_idx-" +
+                                                    str(ini_token_idx) + "-transient_steps-" +
+                                                    str(num_transient_steps) + image_format)
+
+                            if save_not_plot:
+                                create_dir(plot_save_path_plane)
+
+                            stat_results_beta_list_0 = [mo_se_results]
+                            stat_results_beta_list_1 = [mo_se_results]
+
+                            plot_save_plane(stat_results_beta_list_0,
+                                            stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
+                                            tag_names=stats_to_plot, save_path=plot_save_path_plane,
+                                            save_not_plot=save_not_plot, lowres=True)
 
 
 if __name__ == "__main__":
@@ -266,9 +300,9 @@ if __name__ == "__main__":
     # 3 pat: seed 1 (0.35,0.3) - 0.8, 0.37 - 0.45
 
     beta_att = 2.2
-    num_betas = 1000
+    num_betas = 3000
     beta_list = np.linspace(0, 3, num_betas)
-    # beta_list = np.linspace(1.25, 2.4, 1000)
+    # beta_list = np.linspace(1.24, 1.28, num_betas)
     # beta_list = np.linspace(1.75, 2.75, 1200)
     # se_per_contribution_list = [(tentative_semantic_embedding_size /
     #                        (tentative_semantic_embedding_size + positional_embedding_size))]
@@ -295,7 +329,7 @@ if __name__ == "__main__":
     pe_mode = 0
     num_segments_corrs = 3  # Only applicable if correlations_from_weights=3
     save_non_transient = False
-    save_not_plot = False
+    save_not_plot = True
     show_title = True
 
     if context_size > 2 ** positional_embedding_size:

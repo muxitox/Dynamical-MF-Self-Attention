@@ -2,13 +2,8 @@ import numpy as np
 import os
 from plotting.plotting import plot_save_statistics, plot_save_fft, plot_save_plane
 from bifurcation_diagrams_out_inf_parallel import create_pathname
+from utils import create_dir
 
-def create_dir(filepath):
-    plot_save_folder_path = os.path.dirname(filepath)
-
-    # Create folder if it does not exist and we are saving the image
-    if save_not_plot and (not os.path.exists(plot_save_folder_path)):
-        os.makedirs(plot_save_folder_path)
 
 def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
             num_transient_steps, max_sim_steps, context_size, ini_token_idx, seed, normalize_weights_str_att,
@@ -148,16 +143,15 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1
-    beta_list = np.linspace(0, 3, 1000)
+    beta_list = np.linspace(1.24, 1.28, 3000)
     # se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
     se_per_contribution = 0.98
     num_feat_patterns = 3
     num_transient_steps = 100000
     saved_steps = 20000
     max_sim_steps = num_transient_steps + saved_steps
-    keep_context = True
-    reverse_betas = False
-    beta_to_show = 1.267   # We'll find the nearest beta in the defined range
+    # beta_to_show = 1.266  # We'll find the nearest beta in the defined range
+    beta_to_show = 1.244  # We'll find the nearest beta in the defined range
     beta_att = 2.2
 
     plot_window = 1000

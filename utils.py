@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 def bool2int(x):  # Transform bool array into positive integer
     """
     Transform bool array into positive integer. Code from
@@ -34,3 +34,10 @@ def feat_name_to_latex(feat_name):
         latex_str = "att"
 
     return latex_str
+
+def create_dir(filepath):
+    plot_save_folder_path = os.path.dirname(filepath)
+
+    # Create folder if it does not exist and we are saving the image
+    if not os.path.exists(plot_save_folder_path):
+        os.makedirs(plot_save_folder_path)

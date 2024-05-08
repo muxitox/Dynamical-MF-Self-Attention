@@ -2,6 +2,13 @@ import matplotlib.pyplot as plt
 from utils import feat_name_to_latex
 import numpy as np
 from scipy.signal import hilbert, chirp
+import matplotlib
+
+cmap = matplotlib.colormaps["plasma_r"]
+colors = []
+for i in range(4):
+    colors += [cmap((i) / 3)]
+
 
 # LaTeX macros
 # plt.rc('text', usetex=True)
@@ -48,7 +55,7 @@ def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_pat
             unique_values_feat = results_y_list[b_idx][num_transient_steps:, feat]
             beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat, c='tab:blue', ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[1], ls='', marker='.', ms='0.05')
 
 
         if feat_name != "att" and x_list[-1] > 3.5:
@@ -123,8 +130,8 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
             beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
             beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat, c='tab:blue', ls='', marker='.', ms='0.05')
-            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c='tab:orange', ls='', marker='.', ms='0.5')
+            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[1], ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[2], ls='', marker='.', ms='0.5')
 
         if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
@@ -155,7 +162,7 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
                                           folder_path, seed, ini_token_idx, ini_token_mode_str,
                                           filtering_range=0.05,
                                           show_max_num_patterns=None, save_not_plot=True, title=None,
-                                          is_beta=True):
+                                          is_beta=True, min_bidx=0):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -187,7 +194,8 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
         else:
             local_ax = ax[row, feat % 2]
 
-        for b_idx in range(len(x_list)):
+        for idx in range(len(x_list)):
+            b_idx = min_bidx + idx
             stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
                                + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
                                + ".npz")
@@ -209,8 +217,8 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
             beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
             beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat, c='tab:blue', ls='', marker='.', ms='0.05')
-            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c='tab:orange', ls='', marker='.', ms='0.5')
+            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[1], ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[2], ls='', marker='.', ms='0.5')
 
         if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
@@ -349,7 +357,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
     plt.close()
 
 def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
-                    save_not_plot=False, save_path=None, tag_names=[], title=None):
+                    save_not_plot=False, save_path=None, tag_names=[], title=None, lowres=False):
 
     # Plot show_max_num_patterns subfigures if defined
 
@@ -357,7 +365,13 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
     if ncols != len(stats2):
         raise Exception("The length of the input stats does not coincide")
 
-    fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 8), constrained_layout=True)
+    dpi = None
+    ms = 0.4
+    if lowres:
+        dpi = 15
+        ms = 0.7
+
+    fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 8), constrained_layout=True, dpi=dpi)
 
     # num_plotting_steps_arange = np.arange(num_plotting_steps)
 
@@ -376,10 +390,11 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
         else:
             local_ax = ax[feat % ncols]
 
-        local_ax.plot(stats1[feat][:num_plotting_steps, feat_idx[0][feat]], stats2[feat][:num_plotting_steps, feat_idx[1][feat]], '.', ms='0.4')
+        local_ax.plot(stats1[feat][:num_plotting_steps, feat_idx[0][feat]],
+                      stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', ms=ms)
 
         local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]}(t)$")
-        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]}(t)$" )
+        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]}(t)$")
 
         # local_ax.legend()
 
