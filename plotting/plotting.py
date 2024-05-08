@@ -11,11 +11,11 @@ for i in range(4):
 
 
 # LaTeX macros
-# plt.rc('text', usetex=True)
-# plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
-# font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
-# plt.rc('font', **font)
-# plt.rc('legend', **{'fontsize': 14})
+plt.rc('text', usetex=True)
+plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
+font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
+plt.rc('font', **font)
+plt.rc('legend', **{'fontsize': 14})
 
 
 def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_path, num_transient_steps,
@@ -55,7 +55,7 @@ def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_pat
             unique_values_feat = results_y_list[b_idx][num_transient_steps:, feat]
             beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[1], ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='', marker='.', ms='0.05')
 
 
         if feat_name != "att" and x_list[-1] > 3.5:
@@ -130,8 +130,8 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
             beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
             beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[1], ls='', marker='.', ms='0.05')
-            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[2], ls='', marker='.', ms='0.5')
+            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[0], ls='', marker='.', ms='0.5')
 
         if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
@@ -217,8 +217,8 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
             beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
             beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[1], ls='', marker='.', ms='0.05')
-            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[2], ls='', marker='.', ms='0.5')
+            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[0], ls='', marker='.', ms='0.5')
 
         if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
@@ -294,11 +294,18 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
     plt.show()
 
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                         save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=False):
+                         save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=False,
+                         show_1_feat=None):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+
+
+    feat_list = np.arange(num_feat_patterns)
+    if show_1_feat is not None:
+        feat_list = [show_1_feat]
+        num_feat_patterns = 1
 
     nrows = (num_feat_patterns + 1) // 2
 
@@ -315,8 +322,9 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
     latex_str = feat_name_to_latex(stat_name)
 
-    for feat in range(0, num_feat_patterns):
+    for feat_id in range(0, num_feat_patterns):
 
+        feat = feat_list[feat_id]
         row = feat // 2
         if num_feat_patterns == 1:
             local_ax = ax
@@ -328,10 +336,10 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
             local_ax = ax[row, feat % 2]
 
 
-        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label="Signal")
+        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], c=colors[2], label="Signal")
         if plot_hilbert:
             analytic_signal = hilbert(stat1[:num_plotting_steps, feat])
-            local_ax.plot(num_plotting_steps_arange, np.abs(analytic_signal), alpha=0.5, label="Hilbert tr")
+            local_ax.plot(num_plotting_steps_arange, np.abs(analytic_signal), c=colors[0], alpha=0.5, label="Hilbert tr")
 
 
         if num_feat_patterns == 3:
@@ -391,7 +399,7 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
             local_ax = ax[feat % ncols]
 
         local_ax.plot(stats1[feat][:num_plotting_steps, feat_idx[0][feat]],
-                      stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', ms=ms)
+                      stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c=colors[2], ms=ms)
 
         local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]}(t)$")
         local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]}(t)$")
@@ -443,7 +451,6 @@ def plot_save_3Dplane(stats1, num_plotting_steps,
 
         local_ax.set_xlabel(rf"${latex_strs[stat_id]}_0(t)$")
         local_ax.set_ylabel(rf"${latex_strs[stat_id]}_1(t)$" )
-        # local_ax.set_zlabel(rf"${latex_strs[stat_id]}_2(t)$" )
 
         # local_ax.legend()
 
@@ -460,13 +467,17 @@ def plot_save_3Dplane(stats1, num_plotting_steps,
 
 
 def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                  save_not_plot=False, save_path=None, mode="sq", title=None):
+                  save_not_plot=False, save_path=None, mode="sq", title=None, show_1_feat=None):
 
     # mode may be sq or real
-
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+
+    feat_list = np.arange(num_feat_patterns)
+    if show_1_feat is not None:
+        feat_list = [show_1_feat]
+        num_feat_patterns = 1
 
     nrows = (num_feat_patterns + 1) // 2
 
@@ -479,7 +490,9 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
 
     latex_str = feat_name_to_latex(stat_name)
 
-    for feat in range(0, num_feat_patterns):
+    for feat_id in range(0, num_feat_patterns):
+
+        feat = feat_list[feat_id]
 
         row = feat // 2
         if num_feat_patterns == 1:
@@ -499,7 +512,7 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
             stat_fft = stat_fft.real**2 + stat_fft.imag**2
 
         freqs = np.fft.rfftfreq(num_plotting_steps)
-        local_ax.plot(freqs, stat_fft)
+        local_ax.plot(freqs, stat_fft, c=colors[2])
         # local_ax.specgram(stat1[:num_plotting_steps, feat], Fs=1)
 
         if num_feat_patterns == 3:

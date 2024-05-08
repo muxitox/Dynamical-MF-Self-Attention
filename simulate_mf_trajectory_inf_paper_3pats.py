@@ -23,7 +23,12 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1
-    beta_list = [1.26, 1.266, 1.28, 1.4]
+    # beta_list = [1.255, 1.2634211403801268, 1.266, 1.2642214071357118, 1.28, 1.4]
+    beta_list = [1.255]
+
+    # beta_list = np.linspace(0, 3, 3000)
+    # beta_list = beta_list[1500:1502]
+    beta_att = 2.2
     # beta_list = [1.266]
     num_feat_patterns = 3
     num_transient_steps = 100000  # 0 if we want to show the trajectory since the beginning
@@ -37,19 +42,21 @@ if __name__ == "__main__":
     scaling_o = 1
     scaling_att = 100
 
-    normalize_weights_str_att = "N**2"
+    normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
     compute_inf_normalization = True
     ini_token_idx = 0
     ini_token_from_w = 1
-    save_not_plot = True
+    save_not_plot = False
+    show_title = True
 
     for beta in beta_list:
+        print(beta)
 
         # Create seed for reproducibility
         np.random.seed(seed)
 
-        HT = HopfieldTransformerInfN(beta, beta, num_feat_patterns=num_feat_patterns,
+        HT = HopfieldTransformerInfN(beta, beta_att, num_feat_patterns=num_feat_patterns,
                                      positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
                                      context_size=context_size, max_sim_steps=max_sim_steps,
                                      min_saved_step=num_transient_steps,
@@ -60,7 +67,8 @@ if __name__ == "__main__":
                                      se_per_contribution=se_per_contribution, pe_mode=pe_mode,
                                      compute_inf_normalization=compute_inf_normalization,
                                      scaling_o=scaling_o,
-                                     scaling_att=scaling_att)
+                                     scaling_att=scaling_att,
+                                     N_normalization=9999)
 
         # Set initial token from one of the output features
         x0 = HT.Wo[ini_token_idx]
@@ -88,8 +96,10 @@ if __name__ == "__main__":
         folder_path = f"results_eurnips/beta{beta}"
         create_dir(folder_path)
 
-        title = fr"$\beta$ = {beta}"
-        # title = None
+        if show_title:
+            title = fr"$\beta$ = {round(beta, 4)}"
+        else:
+            title = None
         stats_to_show = ["mo_se"]
         image_format = ".jpeg"
 
@@ -133,7 +143,8 @@ if __name__ == "__main__":
         stat_results_beta_list_1 = [HT.mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
         plot_save_plane(stat_results_beta_list_0,
                         stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
-                        tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot)
+                        tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot,
+                        title=title)
 
 
         # # 3 feats
