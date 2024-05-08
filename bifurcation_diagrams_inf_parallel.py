@@ -1,9 +1,10 @@
 import numpy as np
 from models.HopfieldTransformerPE import Embedding
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
-from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram_par
+from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram_par, plot_save_plane
 import os
 import time
+from utils import create_dir
 
 def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            num_transient_steps, max_sim_steps, context_size, normalize_weights_str_att,
@@ -245,6 +246,40 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                                                   show_max_num_patterns=show_max_num_patterns,
                                                                   save_not_plot=save_not_plot, title=title)
 
+                    plot_lowres_planes = True
+                    if plot_lowres_planes:
+                        for idx in range(len(filtered_beta_list)):
+
+                            print(f"Plotting lowres planes for beta {idx + 1}/{len(filtered_beta_list)} ")
+
+                            beta_idx = min_beta_idx + idx
+                            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
+                                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(beta_idx)
+                                               + ".npz")
+
+                            # Load data
+                            data = np.load(stats_data_path)
+                            mo_se_results = data[f"mo_se_results_beta"]
+                            # 3 feats
+                            stats_to_plot = [["mo_se"], ["mo_se"]]
+                            feat_idx = [[0], [1]]
+
+                            plot_save_path_plane = (folder_path + f"/indiv_traj_lowres/seed-{str(seed)}/planes"
+                                                    + f"/plane-beta-{beta_list[beta_idx]}-ini_token_idx-" +
+                                                    str(ini_token_idx) + "-transient_steps-" +
+                                                    str(num_transient_steps) + image_format)
+
+                            if save_not_plot:
+                                create_dir(plot_save_path_plane)
+
+                            stat_results_beta_list_0 = [mo_se_results]
+                            stat_results_beta_list_1 = [mo_se_results]
+
+                            plot_save_plane(stat_results_beta_list_0,
+                                            stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
+                                            tag_names=stats_to_plot, save_path=plot_save_path_plane,
+                                            save_not_plot=save_not_plot, lowres=True)
+
 
 if __name__ == "__main__":
     # Instantiate vocabulary
@@ -264,7 +299,7 @@ if __name__ == "__main__":
 
     # beta_list = np.linspace(0, 3, 1000)
     num_betas = 10
-    beta_list = np.linspace(0, 4, num_betas)
+    beta_list = np.linspace(0, 3, num_betas)
     # beta_list = np.linspace(1.75, 2.75, 1200)
     # se_per_contribution_list = [(tentative_semantic_embedding_size /
     #                        (tentative_semantic_embedding_size + positional_embedding_size))]
@@ -303,12 +338,12 @@ if __name__ == "__main__":
 
     start = time.time()
 
-    for worker_id in range(num_betas):
-        runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-               num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-               normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-               correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
-               save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, worker_id)
+    # for worker_id in range(num_betas):
+    #     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+    #            num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+    #            normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+    #            correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
+    #            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, worker_id)
 
     end = time.time()
     elapsed_time = end - start
