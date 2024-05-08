@@ -59,7 +59,6 @@ ARGS=" \
 --positional_embedding_size=$POSITIONAL_EMBEDDING_SIZE \
 --pe_proportion_from_size=$PE_FROM_SIZE \
 --save_not_plot=True \
---beta_att=$BETA_ATT \
 --scaling_o=$SCALING_O \
 --scaling_att=$SCALING_ATT \
 --ini_token_from_w=$INI_TOKEN_FROM_W \
