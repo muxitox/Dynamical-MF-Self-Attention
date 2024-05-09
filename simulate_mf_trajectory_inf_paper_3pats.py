@@ -1,7 +1,7 @@
 import numpy as np
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from models.HopfieldTransformerPE import Embedding
-from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_3Dplane
+from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os
 
 def create_dir(filepath):
@@ -23,13 +23,11 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1
-    # beta_list = [1.255, 1.2634211403801268, 1.266, 1.2642214071357118, 1.28, 1.4]
-    beta_list = [1.255]
+    beta_list = [1.255, 1.266, 1.2642214071357118, 1.27, 1.28, 1.4]
+    # beta_list = [1.27]
 
-    # beta_list = np.linspace(0, 3, 3000)
-    # beta_list = beta_list[1500:1502]
+
     beta_att = 2.2
-    # beta_list = [1.266]
     num_feat_patterns = 3
     num_transient_steps = 100000  # 0 if we want to show the trajectory since the beginning
     saved_steps = 20000
@@ -47,11 +45,10 @@ if __name__ == "__main__":
     compute_inf_normalization = True
     ini_token_idx = 0
     ini_token_from_w = 1
-    save_not_plot = False
+    save_not_plot = True
     show_title = True
 
     for beta in beta_list:
-        print(beta)
 
         # Create seed for reproducibility
         np.random.seed(seed)
@@ -105,7 +102,7 @@ if __name__ == "__main__":
 
         for stat_name in stats_to_show:
 
-            plot_windows = [250, 5000]
+            plot_windows = [250, 350, 5000]
             for plot_window in plot_windows:
                 offset = 1000 + plot_window
                 plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window - 1]
@@ -119,52 +116,47 @@ if __name__ == "__main__":
                                      len(rg), min_num_step=num_transient_steps + plot_range[0],
                                      show_max_num_patterns=num_feat_patterns,
                                      save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,
-                                     plot_hilbert=False)
+                                     plot_hilbert=False, show_1_feat=1)
 
             plot_save_path_fft = (folder_path + f"/fft-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
                                   str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
-            plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns,
-                          saved_steps,
+            plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
                           show_max_num_patterns=num_feat_patterns,
-                          save_not_plot=save_not_plot, save_path=plot_save_path_fft, title=title)
+                          save_not_plot=save_not_plot, save_path=plot_save_path_fft, title=title, show_1_feat=1)
+
+            plot_save_path_fft_log = (folder_path + f"/log-fft-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
+                                  str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
+
+            plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
+                          show_max_num_patterns=num_feat_patterns, save_not_plot=save_not_plot,
+                          save_path=plot_save_path_fft_log, title=title, show_1_feat=1, log=True)
+
+            plot_save_path_ACF = (folder_path + f"/acf-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
+                                      str(ini_token_idx) + "-transient_steps-" + str(
+                        num_transient_steps) + image_format)
+
+            plot_save_autocorrelation(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
+                                      show_max_num_patterns=num_feat_patterns, save_not_plot=save_not_plot,
+                                      save_path=plot_save_path_ACF, title=title, show_1_feat=1)
 
         print("Done.")
 
-        # 1 feat
+        # Define the statistics you want to plot against each other
+        # In this case the feature mo with only the semantic information
         stats_to_plot = [["mo_se"], ["mo_se"]]
+        # Define the index of the features you want to compare against each other
         feat_idx = [[0], [1]]
 
+        # Define path for saving the plane
         plot_save_path_plane = (
                 folder_path + f"/plane-seed-{str(seed)}" + "-ini_token-" +
                 str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
+        # Load functions
         stat_results_beta_list_0 = [HT.mf_statistics[stats_to_plot[feat_idx[0][0]][0]]]
         stat_results_beta_list_1 = [HT.mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
         plot_save_plane(stat_results_beta_list_0,
                         stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
                         tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot,
                         title=title)
-
-
-        # # 3 feats
-        # stats_to_plot = [["mo", "mk", "mv"], ["mo", "mk", "mv"]]
-        # if num_feat_patterns == 3:
-        #     feat_idx = [[0, 1, 2], [1, 0, 1]]
-        # elif num_feat_patterns == 2:
-        #     feat_idx = [[0, 0, 0], [1, 1, 1]]
-        # elif num_feat_patterns == 1:
-        #     stats_to_plot = [["mo", "mk", "mk"], ["mv", "mq", "mv"]]
-        #     feat_idx = [[0, 0, 0], [0, 0, 0]]
-        #
-        # plot_save_path_plane = (
-        #         folder_path + f"/plane-seed-{str(seed)}" + "-ini_token-" +
-        #         str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
-        #
-        # stat_results_beta_list_0 = [HT.mf_statistics[stats_to_plot[0][0]], HT.mf_statistics[stats_to_plot[0][1]],
-        #                             HT.mf_statistics[stats_to_plot[0][2]]]
-        # stat_results_beta_list_1 = [HT.mf_statistics[stats_to_plot[1][0]], HT.mf_statistics[stats_to_plot[1][1]],
-        #                             HT.mf_statistics[stats_to_plot[1][2]]]
-        # plot_save_plane(stat_results_beta_list_0,
-        #                 stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
-        #                 tag_names=stats_to_plot,  beta=beta, save_path=plot_save_path_plane, save_not_plot=save_not_plot)

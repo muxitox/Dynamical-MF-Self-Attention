@@ -69,7 +69,7 @@ def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_pat
         elif feat > num_feat_patterns-3:
             local_ax.set_xlabel(x_label)
 
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
         # local_ax.legend(loc="upper center")
 
     # fig.tight_layout(pad=0.1)
@@ -143,7 +143,7 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
         elif feat > num_feat_patterns-3:
             local_ax.set_xlabel(x_label)
 
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
         # local_ax.legend(loc="upper center")
 
     # fig.tight_layout(pad=0.1)
@@ -230,7 +230,7 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
         elif feat > num_feat_patterns-3:
             local_ax.set_xlabel(x_label)
 
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
         # local_ax.legend(loc="upper center")
 
     # fig.tight_layout(pad=0.1)
@@ -286,7 +286,7 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
         elif feat > num_feat_patterns-3:
             local_ax.set_xlabel(r"$t$")
 
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
         local_ax.legend()
 
     # fig.tight_layout(pad=0.1)
@@ -336,7 +336,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
             local_ax = ax[row, feat % 2]
 
 
-        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], c=colors[2], label="Signal")
+        local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], c="k", label="Signal")
         if plot_hilbert:
             analytic_signal = hilbert(stat1[:num_plotting_steps, feat])
             local_ax.plot(num_plotting_steps_arange, np.abs(analytic_signal), c=colors[0], alpha=0.5, label="Hilbert tr")
@@ -347,7 +347,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         elif feat > num_feat_patterns - 3:
             local_ax.set_xlabel(r"$t$")
 
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat},t}}$")
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
 
         local_ax.set_xlim(num_plotting_steps_arange[0], num_plotting_steps_arange[-1])
 
@@ -399,10 +399,10 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
             local_ax = ax[feat % ncols]
 
         local_ax.plot(stats1[feat][:num_plotting_steps, feat_idx[0][feat]],
-                      stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c=colors[2], ms=ms)
+                      stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c="k", ms=ms)
 
-        local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]}(t)$")
-        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]}(t)$")
+        local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]+1}(t)$")
+        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]+1}(t)$")
 
         # local_ax.legend()
 
@@ -467,7 +467,7 @@ def plot_save_3Dplane(stats1, num_plotting_steps,
 
 
 def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                  save_not_plot=False, save_path=None, mode="sq", title=None, show_1_feat=None):
+                  save_not_plot=False, save_path=None, mode="sq", title=None, show_1_feat=None, log=False):
 
     # mode may be sq or real
     # Plot show_max_num_patterns subfigures if defined
@@ -512,7 +512,13 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
             stat_fft = stat_fft.real**2 + stat_fft.imag**2
 
         freqs = np.fft.rfftfreq(num_plotting_steps)
-        local_ax.plot(freqs, stat_fft, c=colors[2])
+
+        log_str = ""
+        if log:
+            log_str = "\log "
+            stat_fft = np.log(stat_fft)
+
+        local_ax.plot(freqs, stat_fft, c="k")
         # local_ax.specgram(stat1[:num_plotting_steps, feat], Fs=1)
 
         if num_feat_patterns == 3:
@@ -521,9 +527,9 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
             local_ax.set_xlabel(r"$Hz$")
 
         if mode == "real":
-            local_ax.set_ylabel(fr"re(Mag.) of ${latex_str}_{{{feat},t}}$")
+            local_ax.set_ylabel(fr"${log_str}re(\mathcal{{F}} f_{{ {latex_str}_{feat+1} }})$")
         else:
-            local_ax.set_ylabel(fr"Mag.$^2$ of ${latex_str}_{{{feat},t}}$")
+            local_ax.set_ylabel(fr"${log_str}|\mathcal{{F}}|^2 f_{{ {latex_str}_{feat+1}  }}$")
 
 
         local_ax.set_xlim(freqs[0], freqs[-1])
@@ -535,6 +541,72 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
 
     # fig.tight_layout(pad=0.1)
     # fig.suptitle(f"Evolution of {stat_name}")
+
+    if save_not_plot:
+        fig.savefig(save_path)
+    else:
+        plt.show()
+    plt.close()
+
+
+def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
+                  save_not_plot=False, save_path=None, title=None, show_1_feat=None, plotting_window=100):
+
+    # mode may be sq or real
+    # Plot show_max_num_patterns subfigures if defined
+    if (show_max_num_patterns is not None):
+        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+
+    feat_list = np.arange(num_feat_patterns)
+    if show_1_feat is not None:
+        feat_list = [show_1_feat]
+        num_feat_patterns = 1
+
+    nrows = (num_feat_patterns + 1) // 2
+
+    if num_feat_patterns == 1:
+        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+    elif num_feat_patterns == 3:
+        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+    else:
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+
+    latex_str = feat_name_to_latex(stat_name)
+
+    for feat_id in range(0, num_feat_patterns):
+
+        feat = feat_list[feat_id]
+
+        row = feat // 2
+        if num_feat_patterns == 1:
+            local_ax = ax
+        elif num_feat_patterns == 2:
+            local_ax = ax[feat % 2]
+        elif num_feat_patterns == 3:
+            local_ax = ax[feat % 3]
+        else:
+            local_ax = ax[row, feat % 2]
+
+        stat_autocorr = np.correlate(stat1[:num_plotting_steps, feat], stat1[:num_plotting_steps, feat], mode="full")
+
+        middle_index = len(stat1[:num_plotting_steps, feat]) - 1
+
+        stat_autocorr_window = stat_autocorr[middle_index:middle_index+plotting_window]
+        x_vals = np.arange(len(stat_autocorr_window))
+
+        local_ax.plot(x_vals, stat_autocorr_window, c="k")
+
+        if num_feat_patterns == 3:
+            local_ax.set_xlabel(r"$t - \tau$")
+        elif feat > num_feat_patterns - 3:
+            local_ax.set_xlabel(r"$t - \tau$")
+
+        local_ax.set_ylabel(fr"ACF ${latex_str}_{feat+1}$")
+
+        local_ax.set_xlim(x_vals[0], x_vals[-1])
+
+        if title is not None:
+            fig.suptitle(title)
 
     if save_not_plot:
         fig.savefig(save_path)
