@@ -6,9 +6,8 @@ import matplotlib
 
 cmap = matplotlib.colormaps["plasma_r"]
 colors = []
-for i in range(4):
-    colors += [cmap((i) / 3)]
-
+for i_color in range(4):
+    colors += [cmap(i_color / 3)]
 
 # LaTeX macros
 plt.rc('text', usetex=True)
@@ -16,7 +15,6 @@ plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
 font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
 plt.rc('font', **font)
 plt.rc('legend', **{'fontsize': 14})
-
 
 def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_path, num_transient_steps,
                              feat_name, show_max_num_patterns=None, save_not_plot=True, title=None, is_beta=True):
@@ -91,13 +89,14 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
 
     nrows = (num_feat_patterns + 1) // 2
+    row_size = 4
 
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(8, row_size), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(24, row_size), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, row_size * nrows), constrained_layout=True)
 
     latex_str = feat_name_to_latex(feat_name)
     x_label = r'$\beta$'
@@ -253,12 +252,13 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
 
     nrows = (num_feat_patterns + 1) // 2
 
+    row_size = 3
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(8, row_size), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(24, row_size), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, row_size * nrows), constrained_layout=True)
 
     num_plotting_steps_arange = np.arange(num_plotting_steps)
 
@@ -310,13 +310,13 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
     nrows = (num_feat_patterns + 1) // 2
 
     col_size = 9
-
+    row_size = 3
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(col_size*num_feat_patterns, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(col_size*num_feat_patterns, row_size), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(col_size*num_feat_patterns, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(col_size*num_feat_patterns, row_size), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, 4 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, row_size * nrows), constrained_layout=True)
 
     num_plotting_steps_arange = np.arange(num_plotting_steps) + min_num_step
 
@@ -480,13 +480,13 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         num_feat_patterns = 1
 
     nrows = (num_feat_patterns + 1) // 2
-
+    row_size = 3
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(8, row_size), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(24, row_size), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, row_size * nrows), constrained_layout=True)
 
     latex_str = feat_name_to_latex(stat_name)
 
@@ -563,13 +563,13 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
         num_feat_patterns = 1
 
     nrows = (num_feat_patterns + 1) // 2
-
+    row_size = 3
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(8, row_size), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(24, row_size), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, row_size * nrows), constrained_layout=True)
 
     latex_str = feat_name_to_latex(stat_name)
 
