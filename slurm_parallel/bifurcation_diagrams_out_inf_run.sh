@@ -71,7 +71,8 @@ ARGS=" \
 --scaling_o=$SCALING_O \
 --scaling_att=$SCALING_ATT \
 --ini_token_from_w=$INI_TOKEN_FROM_W \
---worker_id=$WORKER_ID
+--worker_id=$WORKER_ID \
+--load_from_context_mode=$LOAD_FROM_CONTEXT_MODE
 "
 echo $ARGS
 python bifurcation_diagrams_out_inf_parallel_run_from_sh.py $ARGS
