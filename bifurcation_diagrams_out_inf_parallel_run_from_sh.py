@@ -67,7 +67,7 @@ parser.add_argument("--save_not_plot", help="Specify the number of pe values",
 parser.add_argument("--worker_id", help="Specify what value of beta it's going to compute",
                     type=int)
 parser.add_argument("--load_from_context_mode", help="Specify how to deal with initialization",
-                    type=int)
+                    type=int, default=0)
 
 if __name__ == "__main__":
 
