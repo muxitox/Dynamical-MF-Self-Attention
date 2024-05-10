@@ -38,7 +38,7 @@ INI_TOKEN_FROM_W=${23}
 LOAD_FROM_CONTEXT_MODE=${24}
 WORKER_ID=${25}
 
-if [ -z "$WORKER_ID+x" ]; # Check if variable is not defined
+if [ -z "$WORKER_ID" ]; # Check if variable is not defined
 then
 WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
