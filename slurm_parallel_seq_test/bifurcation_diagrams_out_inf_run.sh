@@ -9,8 +9,8 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=apoc@bcamath.org
 
-module load Python/3.9.5-GCCcore-10.3.0
-source venv/bin/activate
+#module load Python/3.9.5-GCCcore-10.3.0
+#source venv/bin/activate
 
 SEED=$1
 NUM_FEAT_PATTERNS=$2
@@ -37,11 +37,6 @@ SCALING_ATT=${22}
 INI_TOKEN_FROM_W=${23}
 LOAD_FROM_CONTEXT_MODE=${24}
 WORKER_ID=${25}
-
-if [ -z "$WORKER_ID+x" ]; # Check if variable is not defined
-then
-WORKER_ID=$SLURM_ARRAY_TASK_ID
-fi
 
 ARGS=" \
 --seed=$SEED \
@@ -71,8 +66,10 @@ ARGS=" \
 --scaling_o=$SCALING_O \
 --scaling_att=$SCALING_ATT \
 --ini_token_from_w=$INI_TOKEN_FROM_W \
---worker_id=$WORKER_ID
+--worker_id=$WORKER_ID \
+--load_from_context_mode=$LOAD_FROM_CONTEXT_MODE
 "
+
 echo $ARGS
-python bifurcation_diagrams_out_inf_parallel_run_from_sh.py $ARGS
-#python ../bifurcation_diagrams_out_inf_parallel_run_from_sh.py $ARGS
+#python bifurcation_diagrams_out_inf_parallel_run_from_sh.py $ARGS
+python ../bifurcation_diagrams_out_inf_parallel_run_from_sh.py $ARGS
