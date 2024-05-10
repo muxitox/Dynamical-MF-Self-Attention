@@ -237,8 +237,6 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
         local_ax.plot(0.1, 0, 'o', c="w")
 
 
-
-
         if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
 
@@ -253,6 +251,120 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
 
         local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
         local_ax.legend(loc="upper left")
+
+    # fig.tight_layout(pad=0.1)
+    if title is not None:
+        fig.suptitle(title)
+
+    if save_not_plot:
+        fig.savefig(save_path)
+    else:
+        plt.show()
+    plt.close()
+
+
+def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_patterns,
+                                          save_path, num_transient_steps, feat_name,
+                                          folder_path, seed, ini_token_idx, ini_token_mode_str,
+                                          filtering_range=0.05,
+                                          show_max_num_patterns=None, save_not_plot=True, title=None,
+                                          is_beta=True, min_bidx=0, show_1_feat=None,
+                                          filter_periodic=100):
+
+    # Plot show_max_num_patterns subfigures if defined
+    if (show_max_num_patterns is not None):
+        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+
+    feat_list = np.arange(num_feat_patterns)
+    if show_1_feat is not None:
+        feat_list = [show_1_feat]
+        num_feat_patterns = 1
+
+    nrows = (num_feat_patterns + 1) // 2
+
+    if num_feat_patterns == 1:
+        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+    elif num_feat_patterns == 3:
+        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+    else:
+        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+
+    latex_str = feat_name_to_latex(feat_name)
+    x_label = r'$\beta$'
+    if not is_beta:
+        x_label = r'$SE\%$'
+
+    for feat_id in range(0, num_feat_patterns):
+        feat = feat_list[feat_id]
+
+        row = feat // 2
+        if num_feat_patterns == 1:
+            local_ax = ax
+        elif num_feat_patterns == 2:
+            local_ax = ax[feat % 2]
+        elif num_feat_patterns == 3:
+            local_ax = ax[feat % 3]
+        else:
+            local_ax = ax[row, feat % 2]
+
+        y_resolution = len(x_list) * 2
+        im_array = np.zeros((len(x_list), y_resolution))
+
+        max_y = - np.inf
+        min_y = np.inf
+        for idx in range(len(x_list)):
+            b_idx = min_bidx + idx
+            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
+                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+                               + ".npz")
+
+            # Load data
+            data = np.load(stats_data_path)
+            results_y_list = data[f"{feat_name}_results_beta"]
+            local_min = np.min(results_y_list)
+            local_max = np.max(results_y_list)
+            if local_min < min_y:
+                min_y = local_min
+            if local_max > max_y:
+                max_y = local_max
+
+        bins_size = (max_y - min_y) / y_resolution
+        bins = np.arange(y_resolution) * bins_size
+
+        for idx in range(len(x_list)):
+            b_idx = min_bidx + idx
+            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
+                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+                               + ".npz")
+
+            # Load data
+            data = np.load(stats_data_path)
+            results_y_list = data[f"{feat_name}_results_beta"]
+
+
+            values_feat = results_y_list[num_transient_steps:, feat]
+            inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int)
+
+            im_array[idx,inds] = 1
+
+
+        local_ax.imshow(im_array)
+
+
+        # if feat_name != "att" and x_list[-1] > 3.5:
+        #     local_ax.set_ylim(-1, 1)
+        #
+        # local_ax.set_xlim(x_list[0], x_list[-1])
+        # local_ax.set_xlim(x_list[0], x_list[-1])
+        #
+        #
+        # if num_feat_patterns == 3:
+        #     local_ax.set_xlabel(x_label)
+        # elif feat > num_feat_patterns-3:
+        #     local_ax.set_xlabel(x_label)
+
+        # local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
+        # local_ax.legend(loc="upper left")
 
     # fig.tight_layout(pad=0.1)
     if title is not None:
