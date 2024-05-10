@@ -5,7 +5,7 @@ from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcatio
 from plotting.plotting import plot_filtered_bifurcation_diagram_par
 import os
 import time
-from utils import create_dir
+from utils import create_dir, create_dir_from_filepath
 from plotting.plotting import plot_save_plane
 
 
@@ -13,7 +13,7 @@ def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positi
                     num_transient_steps, max_sim_steps, context_size, normalize_weights_str_att,
                     normalize_weights_str_o, reorder_weights, se_per_contribution,
                     correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale_str,
-                    save_non_transient, compute_inf_normalization, scaling_o, scaling_att, beta_att):
+                    save_non_transient, compute_inf_normalization, scaling_o, scaling_att, beta_att, load_from_context_mode):
 
 
     beta_string = ("/beta_att-" + str(beta_att) + "-min_beta_o-" + str(beta_list[0]) + "-max_beta_o-" +
@@ -45,6 +45,10 @@ def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positi
     if compute_inf_normalization:
         compute_inf_normalization_str = "-inf_norm"
 
+    load_from_context_mode_str = ""
+    if load_from_context_mode != 0:
+        load_from_context_mode_str = "-load_from_context_mode-1"
+
     # Save/plot results for each ini_token, W config, and num_feat_patterns
     folder_path = ("results_out_parallel/infN-correlations_from_weights-" + str(correlations_from_weights)
                    + "-se_size-" + str(tentative_semantic_embedding_size) + "-pe_size-"
@@ -54,7 +58,7 @@ def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positi
                    str(int(reorder_weights)) + "-num_segments_corrs-" + str(num_segments_corrs)
                    + "-pe_mode-" + str(pe_mode) + gaussian_scale_name_str + "/max_sim_steps-"
                    + str(max_sim_steps) + save_non_transient_str + "-context_size-" + str(context_size)
-                   + beta_string)
+                   + beta_string + load_from_context_mode_str )
 
     return folder_path
 
@@ -75,12 +79,39 @@ def define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list):
 
     return x0
 
+def save_context(context_window, folder_path_chpt, beta_idx):
+    att_window, mv_window, mq_window, mk_window = context_window
+
+    chpt_path = folder_path_chpt + f"/beta_idx-{beta_idx}_window_chpt.npz"
+
+    np.savez_compressed(chpt_path,
+                        mv_window=mv_window,
+                        mq_window=mq_window,
+                        mk_window=mk_window,
+                        att_window=att_window)
+
+def load_context(folder_path_chpt, beta_idx):
+
+    chpt_path = folder_path_chpt + f"/beta_idx-{beta_idx}_window_chpt.npz"
+
+    cw = np.load(chpt_path)
+
+    return cw['mv_window'], cw['mq_window'], cw['mk_window'], cw['att_window']
+
+
 def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
            normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
            correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale_str,
            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-           worker_id):
+           worker_id, load_from_context_mode=0):
+
+    """
+
+    :param load_from_context_mode: 0 -> don't load from context, 1 -> don't load from context but save your final context
+                                   2-> load context from other experiment
+    :return:
+    """
 
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
 
@@ -98,6 +129,23 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
             for se_per_contribution in se_per_contribution_list:
+
+                # Create root folder to later save the results
+                folder_path = create_pathname(num_feat_patterns, tentative_semantic_embedding_size,
+                                              positional_embedding_size, beta_list, num_transient_steps,
+                                              max_sim_steps, context_size, normalize_weights_str_att,
+                                              normalize_weights_str_o, reorder_weights, se_per_contribution,
+                                              correlations_from_weights, num_segments_corrs, pe_mode,
+                                              gaussian_scale_str, save_non_transient,
+                                              compute_inf_normalization, scaling_o, scaling_att, beta_att,
+                                              load_from_context_mode)
+
+                folder_path_chpt = folder_path + "/chpt"
+                folder_path = folder_path + "/stats"
+
+                create_dir(folder_path)
+                if load_from_context_mode == 1:
+                    create_dir(folder_path_chpt)
 
                 np.random.seed(seed)
 
@@ -134,29 +182,28 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                     HT.reset_data()
 
                     x0 = define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list)
-                    if ini_token_from_w != 0: # Otherwise it's already set
+                    if ini_token_from_w != 0:  # Otherwise it's already set
                         x0[-positional_embedding_size:] = -1  # Initialize position to -1
 
-                    # Simulate for max_sim_steps steps
-                    HT.simulate_mf(x0, max_steps=max_sim_steps)
+                    if load_from_context_mode == 0 or load_from_context_mode == 1:
+                        # Simulate for max_sim_steps steps
+                        HT.simulate_mf(x0, max_steps=max_sim_steps)
+                        if load_from_context_mode == 1:
+                            # Save context reordered for a fresh start
+                            HT.reorder_context_window()
+                            cw = HT.return_context_window()
+                            save_context(cw, folder_path_chpt, worker_id)
+                    elif load_from_context_mode == 2:
+                        # Load checkpoint from last beta
+                        mv_window, mq_window, mk_window, att_window = load_context(folder_path_chpt, len(beta_list)-1)
+                        # Set context window to the checkpoint values
+                        HT.set_context_window(mv_window, mq_window, mk_window, att_window)
+                        HT.simulate_mf_from_context(max_steps=max_sim_steps)
 
                     for stat_name in stats_to_save_plot:
                         # Accumulate results in a var of beta_list length
                         results_beta[stat_name] = np.copy(HT.mf_statistics[stat_name])
 
-
-                    folder_path = create_pathname(num_feat_patterns, tentative_semantic_embedding_size,
-                                                  positional_embedding_size, beta_list, num_transient_steps,
-                                                  max_sim_steps, context_size, normalize_weights_str_att,
-                                                  normalize_weights_str_o, reorder_weights, se_per_contribution,
-                                                  correlations_from_weights, num_segments_corrs, pe_mode,
-                                                  gaussian_scale_str, save_non_transient,
-                                                  compute_inf_normalization, scaling_o, scaling_att, beta_att)
-
-                    folder_path = folder_path + "/stats"
-
-                    if not os.path.exists(folder_path):
-                        os.makedirs(folder_path)
 
 
                     ini_token_mode_str = ""
@@ -182,7 +229,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
             num_segments_corrs, pe_mode, se_per_contribution_list, gaussian_scale_str,
             save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_o,
-            filtering_range, min_max_beta_to_show=None, show_title=False):
+            filtering_range, load_from_context_mode=0, min_max_beta_to_show=None, show_title=False):
 
     if min_max_beta_to_show is None:
         min_beta_idx = 0
@@ -210,7 +257,8 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                                   normalize_weights_str_o, reorder_weights, se_per_contribution,
                                                   correlations_from_weights, num_segments_corrs, pe_mode,
                                                   gaussian_scale_str, save_non_transient,
-                                                  compute_inf_normalization, scaling_o, scaling_att, beta_o)
+                                                  compute_inf_normalization, scaling_o, scaling_att, beta_o,
+                                                  load_from_context_mode)
 
                     ini_token_mode_str = ""
                     if ini_token_from_w != 0:
@@ -220,6 +268,8 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 
                     show_max_num_patterns = 6
 
+                    show_1_feat = [1, 0, 1]
+                    # show_1_feat = [None, None, None]
                     # Load each stat and plot/save it
                     for stat_name in stats_to_save_plot:
 
@@ -246,9 +296,10 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                                                   stat_name, folder_path, seed, ini_token_idx,
                                                                   ini_token_mode_str, filtering_range=filtering_range,
                                                                   show_max_num_patterns=show_max_num_patterns,
-                                                                  save_not_plot=save_not_plot, title=title)
+                                                                  save_not_plot=save_not_plot, title=title,
+                                                                  show_1_feat=show_1_feat[filter_idx])
 
-                    plot_lowres_planes = True
+                    plot_lowres_planes = False
                     if plot_lowres_planes:
                         for idx in range(len(filtered_beta_list)):
 
@@ -272,7 +323,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                                     str(num_transient_steps) + image_format)
 
                             if save_not_plot:
-                                create_dir(plot_save_path_plane)
+                                create_dir_from_filepath(plot_save_path_plane)
 
                             stat_results_beta_list_0 = [mo_se_results]
                             stat_results_beta_list_1 = [mo_se_results]
@@ -298,10 +349,10 @@ if __name__ == "__main__":
     # 2 pat: seed 10. pe 2: beta 2.2 - 2.8, pe:4 1.5 - 2.2
     # 3 pat: seed 1 (0.35,0.3) - 0.8, 0.37 - 0.45
 
-    beta_att = 2.2
-    num_betas = 3000
+    beta_att = 2.2  # Write it as float
+    num_betas = 10
+    # beta_list = np.linspace(0, 3, num_betas)
     beta_list = np.linspace(0, 3, num_betas)
-    # beta_list = np.linspace(1.24, 1.28, num_betas)
     # beta_list = np.linspace(1.75, 2.75, 1200)
     # se_per_contribution_list = [(tentative_semantic_embedding_size /
     #                        (tentative_semantic_embedding_size + positional_embedding_size))]
@@ -311,8 +362,8 @@ if __name__ == "__main__":
     # seed_list = [10, 14, 18]
     seed_list = [1]
     num_feat_patterns_list = [3]
-    num_transient_steps = 100000
-    max_sim_steps = num_transient_steps + 20000
+    num_transient_steps = 10
+    max_sim_steps = num_transient_steps + 200
 
     num_ini_tokens = 1
     ini_token_from_w = 1
@@ -328,8 +379,9 @@ if __name__ == "__main__":
     pe_mode = 0
     num_segments_corrs = 3  # Only applicable if correlations_from_weights=3
     save_non_transient = False
-    save_not_plot = True
-    show_title = True
+    save_not_plot = False
+    show_title = False
+    load_from_last_chpt = True
 
     if context_size > 2 ** positional_embedding_size:
         raise ("The positional embedding cannot cover the whole context size.")
@@ -337,18 +389,36 @@ if __name__ == "__main__":
         raise ("You cannot discard more timesteps than you are simulating.")
 
     # stats_to_save_plot = ["mo", "mo_se", "att"]
-    stats_to_save_plot = ["mo_se"]
+    stats_to_save_plot = ["mo_se", "att"]
 
     start = time.time()
 
-    # worker_id = 1266
-    # for worker_id in range(num_betas):
-    #     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-    #            num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-    #            normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-    #            correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
-    #            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-    #            worker_id)
+    if not load_from_last_chpt:
+        for worker_id in range(num_betas):
+            runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+                   num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+                   normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+                   correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
+                   save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
+                   worker_id)
+    else:
+        # First compute the last beta
+        runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+               num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+               normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+               correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
+               save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
+               num_betas - 1, load_from_context_mode=1)
+
+        # Then compute the rest of the betas, setting the initial context to the last beta one
+        for worker_id in range(num_betas - 1):
+            runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+                   num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+                   normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+                   correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
+                   save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
+                   worker_id, load_from_context_mode=2)
+
 
     end = time.time()
     elapsed_time = end - start
@@ -356,9 +426,13 @@ if __name__ == "__main__":
     print("elapsed time in hours", elapsed_time / 3600)
 
     ini_tokens_list = range(0, num_ini_tokens)
+    if load_from_last_chpt:
+        load_from_context_mode = 1
+    else:
+        load_from_context_mode = 0
     plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
             num_transient_steps, max_sim_steps, context_size, ini_tokens_list, seed_list, normalize_weights_str_att,
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
             num_segments_corrs, pe_mode, se_per_contribution_list, gaussian_scale,
             save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-            filtering_range, show_title=show_title)
+            filtering_range, load_from_context_mode, show_title=show_title)

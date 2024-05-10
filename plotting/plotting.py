@@ -161,11 +161,17 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
                                           folder_path, seed, ini_token_idx, ini_token_mode_str,
                                           filtering_range=0.05,
                                           show_max_num_patterns=None, save_not_plot=True, title=None,
-                                          is_beta=True, min_bidx=0):
+                                          is_beta=True, min_bidx=0, show_1_feat=None,
+                                          filter_periodic=100):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+
+    feat_list = np.arange(num_feat_patterns)
+    if show_1_feat is not None:
+        feat_list = [show_1_feat]
+        num_feat_patterns = 1
 
     nrows = (num_feat_patterns + 1) // 2
 
@@ -181,7 +187,8 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
     if not is_beta:
         x_label = r'$SE\%$'
 
-    for feat in range(0, num_feat_patterns):
+    for feat_id in range(0, num_feat_patterns):
+        feat = feat_list[feat_id]
 
         row = feat // 2
         if num_feat_patterns == 1:
@@ -216,13 +223,28 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
             beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
             beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='', marker='.', ms='0.05')
-            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[0], ls='', marker='.', ms='0.5')
+            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[0], ls='', marker='.', ms='0.05')
+
+            if len(unique_values_feat) < filter_periodic:
+                local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='',
+                              marker='.', ms='0.5')  # Periodic
+            else:
+                local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[1], ls='',
+                              marker='.', ms='0.5')  # Other
+
+        local_ax.plot(0.1, 0, 'o', c=colors[2], label="Periodic")
+        local_ax.plot(0.1, 0, 'o', c=colors[1], label="Other")
+        local_ax.plot(0.1, 0, 'o', c="w")
+
+
+
 
         if feat_name != "att" and x_list[-1] > 3.5:
             local_ax.set_ylim(-1, 1)
 
         local_ax.set_xlim(x_list[0], x_list[-1])
+        local_ax.set_xlim(x_list[0], x_list[-1])
+
 
         if num_feat_patterns == 3:
             local_ax.set_xlabel(x_label)
@@ -230,7 +252,7 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
             local_ax.set_xlabel(x_label)
 
         local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
-        # local_ax.legend(loc="upper center")
+        local_ax.legend(loc="upper left")
 
     # fig.tight_layout(pad=0.1)
     if title is not None:

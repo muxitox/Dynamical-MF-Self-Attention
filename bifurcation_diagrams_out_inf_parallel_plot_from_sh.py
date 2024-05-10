@@ -64,6 +64,8 @@ parser.add_argument("--pe_proportion_from_size", help="Specify how to compute th
                     type=str2bool, default=True)
 parser.add_argument("--save_not_plot", help="Specify the number of pe values",
                     type=str2bool, default=True)
+parser.add_argument("--load_from_context_mode", help="Specify how to deal with initialization",
+                    type=int)
 if __name__ == "__main__":
 
     args = parser.parse_args()
@@ -111,6 +113,8 @@ if __name__ == "__main__":
     num_segments_corrs = args.num_segments_corrs  # Only applicable if correlations_from_weights=3
     save_non_transient = args.save_non_transient
     save_not_plot = args.save_not_plot
+    load_from_context_mode = args.load_from_context_mode
+
     show_title = True
 
     if context_size > 2 ** positional_embedding_size:
@@ -129,7 +133,7 @@ if __name__ == "__main__":
             normalize_weights_str_o, reorder_weights, save_not_plot, stats_to_save_plot, correlations_from_weights,
             num_segments_corrs, pe_mode, se_per_contribution_list, gaussian_scale,
             save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-            filtering_range, show_title=show_title)
+            filtering_range, load_from_context_mode=load_from_context_mode, show_title=show_title)
 
     end = time.time()
     elapsed_time = end - start

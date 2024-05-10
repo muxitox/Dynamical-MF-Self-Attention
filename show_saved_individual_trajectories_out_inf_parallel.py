@@ -2,7 +2,7 @@ import numpy as np
 import os
 from plotting.plotting import plot_save_statistics, plot_save_fft, plot_save_plane
 from bifurcation_diagrams_out_inf_parallel import create_pathname
-from utils import create_dir
+from utils import create_dir_from_filepath
 
 
 def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
@@ -57,77 +57,74 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
         if save_not_plot and (not os.path.exists(plot_save_folder_path)):
             os.makedirs(plot_save_folder_path)
 
-        title = (
-            f"MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed} "
-            f"BETA={beta_to_show} NUM_TRANSIENT={num_transient_steps}")
+        # title = (
+        #     f"MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed} "
+        #     f"BETA={beta_to_show} NUM_TRANSIENT={num_transient_steps}")
+
+        title = fr"$\beta$ = {beta_to_show}"
 
 
         if plot_range is None:
-            plot_save_statistics(stat_results[num_transient_steps:, :], stat_name, num_feat_patterns,
-                                 max_sim_steps-num_transient_steps, show_max_num_patterns=num_feat_patterns,
-                                 save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title)
-        else:
+            plot_range = [0, None]
 
-            rg = range(plot_range[0], plot_range[1])
-            plot_save_statistics(stat_results[rg, :], stat_name, num_feat_patterns,
-                                 len(rg), min_num_step=num_transient_steps + plot_range[0],
-                                 show_max_num_patterns=num_feat_patterns,
-                                 save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,
-                                 plot_hilbert=False)
+        rg = range(plot_range[0], plot_range[1])
+        show_1_feat = 1
+        plot_save_statistics(stat_results[rg, :], stat_name, num_feat_patterns,
+                             len(rg), min_num_step=num_transient_steps + plot_range[0],
+                             show_max_num_patterns=num_feat_patterns,
+                             save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,
+                             plot_hilbert=False, show_1_feat=show_1_feat)
 
 
         plot_save_fft(stat_results[num_transient_steps_plot_arg:, :], stat_name, num_feat_patterns,
                       max_sim_steps - num_transient_steps,
                       show_max_num_patterns=num_feat_patterns,
-                      save_not_plot=save_not_plot, save_path=plot_save_path_fft)
+                      save_not_plot=save_not_plot, save_path=plot_save_path_fft, title=title, show_1_feat=show_1_feat)
 
 
     # 3 feats
-    stats_to_plot = [["mo_se", "att", "mo_se"], ["mo_se", "att", "mo_se"]]
-    if num_feat_patterns == 3:
-        feat_idx = [[0, 1, 2], [1, 0, 1]]
-    elif num_feat_patterns == 2:
-        feat_idx = [[0, 0, 0], [1, 1, 1]]
-    elif num_feat_patterns == 1:
-        stats_to_plot = [["mo", "mk", "mk"], ["mv", "mq", "mv"]]
-        feat_idx = [[0, 0, 0], [0, 0, 0]]
+    stats_to_plot = [["mo_se"], ["mo_se"]]
+    feat_idx = [[0], [1]]
 
     plot_save_path_plane = (folder_path + f"/indiv_traj/latex/seed-{str(seed)}/planes"
                             + f"/plane-beta-{beta_to_show}-ini_token_idx-" +
                             str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
-    create_dir(plot_save_path_plane)
+    create_dir_from_filepath(plot_save_path_plane)
 
-    stat_results_beta_list_0 = [data[f"{stats_to_plot[0][0]}_results_beta"],
-                                data[f"{stats_to_plot[0][1]}_results_beta"],
-                                data[f"{stats_to_plot[0][2]}_results_beta"]]
-    stat_results_beta_list_1 = [data[f"{stats_to_plot[1][0]}_results_beta"],
-                                data[f"{stats_to_plot[1][1]}_results_beta"],
-                                data[f"{stats_to_plot[1][2]}_results_beta"]]
+    stat_results_beta_list_0 = [data[f"{stats_to_plot[0][0]}_results_beta"]]
+    stat_results_beta_list_1 = [data[f"{stats_to_plot[1][0]}_results_beta"]]
 
     plot_save_plane(stat_results_beta_list_0,
                     stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
-                    tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot)
+                    tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot, title=title)
 
-    # # 3 feats
-    # stats_to_plot = ["att", "att"]
+    # stats_to_plot = [["mo_se", "att", "mo_se"], ["mo_se", "att", "mo_se"]]
+    # if num_feat_patterns == 3:
+    #     feat_idx = [[0, 1, 2], [1, 0, 1]]
+    # elif num_feat_patterns == 2:
+    #     feat_idx = [[0, 0, 0], [1, 1, 1]]
+    # elif num_feat_patterns == 1:
+    #     stats_to_plot = [["mo", "mk", "mk"], ["mv", "mq", "mv"]]
+    #     feat_idx = [[0, 0, 0], [0, 0, 0]]
     #
-    # plot_save_path_plane = ( folder_path + f"/indiv_traj/seed-{str(seed)}/{stats_to_plot[0]}-{stats_to_plot[1]}"
-    #                        + f"/plane-beta-{beta_to_show}-ini_token_idx-" +
-    #                        str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
+    # plot_save_path_plane = (folder_path + f"/indiv_traj/latex/seed-{str(seed)}/planes"
+    #                         + f"/plane-beta-{beta_to_show}-ini_token_idx-" +
+    #                         str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
     #
-    # # Create folder if it does not exist and we are saving the image
-    # if save_not_plot and (not os.path.exists(os.path.dirname(plot_save_path_plane))):
-    #     os.makedirs(os.path.dirname(plot_save_path_plane))
+    # create_dir(plot_save_path_plane)
     #
-    # stat_results_beta_list_0 = data[f"{stats_to_plot[0]}_results_beta_list"][beta_to_show_idx]
-    # stat_results_beta_list_1 = data[f"{stats_to_plot[1]}_results_beta_list"][beta_to_show_idx]
-    # feats_reorder = np.roll(np.arange(num_feat_patterns), -1)
+    # stat_results_beta_list_0 = [data[f"{stats_to_plot[0][0]}_results_beta"],
+    #                             data[f"{stats_to_plot[0][1]}_results_beta"],
+    #                             data[f"{stats_to_plot[0][2]}_results_beta"]]
+    # stat_results_beta_list_1 = [data[f"{stats_to_plot[1][0]}_results_beta"],
+    #                             data[f"{stats_to_plot[1][1]}_results_beta"],
+    #                             data[f"{stats_to_plot[1][2]}_results_beta"]]
+    #
     # plot_save_plane(stat_results_beta_list_0,
-    #                 stat_results_beta_list_1[:, feats_reorder],
-    #                 num_feat_patterns, max_sim_steps - num_transient_steps, show_max_num_patterns=num_feat_patterns,
-    #                 tag_names=stats_to_plot, beta=beta_to_show,
-    #                 save_not_plot=save_not_plot, save_path=plot_save_path_plane)
+    #                 stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
+    #                 tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot, title=title)
+
 
 
 if __name__ == "__main__":
@@ -144,6 +141,7 @@ if __name__ == "__main__":
     # Create variables for the Hopfield Transformer (HT)
     seed = 1
     beta_list = np.linspace(1.24, 1.28, 3000)
+    # beta_list = np.linspace(0, 3, 3000)
     # se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
     se_per_contribution = 0.98
     num_feat_patterns = 3
@@ -151,10 +149,14 @@ if __name__ == "__main__":
     saved_steps = 20000
     max_sim_steps = num_transient_steps + saved_steps
     # beta_to_show = 1.266  # We'll find the nearest beta in the defined range
-    beta_to_show = 1.244  # We'll find the nearest beta in the defined range
+    # 1.26439
+    betas_paper = [1.26, 1.26422, 1.2666, 1.27, 1.28]  # 1.24 - 0.28
+    # betas_paper = [1.4]  # 00 - 3.0
+
+    beta_to_show = betas_paper[3]  # We'll find the nearest beta in the defined range
     beta_att = 2.2
 
-    plot_window = 1000
+    plot_window = 250
     offset = 10000 + plot_window
     plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window -1]    # Index of the range of steps want to plot within the trajectory
 
@@ -172,7 +174,7 @@ if __name__ == "__main__":
     pe_mode = 0
     gaussian_scale = "0.50"         # Only applicable if correlations_from_weights=0
     save_not_transient = False
-    save_not_plot = False
+    save_not_plot = True
 
     if context_size > 2**positional_embedding_size:
         raise("The positional embedding cannot cover the whole context size.")

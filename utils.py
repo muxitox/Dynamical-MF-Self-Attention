@@ -35,9 +35,11 @@ def feat_name_to_latex(feat_name):
 
     return latex_str
 
-def create_dir(filepath):
-    plot_save_folder_path = os.path.dirname(filepath)
+def create_dir_from_filepath(filepath):
+    save_folder_path = os.path.dirname(filepath)
+    create_dir(save_folder_path)
 
+def create_dir(dirpath):
     # Create folder if it does not exist and we are saving the image
-    if not os.path.exists(plot_save_folder_path):
-        os.makedirs(plot_save_folder_path)
+    if not os.path.exists(dirpath):
+        os.makedirs(dirpath)

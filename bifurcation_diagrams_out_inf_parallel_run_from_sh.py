@@ -66,6 +66,8 @@ parser.add_argument("--save_not_plot", help="Specify the number of pe values",
                     type=str2bool, default=True)
 parser.add_argument("--worker_id", help="Specify what value of beta it's going to compute",
                     type=int)
+parser.add_argument("--load_from_context_mode", help="Specify how to deal with initialization",
+                    type=int)
 
 if __name__ == "__main__":
 
@@ -115,6 +117,7 @@ if __name__ == "__main__":
     save_non_transient = args.save_non_transient
     save_not_plot = args.save_not_plot
     worker_id = args.worker_id - 1 # Substract for indexing
+    load_from_context_mode = args.load_from_context_mode
     show_title = True
 
     if context_size > 2 ** positional_embedding_size:
@@ -133,7 +136,7 @@ if __name__ == "__main__":
            normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
            correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-           worker_id)
+           worker_id, load_from_context_mode=load_from_context_mode)
 
     end = time.time()
     elapsed_time = end - start

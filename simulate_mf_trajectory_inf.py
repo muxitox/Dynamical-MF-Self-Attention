@@ -2,7 +2,7 @@ import numpy as np
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from models.HopfieldTransformerPE import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_3Dplane
-from utils import create_dir
+from utils import create_dir_from_filepath
 
 if __name__ == "__main__":
 
@@ -165,8 +165,8 @@ if __name__ == "__main__":
                         folder_path + f"/indiv_traj/latex/seed-{str(seed)}/{stat_name}/fft-beta-{beta}-ini_token_idx-" +
                         str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
-            create_dir(plot_save_path_traj)
-            create_dir(plot_save_path_fft)
+            create_dir_from_filepath(plot_save_path_traj)
+            create_dir_from_filepath(plot_save_path_fft)
 
             rounded = np.round(HT.mf_statistics[stat_name], decimals=5)
             print(stat_name, len(np.unique(rounded[:,0])),
@@ -208,7 +208,7 @@ if __name__ == "__main__":
                                 + f"/plane-beta-{beta}-ini_token_idx-" +
                                 str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
-        create_dir(plot_save_path_plane)
+        create_dir_from_filepath(plot_save_path_plane)
 
         stat_results_beta_list_0 = [HT.mf_statistics[stats_to_plot[0][0]], HT.mf_statistics[stats_to_plot[0][1]],
                                     HT.mf_statistics[stats_to_plot[0][2]]]

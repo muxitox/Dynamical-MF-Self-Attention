@@ -35,6 +35,7 @@ BETA_ATT=${20}
 SCALING_O=${21}
 SCALING_ATT=${22}
 INI_TOKEN_FROM_W=${23}
+LOAD_FROM_CONTEXT_MODE=${24}
 
 ARGS=" \
 --seed=$SEED \
@@ -64,6 +65,7 @@ ARGS=" \
 --scaling_o=$SCALING_O \
 --scaling_att=$SCALING_ATT \
 --ini_token_from_w=$INI_TOKEN_FROM_W \
+--load_from_context_mode=$LOAD_FROM_CONTEXT_MODE
 "
 
 echo $ARGS

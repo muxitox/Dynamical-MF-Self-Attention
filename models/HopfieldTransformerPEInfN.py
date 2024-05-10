@@ -291,6 +291,11 @@ class HopfieldTransformerInfN:
     def set_se_per_contribution(self, se_per):
         self.se_per_contribution = se_per
 
+    def set_context_window(self, mv_window, mq_window, mk_window, att_window):
+        self.mv_window = mv_window
+        self.mq_window = mq_window
+        self.mk_window = mk_window
+        self.att_window = att_window
     def reset_data(self):
 
         self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))
@@ -301,15 +306,15 @@ class HopfieldTransformerInfN:
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
 
-    def reset_data_keep_context(self):
-
+    def reorder_context_window(self):
         # Shift values so the first value erased in the context window is the oldest one
         shift_amount = self.context_size - self.context_index - 1
         self.shift_d_window(shift_amount)
 
+    def reset_data_keep_context(self):
+        self.reorder_context_window()
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
-
 
     def qk_f_mf(self, tau):
 
@@ -505,7 +510,22 @@ class HopfieldTransformerInfN:
         self.mv_window = np.roll(self.mv_window, shift, axis=0)
         self.mk_window = np.roll(self.mk_window, shift, axis=0)
 
+    def return_context_window(self):
+        return self.att_window, self.mv_window, self.mq_window, self.mk_window
+
     def simulate_mf_from_context(self, max_steps):
+        # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
+        # self.context_size steps
+
+        # We have in self.att_window the last attention value
+
+        # We initialize the model at the end of the previous execution
+        ini_t = self.context_size
+        for t in range(ini_t, max_steps):
+            self.compute_mf(t)
+            self.attention_mf(t)
+
+    def simulate_mf_from_saved_context(self, max_steps):
         # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
         # self.context_size steps
 

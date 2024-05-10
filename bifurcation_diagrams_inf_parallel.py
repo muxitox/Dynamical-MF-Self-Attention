@@ -4,7 +4,7 @@ from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram_par, plot_save_plane
 import os
 import time
-from utils import create_dir
+from utils import create_dir_from_filepath
 
 def create_pathname(num_feat_patterns, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
            num_transient_steps, max_sim_steps, context_size, normalize_weights_str_att,
@@ -270,7 +270,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                                     str(num_transient_steps) + image_format)
 
                             if save_not_plot:
-                                create_dir(plot_save_path_plane)
+                                create_dir_from_filepath(plot_save_path_plane)
 
                             stat_results_beta_list_0 = [mo_se_results]
                             stat_results_beta_list_1 = [mo_se_results]
