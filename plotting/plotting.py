@@ -320,10 +320,13 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
             local_ax = ax[row, feat % 2]
 
         y_resolution = int(len(x_list) / 2 + 1)
+        # y_resolution = 5
         im_array = np.ones((y_resolution, len(x_list), 4)) * colors[4]
 
         max_y = - np.inf
         min_y = np.inf
+        # min_y = -1
+        # max_y = 1
         for idx in range(len(x_list)):
             b_idx = min_bidx + idx
             stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
@@ -341,7 +344,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
                 max_y = local_max
 
         bins_size = (max_y - min_y) / y_resolution
-        bins = (np.arange(y_resolution) - y_resolution / 2 ) * bins_size
+        bins = np.arange(y_resolution) * bins_size - ((max_y - min_y) / 2)
 
         for idx in range(len(x_list)):
             b_idx = min_bidx + idx
@@ -355,7 +358,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
 
 
             values_feat = results_y_list[num_transient_steps:, feat]
-            inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int)
+            inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int) - 1
 
             im_array[inds, idx] = colors[2]
 
@@ -374,8 +377,8 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         # im_array = np.repeat(im_array, resize_factor, axis=0)
         print(im_array.shape)
         local_ax.imshow(im_array, extent=[x_list[0], x_list[-1], -min_y, min_y])
-        # local_ax.set_aspect(0.75)
-
+        local_ax.set_aspect(0.75)
+        local_ax.set_xlabel(x_label)
 
         # if feat_name != "att" and x_list[-1] > 3.5:
         #     local_ax.set_ylim(-1, 1)
