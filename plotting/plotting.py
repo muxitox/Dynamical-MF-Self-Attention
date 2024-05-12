@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import colorspacious
 from utils import feat_name_to_latex
 import numpy as np
 from scipy.signal import hilbert, chirp
@@ -8,6 +9,10 @@ cmap = matplotlib.colormaps["plasma_r"]
 colors = []
 for i_color in range(4):
     colors += [cmap(i_color / 3)]
+colors += [(1.0, 1.0, 1.0, 1.0)]
+
+colors_rgb = np.array(colors)[np.newaxis, :, :3]
+
 
 # LaTeX macros
 plt.rc('text', usetex=True)
@@ -282,6 +287,8 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
 
     nrows = (num_feat_patterns + 1) // 2
 
+    col_size = 4
+    row_size = 2
     if num_feat_patterns == 1:
         fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
     elif num_feat_patterns == 3:
@@ -307,8 +314,8 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         else:
             local_ax = ax[row, feat % 2]
 
-        y_resolution = len(x_list) * 2
-        im_array = np.zeros((len(x_list), y_resolution))
+        y_resolution = 10001
+        im_array = np.ones((y_resolution, len(x_list), 4)) * colors[-1]
 
         max_y = - np.inf
         min_y = np.inf
@@ -329,7 +336,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
                 max_y = local_max
 
         bins_size = (max_y - min_y) / y_resolution
-        bins = np.arange(y_resolution) * bins_size
+        bins = (np.arange(y_resolution) - y_resolution / 2 ) * bins_size
 
         for idx in range(len(x_list)):
             b_idx = min_bidx + idx
@@ -345,10 +352,11 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
             values_feat = results_y_list[num_transient_steps:, feat]
             inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int)
 
-            im_array[idx,inds] = 1
+            im_array[inds, idx] = colors[2]
 
 
-        local_ax.imshow(im_array)
+        local_ax.imshow(im_array, extent=[x_list[0], x_list[-1], -min_y, min_y])
+        local_ax.set_aspect(0.75)
 
 
         # if feat_name != "att" and x_list[-1] > 3.5:
