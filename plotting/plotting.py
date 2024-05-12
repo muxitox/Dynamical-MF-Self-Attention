@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import colorspacious
 from utils import feat_name_to_latex
 import numpy as np
 from scipy.signal import hilbert, chirp
@@ -9,7 +8,9 @@ cmap = matplotlib.colormaps["plasma_r"]
 colors = []
 for i_color in range(4):
     colors += [cmap(i_color / 3)]
-colors += [(1.0, 1.0, 1.0, 1.0)]
+colors += [(1.0, 1.0, 1.0, 1.0)]  # White
+colors += [(0.0, 0.0, 0.0, 1.0)]  # Black
+
 
 colors_rgb = np.array(colors)[np.newaxis, :, :3]
 
@@ -161,6 +162,13 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
     plt.close()
 
 
+def filter_y_values_by_0_plane(results_y_list, feat, filter_idx, filtering_range):
+    filtering_values = results_y_list[:, filter_idx]
+    zero_intersect = np.where(np.logical_and(filtering_values >= -filtering_range,
+                                             filtering_values <= filtering_range))
+    return results_y_list[zero_intersect, feat]
+
+
 def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
                                           save_path, num_transient_steps, feat_name,
                                           folder_path, seed, ini_token_idx, ini_token_mode_str,
@@ -215,12 +223,9 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
             data = np.load(stats_data_path)
             results_y_list = data[f"{feat_name}_results_beta"]
 
-            filtering_values = results_y_list[num_transient_steps:, filter_idx]
-            zero_intersect = np.where(np.logical_and(filtering_values >= -filtering_range,
-                                                     filtering_values <= filtering_range))
             unique_values_feat = results_y_list[num_transient_steps:, feat]
-            unique_values_feat_filtered = unique_values_feat[zero_intersect]
-
+            unique_values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
+                                                                     filter_idx, filtering_range)
             dec = 3
             unique_values_feat = np.unique(np.round(unique_values_feat, decimals=dec))
             unique_values_feat_filtered = np.unique(np.round(unique_values_feat_filtered, decimals=dec))
@@ -228,17 +233,17 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
             beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
             beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
 
-            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[0], ls='', marker='.', ms='0.05')
+            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='', marker='.', ms='0.05')
 
             if len(unique_values_feat) < filter_periodic:
-                local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='',
+                local_ax.plot(beta_values_feat, unique_values_feat, c=colors[1], ls='',
                               marker='.', ms='0.5')  # Periodic
             else:
-                local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[1], ls='',
+                local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[0], ls='',
                               marker='.', ms='0.5')  # Other
 
-        local_ax.plot(0.1, 0, 'o', c=colors[2], label="Periodic")
-        local_ax.plot(0.1, 0, 'o', c=colors[1], label="Other")
+        local_ax.plot(0.1, 0, 'o', c=colors[1], label="Periodic")
+        local_ax.plot(0.1, 0, 'o', c=colors[0], label="Other")
         local_ax.plot(0.1, 0, 'o', c="w")
 
 
@@ -288,13 +293,13 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
     nrows = (num_feat_patterns + 1) // 2
 
     col_size = 4
-    row_size = 2
+    row_size = 3
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(col_size*num_feat_patterns, row_size), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, row_size * nrows), constrained_layout=True)
 
     latex_str = feat_name_to_latex(feat_name)
     x_label = r'$\beta$'
@@ -314,8 +319,8 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         else:
             local_ax = ax[row, feat % 2]
 
-        y_resolution = 10001
-        im_array = np.ones((y_resolution, len(x_list), 4)) * colors[-1]
+        y_resolution = int(len(x_list) / 2 + 1)
+        im_array = np.ones((y_resolution, len(x_list), 4)) * colors[4]
 
         max_y = - np.inf
         min_y = np.inf
@@ -354,9 +359,22 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
 
             im_array[inds, idx] = colors[2]
 
+            values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
+                                                                     filter_idx, filtering_range)
 
+            inds_filtered = np.unique(np.digitize(values_feat_filtered, bins, right=True)).astype(int)
+
+            if len(inds) < filter_periodic:
+                im_array[inds, idx] = colors[-1]  # Periodic
+            else:
+                im_array[inds_filtered, idx] = colors[0]  # Other
+
+        # Resize by a factor of resize_factor
+        # resize_factor = 5
+        # im_array = np.repeat(im_array, resize_factor, axis=0)
+        print(im_array.shape)
         local_ax.imshow(im_array, extent=[x_list[0], x_list[-1], -min_y, min_y])
-        local_ax.set_aspect(0.75)
+        # local_ax.set_aspect(0.75)
 
 
         # if feat_name != "att" and x_list[-1] > 3.5:
