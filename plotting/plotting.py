@@ -292,7 +292,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
 
     nrows = (num_feat_patterns + 1) // 2
 
-    col_size = 4
+    col_size = 5
     row_size = 3
     if num_feat_patterns == 1:
         fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True)
@@ -319,14 +319,11 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         else:
             local_ax = ax[row, feat % 2]
 
-        y_resolution = int(len(x_list) / 2 + 1)
-        # y_resolution = 5
+        y_resolution = int(len(x_list) + 1)
         im_array = np.ones((y_resolution, len(x_list), 4)) * colors[4]
 
         max_y = - np.inf
         min_y = np.inf
-        # min_y = -1
-        # max_y = 1
         for idx in range(len(x_list)):
             b_idx = min_bidx + idx
             stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
@@ -360,7 +357,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
             values_feat = results_y_list[num_transient_steps:, feat]
             inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int) - 1
 
-            im_array[inds, idx] = colors[2]
+            im_array[inds, idx] = colors[0]
 
             values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
                                                                      filter_idx, filtering_range)
@@ -370,14 +367,13 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
             if len(inds) < filter_periodic:
                 im_array[inds, idx] = colors[-1]  # Periodic
             else:
-                im_array[inds_filtered, idx] = colors[0]  # Other
+                im_array[inds_filtered, idx] = colors[2]  # Other
 
         # Resize by a factor of resize_factor
         # resize_factor = 5
         # im_array = np.repeat(im_array, resize_factor, axis=0)
-        print(im_array.shape)
-        local_ax.imshow(im_array, extent=[x_list[0], x_list[-1], -min_y, min_y])
-        local_ax.set_aspect(0.75)
+        local_ax.imshow(im_array, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y])
+        local_ax.set_aspect("auto")
         local_ax.set_xlabel(x_label)
 
         # if feat_name != "att" and x_list[-1] > 3.5:

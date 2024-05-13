@@ -292,10 +292,10 @@ class HopfieldTransformerInfN:
         self.se_per_contribution = se_per
 
     def set_context_window(self, mv_window, mq_window, mk_window, att_window):
-        self.mv_window = mv_window
-        self.mq_window = mq_window
-        self.mk_window = mk_window
-        self.att_window = att_window
+        self.mv_window = copy.deepcopy(mv_window)
+        self.mq_window = copy.deepcopy(mq_window)
+        self.mk_window = copy.deepcopy(mk_window)
+        self.att_window = copy.deepcopy(att_window)
     def reset_data(self):
 
         self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))

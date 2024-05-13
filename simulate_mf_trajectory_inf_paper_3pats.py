@@ -11,6 +11,12 @@ def create_dir(filepath):
     if save_not_plot and (not os.path.exists(plot_save_folder_path)):
         os.makedirs(plot_save_folder_path)
 
+def load_context(chpt_path):
+
+    cw = np.load(chpt_path)
+
+    return cw['mv_window'], cw['mq_window'], cw['mk_window'], cw['att_window']
+
 if __name__ == "__main__":
 
     # Instantiate vocabulary
@@ -23,8 +29,7 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1
-    beta_list = [1.255, 1.266, 1.2642214071357118, 1.27, 1.28, 1.4]
-    # beta_list = [1.27]
+    beta_list = [1.255, 1.26427, 1.266, 1.27, 1.28, 1.4]
 
 
     beta_att = 2.2
@@ -35,7 +40,6 @@ if __name__ == "__main__":
 
     correlations_from_weights = 3
     pe_mode = 0
-    # se_per_contribution = tentative_semantic_embedding_size / (tentative_semantic_embedding_size + positional_embedding_size)
     se_per_contribution = 0.98
     scaling_o = 1
     scaling_att = 100
@@ -47,6 +51,10 @@ if __name__ == "__main__":
     ini_token_from_w = 1
     save_not_plot = True
     show_title = True
+
+    # Load checkpoint attention values
+    chpt_path = "eurnips_chpt/beta_idx-4000_window_chpt_zoom.npz"
+    mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt = load_context(chpt_path)
 
     for beta in beta_list:
 
@@ -68,14 +76,14 @@ if __name__ == "__main__":
                                      N_normalization=9999)
 
         # Set initial token from one of the output features
-        x0 = HT.Wo[ini_token_idx]
-        x0[-positional_embedding_size:] = -1  # Initialize position to -1
-
         HT.reset_data()  # Reset the structures for saving data
 
 
         print(f"Simulating MF Transformer for beta {beta}...")
-        HT.simulate_mf(x0, max_steps=max_sim_steps)
+
+        # Set context window to the checkpoint values
+        HT.set_context_window(mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt)
+        HT.simulate_mf_from_context(max_steps=max_sim_steps)
         print("Done.")
 
         # Plotting
@@ -94,7 +102,7 @@ if __name__ == "__main__":
         create_dir(folder_path)
 
         if show_title:
-            title = fr"$\beta$ = {round(beta, 4)}"
+            title = fr"$\beta$ = {round(beta, 5)}"
         else:
             title = None
         stats_to_show = ["mo_se"]
@@ -104,7 +112,7 @@ if __name__ == "__main__":
 
             plot_windows = [250, 350, 5000]
             for plot_window in plot_windows:
-                offset = 1000 + plot_window
+                offset = 900 + plot_window
                 plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window - 1]
                 plot_save_path_traj = (folder_path + f"/traj-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
                                        str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) +
