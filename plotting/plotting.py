@@ -4,15 +4,12 @@ import numpy as np
 from scipy.signal import hilbert, chirp
 import matplotlib
 
-cmap = matplotlib.colormaps["plasma_r"]
+cmap = matplotlib.colormaps["inferno_r"]
 colors = []
-for i_color in range(4):
-    colors += [cmap(i_color / 3)]
+for i_color in range(9):
+    colors += [cmap(i_color / 8)]
 colors += [(1.0, 1.0, 1.0, 1.0)]  # White
-colors += [(0.0, 0.0, 0.0, 1.0)]  # Black
 
-
-colors_rgb = np.array(colors)[np.newaxis, :, :3]
 
 
 # LaTeX macros
@@ -273,13 +270,77 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
     plt.close()
 
 
+def compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name):
+    max_y = - np.inf
+    min_y = np.inf
+    for idx in range(len(x_list)):
+        b_idx = min_bidx + idx
+        stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
+                           + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+                           + ".npz")
+
+        # Load data
+        data = np.load(stats_data_path)
+        results_y_list = data[f"{feat_name}_results_beta"]
+        local_min = np.min(results_y_list)
+        local_max = np.max(results_y_list)
+        if local_min < min_y:
+            min_y = local_min
+        if local_max > max_y:
+            max_y = local_max
+
+    return min_y, max_y
+
+def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
+                        num_transient_steps, feat, bins, y_resolution):
+
+    im_array = np.ones((y_resolution, len(x_list), 4)) * colors[-1]
+    for idx in range(len(x_list)):
+        b_idx = min_bidx + idx
+        stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
+                           + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+                           + ".npz")
+
+        # Load data
+        data = np.load(stats_data_path)
+        results_y_list = data[f"{feat_name}_results_beta"]
+
+        values_feat = results_y_list[num_transient_steps:, feat]
+        inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int) - 1
+
+        im_array[inds, idx] = colors[3]  # All points
+
+    return im_array
+
+def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
+                        num_transient_steps, feat, bins, filter_idx, filtering_range):
+    b_idx = min_bidx + idx
+    stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
+                       + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+                       + ".npz")
+
+    # Load data
+    data = np.load(stats_data_path)
+    results_y_list = data[f"{feat_name}_results_beta"]
+
+    values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
+                                                      filter_idx, filtering_range)
+    inds_filtered = np.unique(np.digitize(values_feat_filtered, bins, right=True)).astype(int) - 1
+
+    values_feat_unfiltered = results_y_list[num_transient_steps:, feat]
+    inds_unfiltered = np.unique(np.digitize(values_feat_unfiltered, bins, right=True)).astype(int) - 1
+
+    unique_len = len(inds_unfiltered)
+    return bins[inds_filtered], bins[inds_unfiltered], unique_len
+
+
 def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_patterns,
                                           save_path, num_transient_steps, feat_name,
                                           folder_path, seed, ini_token_idx, ini_token_mode_str,
                                           filtering_range=0.05,
                                           show_max_num_patterns=None, save_not_plot=True, title=None,
                                           is_beta=True, min_bidx=0, show_1_feat=None,
-                                          filter_periodic=100):
+                                          filter_periodic=80):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -319,77 +380,46 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         else:
             local_ax = ax[row, feat % 2]
 
-        y_resolution = int(len(x_list) + 1)
-        im_array = np.ones((y_resolution, len(x_list), 4)) * colors[4]
 
-        max_y = - np.inf
-        min_y = np.inf
-        for idx in range(len(x_list)):
-            b_idx = min_bidx + idx
-            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
-                               + ".npz")
+        # Compute min max range to define the im_array properly
+        min_y, max_y = compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
+                                       feat_name)
 
-            # Load data
-            data = np.load(stats_data_path)
-            results_y_list = data[f"{feat_name}_results_beta"]
-            local_min = np.min(results_y_list)
-            local_max = np.max(results_y_list)
-            if local_min < min_y:
-                min_y = local_min
-            if local_max > max_y:
-                max_y = local_max
-
+        y_resolution = int(len(x_list)*2 + 1)
         bins_size = (max_y - min_y) / y_resolution
         bins = np.arange(y_resolution) * bins_size - ((max_y - min_y) / 2)
 
-        for idx in range(len(x_list)):
-            b_idx = min_bidx + idx
-            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
-                               + ".npz")
+        # 1 - First plot all the quantized values for all betas
+        im_array = create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
+                                       feat_name, num_transient_steps, feat, bins, y_resolution)
 
-            # Load data
-            data = np.load(stats_data_path)
-            results_y_list = data[f"{feat_name}_results_beta"]
-
-
-            values_feat = results_y_list[num_transient_steps:, feat]
-            inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int) - 1
-
-            im_array[inds, idx] = colors[0]
-
-            values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
-                                                                     filter_idx, filtering_range)
-
-            inds_filtered = np.unique(np.digitize(values_feat_filtered, bins, right=True)).astype(int)
-
-            if len(inds) < filter_periodic:
-                im_array[inds, idx] = colors[-1]  # Periodic
-            else:
-                im_array[inds_filtered, idx] = colors[2]  # Other
-
-        # Resize by a factor of resize_factor
-        # resize_factor = 5
-        # im_array = np.repeat(im_array, resize_factor, axis=0)
         local_ax.imshow(im_array, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y])
         local_ax.set_aspect("auto")
+
+        # 2- Then, apply a plane intersection filter
+        # Step 1 and 2 are done separately to avoid memory issues
+        for idx in range(len(x_list)):
+            values_feat_filtered_quantized, rounded_feat_results_y_list, unique_len = (
+                get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
+                                            feat_name, num_transient_steps, feat, bins, filter_idx, filtering_range))
+
+            beta_values_feat = np.ones(len(rounded_feat_results_y_list)) * x_list[idx]
+            beta_values_quantized_feat = np.ones(len(values_feat_filtered_quantized)) * x_list[idx]
+
+
+            if unique_len < filter_periodic:
+                local_ax.plot(beta_values_feat, rounded_feat_results_y_list, c=colors[0], ls='',
+                              marker='.', ms='0.008')  # Periodic
+            else:
+                local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=colors[-3], ls='',
+                              marker='.', ms='0.008')  # Other
+
+        local_ax.plot(4, 0, 'o', c=colors[0], label="Periodic")
+        local_ax.plot(4, 0, 'o', c=colors[-3], label="Other")
+        local_ax.set_xlim([x_list[0], x_list[-1]])
         local_ax.set_xlabel(x_label)
-
-        # if feat_name != "att" and x_list[-1] > 3.5:
-        #     local_ax.set_ylim(-1, 1)
-        #
-        # local_ax.set_xlim(x_list[0], x_list[-1])
-        # local_ax.set_xlim(x_list[0], x_list[-1])
-        #
-        #
-        # if num_feat_patterns == 3:
-        #     local_ax.set_xlabel(x_label)
-        # elif feat > num_feat_patterns-3:
-        #     local_ax.set_xlabel(x_label)
-
-        # local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
-        # local_ax.legend(loc="upper left")
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
+        local_ax.legend(loc="upper left")
 
     # fig.tight_layout(pad=0.1)
     if title is not None:
@@ -425,7 +455,6 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
 
 
     for feat in range(0, num_feat_patterns):
-
         row = feat // 2
 
         if num_feat_patterns == 1:
@@ -440,7 +469,7 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
         local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], label=label_tag[0])
         local_ax.plot(num_plotting_steps_arange, stat2[:num_plotting_steps, feat], '--', label=label_tag[1])
 
-        if num_feat_patterns==3:
+        if num_feat_patterns == 3:
             local_ax.set_xlabel(r"$t$")
         elif feat > num_feat_patterns-3:
             local_ax.set_xlabel(r"$t$")
