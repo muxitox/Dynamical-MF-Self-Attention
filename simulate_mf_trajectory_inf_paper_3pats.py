@@ -31,7 +31,6 @@ if __name__ == "__main__":
     seed = 1
     beta_list = [1.255, 1.26427, 1.266, 1.27, 1.28, 1.4]
 
-
     beta_att = 2.2
     num_feat_patterns = 3
     num_transient_steps = 100000  # 0 if we want to show the trajectory since the beginning
@@ -49,7 +48,7 @@ if __name__ == "__main__":
     compute_inf_normalization = True
     ini_token_idx = 0
     ini_token_from_w = 1
-    save_not_plot = True
+    save_not_plot = False
     show_title = True
 
     # Load checkpoint attention values
@@ -106,7 +105,8 @@ if __name__ == "__main__":
         else:
             title = None
         stats_to_show = ["mo_se"]
-        image_format = ".jpeg"
+        # image_format = ".jpeg"
+        image_format = ".pdf"
 
         for stat_name in stats_to_show:
 
@@ -129,9 +129,14 @@ if __name__ == "__main__":
             plot_save_path_fft = (folder_path + f"/fft-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
                                   str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
+            adjust_y_axis = 1.0
+            if beta == 1.266:
+                adjust_y_axis = 0.55
+
             plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
                           show_max_num_patterns=num_feat_patterns,
-                          save_not_plot=save_not_plot, save_path=plot_save_path_fft, title=title, show_1_feat=1)
+                          save_not_plot=save_not_plot, save_path=plot_save_path_fft, title=title, show_1_feat=1,
+                          adjust_y_axis=adjust_y_axis)
 
             plot_save_path_fft_log = (folder_path + f"/log-fft-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
                                   str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)

@@ -418,7 +418,13 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         local_ax.plot(4, 0, 'o', c=colors[-3], label="Other")
         local_ax.set_xlim([x_list[0], x_list[-1]])
         local_ax.set_xlabel(x_label)
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
+
+
+        kwargs = {}
+        kwargs["rotation"] = "horizontal"
+        kwargs["verticalalignment"] = "center"
+        labelpad = 25
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$", labelpad=labelpad, **kwargs)
         local_ax.legend(loc="upper left")
 
     # fig.tight_layout(pad=0.1)
@@ -426,7 +432,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         fig.suptitle(title)
 
     if save_not_plot:
-        fig.savefig(save_path)
+        fig.savefig(save_path, bbox_inches='tight')
     else:
         plt.show()
     plt.close()
@@ -535,7 +541,11 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         elif feat > num_feat_patterns - 3:
             local_ax.set_xlabel(r"$t$")
 
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
+        kwargs = {}
+        kwargs["rotation"] = "horizontal"
+        kwargs["verticalalignment"] = "center"
+        labelpad = 25
+        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$", labelpad=labelpad, **kwargs)
 
         local_ax.set_xlim(num_plotting_steps_arange[0], num_plotting_steps_arange[-1])
 
@@ -547,7 +557,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         fig.suptitle(title)
 
     if save_not_plot:
-        fig.savefig(save_path)
+        fig.savefig(save_path, bbox_inches='tight')
     else:
         plt.show()
     plt.close()
@@ -590,7 +600,12 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
                       stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c="k", ms=ms)
 
         local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]+1}(t)$")
-        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]+1}(t)$")
+
+        kwargs = {}
+        kwargs["rotation"] = "horizontal"
+        kwargs["verticalalignment"] = "center"
+        labelpad = 25
+        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]+1}(t)$", labelpad=labelpad, **kwargs)
 
         # local_ax.legend()
 
@@ -600,7 +615,7 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
         fig.suptitle(title)
 
     if save_not_plot:
-        fig.savefig(save_path)
+        fig.savefig(save_path, bbox_inches='tight')
     else:
         plt.show()
     plt.close()
@@ -638,7 +653,7 @@ def plot_save_3Dplane(stats1, num_plotting_steps,
                          stats1[stat_id][:num_plotting_steps, 2])
 
         local_ax.set_xlabel(rf"${latex_strs[stat_id]}_0(t)$")
-        local_ax.set_ylabel(rf"${latex_strs[stat_id]}_1(t)$" )
+        local_ax.set_ylabel(rf"${latex_strs[stat_id]}_1(t)$")
 
         # local_ax.legend()
 
@@ -655,7 +670,8 @@ def plot_save_3Dplane(stats1, num_plotting_steps,
 
 
 def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                  save_not_plot=False, save_path=None, mode="sq", title=None, show_1_feat=None, log=False):
+                  save_not_plot=False, save_path=None, mode="sq", title=None, show_1_feat=None, log=False,
+                  adjust_y_axis=1.0):
 
     # mode may be sq or real
     # Plot show_max_num_patterns subfigures if defined
@@ -669,12 +685,13 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
 
     nrows = (num_feat_patterns + 1) // 2
     row_size = 3
+    col_size = 8
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, row_size), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, row_size), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(col_size * 3, row_size), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, row_size * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(col_size * 2, row_size * nrows), constrained_layout=True)
 
     latex_str = feat_name_to_latex(stat_name)
 
@@ -699,6 +716,8 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         else:
             stat_fft = stat_fft.real**2 + stat_fft.imag**2
 
+        stat_fft /= len(stat1[:num_plotting_steps, feat])
+
         freqs = np.fft.rfftfreq(num_plotting_steps)
 
         log_str = ""
@@ -707,20 +726,25 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
             stat_fft = np.log(stat_fft)
 
         local_ax.plot(freqs, stat_fft, c="k")
-        # local_ax.specgram(stat1[:num_plotting_steps, feat], Fs=1)
 
         if num_feat_patterns == 3:
-            local_ax.set_xlabel(r"$Hz$")
+            local_ax.set_xlabel(rf"$f_{{ {latex_str}_{feat+1} }}$")
         elif feat > num_feat_patterns - 3:
-            local_ax.set_xlabel(r"$Hz$")
+            local_ax.set_xlabel(rf"$f_{{ {latex_str}_{feat+1} }}$")
 
+        kwargs = {}
+        kwargs["rotation"] = "horizontal"
+        kwargs["verticalalignment"] = "center"
+        labelpad = 25
         if mode == "real":
-            local_ax.set_ylabel(fr"${log_str}re(\mathcal{{F}} f_{{ {latex_str}_{feat+1} }})$")
+            local_ax.set_ylabel(fr"${log_str}re(\mathcal{{F}} )$", labelpad=labelpad, **kwargs)
         else:
-            local_ax.set_ylabel(fr"${log_str}|\mathcal{{F}}|^2 f_{{ {latex_str}_{feat+1}  }}$")
+            local_ax.set_ylabel(fr"${log_str}|\mathcal{{F}}|^2$", labelpad=labelpad, **kwargs)
 
 
-        local_ax.set_xlim(freqs[0], freqs[-1])
+        local_ax.set_xlim(freqs[0]-0.005, freqs[-1]+0.005)
+
+        local_ax.set_ylim(min(stat_fft), max(stat_fft) * adjust_y_axis)
 
         if title is not None:
             fig.suptitle(title)
@@ -731,7 +755,7 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
     # fig.suptitle(f"Evolution of {stat_name}")
 
     if save_not_plot:
-        fig.savefig(save_path)
+        fig.savefig(save_path, bbox_inches='tight')
     else:
         plt.show()
     plt.close()
@@ -789,7 +813,11 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
         elif feat > num_feat_patterns - 3:
             local_ax.set_xlabel(r"$t - \tau$")
 
-        local_ax.set_ylabel(fr"ACF ${latex_str}_{feat+1}$")
+        kwargs = {}
+        kwargs["rotation"] = "horizontal"
+        kwargs["verticalalignment"] = "center"
+        labelpad = 25
+        local_ax.set_ylabel(fr"ACF ${latex_str}_{feat+1}$", labelpad=labelpad, **kwargs)
 
         local_ax.set_xlim(x_vals[0], x_vals[-1])
 
@@ -797,7 +825,7 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
             fig.suptitle(title)
 
     if save_not_plot:
-        fig.savefig(save_path)
+        fig.savefig(save_path, bbox_inches='tight')
     else:
         plt.show()
     plt.close()
