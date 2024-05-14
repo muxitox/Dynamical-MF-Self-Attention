@@ -6,8 +6,13 @@ import matplotlib
 
 cmap = matplotlib.colormaps["inferno_r"]
 colors = []
+intensity_multiplier = 1.1
 for i_color in range(9):
-    colors += [cmap(i_color / 8)]
+    color = cmap(i_color / 8)
+    color_intensity = min(color[-2] * intensity_multiplier, 1.0)  # Increase intensity
+    color = list(color)
+    color[-2] = color_intensity
+    colors += [tuple(color)]
 colors += [(1.0, 1.0, 1.0, 1.0)]  # White
 
 
@@ -385,7 +390,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         min_y, max_y = compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
                                        feat_name)
 
-        y_resolution = int(len(x_list)*2 + 1)
+        y_resolution = int(len(x_list) + 1)
         bins_size = (max_y - min_y) / y_resolution
         bins = np.arange(y_resolution) * bins_size - ((max_y - min_y) / 2)
 
@@ -415,7 +420,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
                               marker='.', ms='0.008')  # Other
 
         local_ax.plot(4, 0, 'o', c=colors[0], label="Periodic")
-        local_ax.plot(4, 0, 'o', c=colors[-3], label="Other")
+        local_ax.plot(4, 0, 'o', c=colors[3], label="Other")
         local_ax.set_xlim([x_list[0], x_list[-1]])
         local_ax.set_xlabel(x_label)
 
@@ -599,7 +604,7 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
             local_ax = ax[feat % ncols]
 
         local_ax.plot(stats1[feat][:num_plotting_steps, feat_idx[0][feat]],
-                      stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c="k", ms=ms)
+                      stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c="k", ms=ms, rasterized=True)
 
         local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]+1}(t)$")
 

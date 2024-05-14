@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
                 rg = range(plot_range[0], plot_range[1])
                 plot_save_statistics(HT.mf_statistics[stat_name][rg, :], stat_name, num_feat_patterns,
-                                     len(rg), min_num_step=num_transient_steps + plot_range[0],
+                                     len(rg), min_num_step=0,
                                      show_max_num_patterns=num_feat_patterns,
                                      save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,
                                      plot_hilbert=False, show_1_feat=1)
