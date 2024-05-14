@@ -563,7 +563,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
     plt.close()
 
 def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
-                    save_not_plot=False, save_path=None, tag_names=[], title=None, lowres=False):
+                    save_not_plot=False, save_path=None, tag_names=[], title=None, lowres=False, larger_dots=False):
 
     # Plot show_max_num_patterns subfigures if defined
 
@@ -576,6 +576,8 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
     if lowres:
         dpi = 15
         ms = 0.7
+    elif larger_dots: # If not a lowres execution and larger_dots is set, print them bigger
+        ms = 10
 
     fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 8), constrained_layout=True, dpi=dpi)
 

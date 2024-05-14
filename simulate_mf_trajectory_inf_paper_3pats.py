@@ -30,10 +30,10 @@ if __name__ == "__main__":
     # Create variables for the Hopfield Transformer (HT)
     seed = 1
     beta_list = [1.255, 1.26427, 1.266, 1.27, 1.28, 1.4]
-
+    beta_list = [1.27]
     beta_att = 2.2
     num_feat_patterns = 3
-    num_transient_steps = 100000  # 0 if we want to show the trajectory since the beginning
+    num_transient_steps = 10000  # 0 if we want to show the trajectory since the beginning
     saved_steps = 20000
     max_sim_steps = num_transient_steps + saved_steps
 
@@ -105,8 +105,8 @@ if __name__ == "__main__":
         else:
             title = None
         stats_to_show = ["mo_se"]
-        # image_format = ".jpeg"
-        image_format = ".pdf"
+        image_format = ".jpeg"
+        # image_format = ".pdf"
 
         for stat_name in stats_to_show:
 
@@ -166,10 +166,15 @@ if __name__ == "__main__":
                 folder_path + f"/plane-seed-{str(seed)}" + "-ini_token-" +
                 str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
 
+        # Set larger dots for the periodic trajectory
+        larger_dots = False
+        if beta == 1.27:
+            larger_dots = True
+
         # Load functions
         stat_results_beta_list_0 = [HT.mf_statistics[stats_to_plot[feat_idx[0][0]][0]]]
         stat_results_beta_list_1 = [HT.mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
         plot_save_plane(stat_results_beta_list_0,
                         stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
                         tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot,
-                        title=title)
+                        title=title, larger_dots=larger_dots)
