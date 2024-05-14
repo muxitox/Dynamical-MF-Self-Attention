@@ -30,10 +30,9 @@ if __name__ == "__main__":
     # Create variables for the Hopfield Transformer (HT)
     seed = 1
     beta_list = [1.255, 1.26427, 1.266, 1.27, 1.28, 1.4]
-    beta_list = [1.27]
     beta_att = 2.2
     num_feat_patterns = 3
-    num_transient_steps = 10000  # 0 if we want to show the trajectory since the beginning
+    num_transient_steps = 100000
     saved_steps = 20000
     max_sim_steps = num_transient_steps + saved_steps
 
@@ -48,7 +47,7 @@ if __name__ == "__main__":
     compute_inf_normalization = True
     ini_token_idx = 0
     ini_token_from_w = 1
-    save_not_plot = False
+    save_not_plot = True
     show_title = True
 
     # Load checkpoint attention values
@@ -105,8 +104,8 @@ if __name__ == "__main__":
         else:
             title = None
         stats_to_show = ["mo_se"]
-        image_format = ".jpeg"
-        # image_format = ".pdf"
+        # image_format = ".jpeg"
+        image_format = ".pdf"
 
         for stat_name in stats_to_show:
 
