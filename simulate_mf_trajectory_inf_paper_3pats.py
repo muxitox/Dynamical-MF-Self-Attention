@@ -111,7 +111,8 @@ if __name__ == "__main__":
             for plot_window in plot_windows:
                 offset = 900 + plot_window
                 plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window - 1]
-                plot_save_path_traj = (folder_path + f"/traj-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(num_transient_steps) +
+                plot_save_path_traj = (folder_path + f"/traj-seed-{str(seed)}-{stat_name}" + "-transient_steps-" +
+                                       str(num_transient_steps) +
                                        "-plot_window-" + str(plot_window) + image_format)
                 create_dir(plot_save_path_traj)
 
@@ -122,11 +123,12 @@ if __name__ == "__main__":
                                      save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,
                                      plot_hilbert=False, show_1_feat=show_1_feat)
 
-            plot_save_path_fft = (folder_path + f"/fft-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(num_transient_steps) + image_format)
+            plot_save_path_fft = (folder_path + f"/fft-seed-{str(seed)}-{stat_name}" + "-transient_steps-" +
+                                  str(num_transient_steps) + image_format)
 
             adjust_y_axis = 1.0
             if beta == 1.266:
-                adjust_y_axis = 0.55
+                adjust_y_axis = 0.3
 
             plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
                           show_max_num_patterns=num_feat_patterns,
