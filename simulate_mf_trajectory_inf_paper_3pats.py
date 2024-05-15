@@ -45,8 +45,6 @@ if __name__ == "__main__":
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
     compute_inf_normalization = True
-    ini_token_idx = 0
-    ini_token_from_w = 1
     save_not_plot = True
     show_title = True
 
@@ -108,13 +106,12 @@ if __name__ == "__main__":
         image_format = ".pdf"
 
         for stat_name in stats_to_show:
-
+            show_1_feat = 0
             plot_windows = [250, 350, 5000]
             for plot_window in plot_windows:
                 offset = 900 + plot_window
                 plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window - 1]
-                plot_save_path_traj = (folder_path + f"/traj-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
-                                       str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) +
+                plot_save_path_traj = (folder_path + f"/traj-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(num_transient_steps) +
                                        "-plot_window-" + str(plot_window) + image_format)
                 create_dir(plot_save_path_traj)
 
@@ -123,10 +120,9 @@ if __name__ == "__main__":
                                      len(rg), min_num_step=0,
                                      show_max_num_patterns=num_feat_patterns,
                                      save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,
-                                     plot_hilbert=False, show_1_feat=1)
+                                     plot_hilbert=False, show_1_feat=show_1_feat)
 
-            plot_save_path_fft = (folder_path + f"/fft-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
-                                  str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
+            plot_save_path_fft = (folder_path + f"/fft-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(num_transient_steps) + image_format)
 
             adjust_y_axis = 1.0
             if beta == 1.266:
@@ -134,23 +130,21 @@ if __name__ == "__main__":
 
             plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
                           show_max_num_patterns=num_feat_patterns,
-                          save_not_plot=save_not_plot, save_path=plot_save_path_fft, title=title, show_1_feat=1,
-                          adjust_y_axis=adjust_y_axis)
+                          save_not_plot=save_not_plot, save_path=plot_save_path_fft, title=title,
+                          show_1_feat=show_1_feat, adjust_y_axis=adjust_y_axis)
 
-            plot_save_path_fft_log = (folder_path + f"/log-fft-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
-                                  str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
+            plot_save_path_fft_log = (folder_path + f"/log-fft-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(num_transient_steps) + image_format)
 
             plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
                           show_max_num_patterns=num_feat_patterns, save_not_plot=save_not_plot,
-                          save_path=plot_save_path_fft_log, title=title, show_1_feat=1, log=True)
+                          save_path=plot_save_path_fft_log, title=title, show_1_feat=show_1_feat, log=True)
 
-            plot_save_path_ACF = (folder_path + f"/acf-seed-{str(seed)}-{stat_name}" + "-ini_token-" +
-                                      str(ini_token_idx) + "-transient_steps-" + str(
+            plot_save_path_ACF = (folder_path + f"/acf-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(
                         num_transient_steps) + image_format)
 
             plot_save_autocorrelation(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
                                       show_max_num_patterns=num_feat_patterns, save_not_plot=save_not_plot,
-                                      save_path=plot_save_path_ACF, title=title, show_1_feat=1)
+                                      save_path=plot_save_path_ACF, title=title, show_1_feat=show_1_feat)
 
         print("Done.")
 
@@ -162,8 +156,7 @@ if __name__ == "__main__":
 
         # Define path for saving the plane
         plot_save_path_plane = (
-                folder_path + f"/plane-seed-{str(seed)}" + "-ini_token-" +
-                str(ini_token_idx) + "-transient_steps-" + str(num_transient_steps) + image_format)
+                folder_path + f"/plane-seed-{str(seed)}" + "-transient_steps-" + str(num_transient_steps) + image_format)
 
         # Set larger dots for the periodic trajectory
         larger_dots = False

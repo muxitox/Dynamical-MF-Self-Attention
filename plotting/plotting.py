@@ -313,7 +313,7 @@ def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode
         values_feat = results_y_list[num_transient_steps:, feat]
         inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int) - 1
 
-        im_array[inds, idx] = colors[3]  # All points
+        im_array[inds, idx] = colors[-3]  # All points
 
     return im_array
 
@@ -334,9 +334,12 @@ def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token
 
     values_feat_unfiltered = results_y_list[num_transient_steps:, feat]
     inds_unfiltered = np.unique(np.digitize(values_feat_unfiltered, bins, right=True)).astype(int) - 1
-
     unique_len = len(inds_unfiltered)
-    return bins[inds_filtered], bins[inds_unfiltered], unique_len
+
+    coarser_bins = bins[0::15]  # Get only 1 every 3 bins
+    inds_unfiltered_coarser = np.unique(np.digitize(values_feat_unfiltered, coarser_bins, right=True)).astype(int) - 1
+
+    return bins[inds_filtered], coarser_bins[inds_unfiltered_coarser], unique_len
 
 
 def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_patterns,
@@ -360,12 +363,14 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
 
     col_size = 5
     row_size = 3
+    dpi = 200
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(col_size*num_feat_patterns, row_size), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(col_size*num_feat_patterns, row_size),
+                               constrained_layout=True, dpi=dpi)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, row_size * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, row_size * nrows), constrained_layout=True, dpi=dpi)
 
     latex_str = feat_name_to_latex(feat_name)
     x_label = r'$\beta$'
@@ -390,7 +395,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         min_y, max_y = compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
                                        feat_name)
 
-        y_resolution = int(len(x_list) + 1)
+        y_resolution = 8003
         bins_size = (max_y - min_y) / y_resolution
         bins = np.arange(y_resolution) * bins_size - ((max_y - min_y) / 2)
 
@@ -398,7 +403,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         im_array = create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
                                        feat_name, num_transient_steps, feat, bins, y_resolution)
 
-        local_ax.imshow(im_array, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y])
+        local_ax.imshow(im_array, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y], rasterized=True)
         local_ax.set_aspect("auto")
 
         # 2- Then, apply a plane intersection filter
@@ -413,14 +418,14 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
 
 
             if unique_len < filter_periodic:
-                local_ax.plot(beta_values_feat, rounded_feat_results_y_list, c=colors[0], ls='',
-                              marker='.', ms='0.008')  # Periodic
+                local_ax.plot(beta_values_feat, rounded_feat_results_y_list, c=colors[3], ls='',
+                              marker=',', ms='0.04', rasterized=True)  # Periodic
             else:
-                local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=colors[-3], ls='',
-                              marker='.', ms='0.008')  # Other
+                local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=colors[0], ls='',
+                              marker='.', ms='0.04', rasterized=True)  # Other
 
-        local_ax.plot(4, 0, 'o', c=colors[0], label="Periodic")
-        local_ax.plot(4, 0, 'o', c=colors[3], label="Other")
+        local_ax.plot(4, 0, 'o', c=colors[3], label="Periodic")
+        local_ax.plot(4, 0, 'o', c=colors[-3], label="Other")
         local_ax.set_xlim([x_list[0], x_list[-1]])
         local_ax.set_xlabel(x_label)
 

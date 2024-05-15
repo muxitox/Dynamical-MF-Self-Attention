@@ -1,8 +1,8 @@
 import numpy as np
 from models.HopfieldTransformerPE import Embedding
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
-from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram
-from plotting.plotting import plot_filtered_bifurcation_diagram_par
+from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram, plot_filtered_bifurcation_diagram_par_imshow
+from plotting.plotting import plot_filtered_bifurcation_diagram_par, plot_filtered_bifurcation_diagram_par_imshow
 import os
 import time
 from utils import create_dir, create_dir_from_filepath
@@ -117,7 +117,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 
     np.random.seed(0)
     ini_tokens_list = np.random.randint(2, size=(
-    num_ini_tokens, tentative_semantic_embedding_size + positional_embedding_size)) * 2 - 1
+        num_ini_tokens, tentative_semantic_embedding_size + positional_embedding_size)) * 2 - 1
     # Initialize positional embedding
     ini_tokens_list[:, -positional_embedding_size:] = -1
 
@@ -243,8 +243,8 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
     else:
         num_transient_steps_plot_arg = 0
 
-    image_format = ".jpeg"
-    # image_format = ".pdf"
+    # image_format = ".jpeg"
+    image_format = ".pdf"
 
     for num_feat_patterns in num_feat_patterns_list:
         for seed in seed_list:
@@ -268,7 +268,7 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
 
                     show_max_num_patterns = 6
 
-                    show_1_feat = [1, 0, 1]
+                    show_1_feat = [1, 0, 0]
                     # show_1_feat = [None, None, None]
                     # Load each stat and plot/save it
                     for stat_name in stats_to_save_plot:
@@ -291,7 +291,17 @@ def plotter(num_feat_patterns_list, tentative_semantic_embedding_size, positiona
                                         num_transient_steps) + "-filter_idx-" + str(filter_idx) +
                                                   "-filter_rg-" + str(filtering_range) + image_format)
 
-                            plot_filtered_bifurcation_diagram_par(filter_idx, filtered_beta_list, num_feat_patterns,
+                            # plot_filtered_bifurcation_diagram_par(filter_idx, filtered_beta_list, num_feat_patterns,
+                            #                                       filtered_save_path, num_transient_steps_plot_arg,
+                            #                                       stat_name, folder_path, seed, ini_token_idx,
+                            #                                       ini_token_mode_str, filtering_range=filtering_range,
+                            #                                       show_max_num_patterns=show_max_num_patterns,
+                            #                                       save_not_plot=save_not_plot, title=title,
+                            #                                       show_1_feat=show_1_feat[filter_idx])
+
+
+                            print("Creating and saving diagram")
+                            plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, num_feat_patterns,
                                                                   filtered_save_path, num_transient_steps_plot_arg,
                                                                   stat_name, folder_path, seed, ini_token_idx,
                                                                   ini_token_mode_str, filtering_range=filtering_range,
@@ -350,9 +360,9 @@ if __name__ == "__main__":
     # 3 pat: seed 1 (0.35,0.3) - 0.8, 0.37 - 0.45
 
     beta_att = 2.2  # Write it as float
-    num_betas = 10
-    # beta_list = np.linspace(0, 3, num_betas)
+    num_betas = 4001
     beta_list = np.linspace(0, 3, num_betas)
+    # beta_list = np.linspace(1.24, 1.28, num_betas)
     # beta_list = np.linspace(1.75, 2.75, 1200)
     # se_per_contribution_list = [(tentative_semantic_embedding_size /
     #                        (tentative_semantic_embedding_size + positional_embedding_size))]
@@ -362,8 +372,8 @@ if __name__ == "__main__":
     # seed_list = [10, 14, 18]
     seed_list = [1]
     num_feat_patterns_list = [3]
-    num_transient_steps = 10
-    max_sim_steps = num_transient_steps + 200
+    num_transient_steps = 100000
+    max_sim_steps = num_transient_steps + 20000
 
     num_ini_tokens = 1
     ini_token_from_w = 1
@@ -379,7 +389,7 @@ if __name__ == "__main__":
     pe_mode = 0
     num_segments_corrs = 3  # Only applicable if correlations_from_weights=3
     save_non_transient = False
-    save_not_plot = False
+    save_not_plot = True
     show_title = False
     load_from_last_chpt = True
 
@@ -388,36 +398,35 @@ if __name__ == "__main__":
     if num_transient_steps > max_sim_steps:
         raise ("You cannot discard more timesteps than you are simulating.")
 
-    # stats_to_save_plot = ["mo", "mo_se", "att"]
-    stats_to_save_plot = ["mo_se", "att"]
+    stats_to_save_plot = ["mo_se"]
 
     start = time.time()
 
-    if not load_from_last_chpt:
-        for worker_id in range(num_betas):
-            runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-                   num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-                   normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-                   correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
-                   save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-                   worker_id)
-    else:
-        # First compute the last beta
-        runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-               num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-               normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-               correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
-               save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-               num_betas - 1, load_from_context_mode=1)
-
-        # Then compute the rest of the betas, setting the initial context to the last beta one
-        for worker_id in range(num_betas - 1):
-            runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
-                   num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
-                   normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
-                   correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
-                   save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
-                   worker_id, load_from_context_mode=2)
+    # if not load_from_last_chpt:
+    #     for worker_id in range(num_betas):
+    #         runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+    #                num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+    #                normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+    #                correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
+    #                save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
+    #                worker_id)
+    # else:
+    #     # First compute the last beta
+    #     runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+    #            num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+    #            normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+    #            correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
+    #            save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
+    #            num_betas - 1, load_from_context_mode=1)
+    #
+    #     # Then compute the rest of the betas, setting the initial context to the last beta one
+    #     for worker_id in range(num_betas - 1):
+    #         runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional_embedding_size, beta_list,
+    #                num_transient_steps, max_sim_steps, context_size, num_ini_tokens, seed_list, normalize_weights_str_att,
+    #                normalize_weights_str_o, reorder_weights, stats_to_save_plot, se_per_contribution_list,
+    #                correlations_from_weights, num_segments_corrs, pe_mode, gaussian_scale,
+    #                save_non_transient, compute_inf_normalization, scaling_o, scaling_att, ini_token_from_w, beta_att,
+    #                worker_id, load_from_context_mode=2)
 
 
     end = time.time()
