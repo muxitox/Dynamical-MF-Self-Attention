@@ -1,3 +1,5 @@
+import os
+
 import matplotlib.pyplot as plt
 from utils import feat_name_to_latex
 import numpy as np
@@ -300,6 +302,8 @@ def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode
                         num_transient_steps, feat, bins, y_resolution):
 
     im_array = np.ones((y_resolution, len(x_list), 4)) * colors[-1]
+
+    unique_values_list = {} # One element per beta
     for idx in range(len(x_list)):
         b_idx = min_bidx + idx
         stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
@@ -313,9 +317,10 @@ def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode
         values_feat = results_y_list[num_transient_steps:, feat]
         inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int) - 1
 
-        im_array[inds, idx] = colors[-3]  # All points
+        unique_values_list[b_idx] = bins[inds]
+        im_array[inds, idx] = cmap(0.09)  # All points
 
-    return im_array
+    return im_array, unique_values_list
 
 def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
                         num_transient_steps, feat, bins, filter_idx, filtering_range):
@@ -362,7 +367,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
     nrows = (num_feat_patterns + 1) // 2
 
     col_size = 5
-    row_size = 3
+    row_size = 4
     dpi = 200
     if num_feat_patterns == 1:
         fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
@@ -400,14 +405,17 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         bins = np.arange(y_resolution) * bins_size - ((max_y - min_y) / 2)
 
         # 1 - First plot all the quantized values for all betas
-        im_array = create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
+        im_array, unique_values_list = create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
                                        feat_name, num_transient_steps, feat, bins, y_resolution)
 
-        local_ax.imshow(im_array, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y], rasterized=True)
+        local_ax.imshow(im_array, cmap=cmap, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y],
+                        rasterized=True, aspect="auto", alpha=1)
         local_ax.set_aspect("auto")
 
         # 2- Then, apply a plane intersection filter
         # Step 1 and 2 are done separately to avoid memory issues
+        periodic_values_feat_list = {}
+        filtered_values_feat_list = {}
         for idx in range(len(x_list)):
             values_feat_filtered_quantized, rounded_feat_results_y_list, unique_len = (
                 get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
@@ -416,16 +424,44 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
             beta_values_feat = np.ones(len(rounded_feat_results_y_list)) * x_list[idx]
             beta_values_quantized_feat = np.ones(len(values_feat_filtered_quantized)) * x_list[idx]
 
+            periodic_values_feat_list[idx] = rounded_feat_results_y_list
+            filtered_values_feat_list[idx] = values_feat_filtered_quantized
 
             if unique_len < filter_periodic:
-                local_ax.plot(beta_values_feat, rounded_feat_results_y_list, c=colors[3], ls='',
+                local_ax.plot(beta_values_feat, rounded_feat_results_y_list, c=cmap(3/3), ls='',
                               marker=',', ms='0.04', rasterized=True)  # Periodic
-            else:
-                local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=colors[0], ls='',
-                              marker='.', ms='0.04', rasterized=True)  # Other
 
-        local_ax.plot(4, 0, 'o', c=colors[3], label="Periodic")
-        local_ax.plot(4, 0, 'o', c=colors[-3], label="Other")
+            elif unique_len < 2500:
+                local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(1.5/4), ls='',
+                              marker='.', ms='0.04', rasterized=True)  # Quasi
+            else:
+                local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(2.5/4), ls='',
+                              marker='.', ms='0.04', rasterized=True)  # Chaos
+
+
+        # max_elems_unique = -np.inf
+        # max_elems_periodic = -np.inf
+        # max_elems_filtered = -np.inf
+        # for idx in range(len(x_list)):
+        #     max_elems_unique = max(max_elems_unique, unique_values_list[idx])
+        #     max_elems_periodic = max(max_elems_periodic, periodic_values_feat_list[idx])
+        #     max_elems_filtered = max(max_elems_filtered, filtered_values_feat_list[idx])
+        #
+        # unique_elems_array = np.zeros((len(x_list), max_elems_unique))
+        # periodic_elems_array = np.zeros((len(x_list), max_elems_periodic))
+        # filtered_elems_array = np.zeros((len(x_list), max_elems_filtered))
+        #
+        # for idx in range(len(x_list)):
+
+        # save_path = f"miguel/beta_{x_list[0]}-{x_list[-1]}-feat_{feat}_filter_idx-{filter_idx}.npz"
+        # np.savez_compressed(save_path, unique_values_dict=unique_values_list,
+        #                     periodic_values_feat_dict=periodic_values_feat_list,
+        #                     filtered_values_feat_dict=filtered_values_feat_list,
+        #                     beta_list=x_list)
+
+        local_ax.plot(4, 0, 'o', c=cmap(3/3), label="periodic")
+        local_ax.plot(4, 0, 'o', c=cmap(1.5/4), label="quasi-periodic")
+        local_ax.plot(4, 0, 'o', c=cmap(2.5/4), label="chaotic")
         local_ax.set_xlim([x_list[0], x_list[-1]])
         local_ax.set_xlabel(x_label)
 
@@ -740,18 +776,18 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         local_ax.plot(freqs, stat_fft, c="k")
 
         if num_feat_patterns == 3:
-            local_ax.set_xlabel(rf"$f_{{ {latex_str}_{feat+1} }}$")
+            local_ax.set_xlabel(rf"$f$")
         elif feat > num_feat_patterns - 3:
-            local_ax.set_xlabel(rf"$f_{{ {latex_str}_{feat+1} }}$")
+            local_ax.set_xlabel(rf"$f$")
 
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
         labelpad = 25
         if mode == "real":
-            local_ax.set_ylabel(fr"${log_str}re(\mathcal{{F}} )$", labelpad=labelpad, **kwargs)
+            local_ax.set_ylabel(fr"${log_str}re(\mathcal{{F}}_f)$", labelpad=labelpad, **kwargs)
         else:
-            local_ax.set_ylabel(fr"${log_str}|\mathcal{{F}}|^2$", labelpad=labelpad, **kwargs)
+            local_ax.set_ylabel(fr"${log_str}|\mathcal{{F}}_f|^2$", labelpad=labelpad, **kwargs)
 
 
         local_ax.set_xlim(freqs[0]-0.005, freqs[-1]+0.005)
@@ -795,7 +831,7 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
     else:
         fig, ax = plt.subplots(nrows, 2, figsize=(16, row_size * nrows), constrained_layout=True)
 
-    latex_str = feat_name_to_latex(stat_name)
+    # latex_str = feat_name_to_latex(stat_name)
 
     for feat_id in range(0, num_feat_patterns):
 
@@ -821,15 +857,15 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
         local_ax.plot(x_vals, stat_autocorr_window, c="k")
 
         if num_feat_patterns == 3:
-            local_ax.set_xlabel(r"$t - \tau$")
+            local_ax.set_xlabel(r"$\ell$")
         elif feat > num_feat_patterns - 3:
-            local_ax.set_xlabel(r"$t - \tau$")
+            local_ax.set_xlabel(r"$\ell$")
 
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
         labelpad = 25
-        local_ax.set_ylabel(fr"ACF ${latex_str}_{feat+1}$", labelpad=labelpad, **kwargs)
+        local_ax.set_ylabel(fr"$R_\ell$", labelpad=labelpad, **kwargs)
 
         local_ax.set_xlim(x_vals[0], x_vals[-1])
 
