@@ -169,7 +169,7 @@ def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter
 def filter_y_values_by_0_plane(results_y_list, feat, filter_idx, filtering_range):
     filtering_values = results_y_list[:, filter_idx]
     zero_intersect = np.where(np.logical_and(filtering_values >= -filtering_range,
-                                             filtering_values <= filtering_range))
+                                             filtering_values <= filtering_range))[0]
     return results_y_list[zero_intersect, feat]
 
 
@@ -299,11 +299,10 @@ def compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str
     return min_y, max_y
 
 def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
-                        num_transient_steps, feat, bins, y_resolution):
+                        num_transient_steps, feat, y_resolution, max_y):
 
     im_array = np.ones((y_resolution, len(x_list), 4)) * colors[-1]
 
-    unique_values_list = {} # One element per beta
     for idx in range(len(x_list)):
         b_idx = min_bidx + idx
         stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
@@ -315,15 +314,16 @@ def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode
         results_y_list = data[f"{feat_name}_results_beta"]
 
         values_feat = results_y_list[num_transient_steps:, feat]
-        inds = np.unique(np.digitize(values_feat, bins, right=False)).astype(int) - 1
 
-        unique_values_list[b_idx] = bins[inds]
+        inds = np.unique((y_resolution * (values_feat/max_y + 1) / 2).astype(int)) - 1
+
         im_array[inds, idx] = cmap(0.09)  # All points
 
-    return im_array, unique_values_list
+    return im_array
 
 def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
-                        num_transient_steps, feat, bins, filter_idx, filtering_range):
+                        num_transient_steps, feat, y_resolution, filter_idx, filtering_range, max_y):
+
     b_idx = min_bidx + idx
     stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
                        + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
@@ -335,16 +335,16 @@ def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token
 
     values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
                                                       filter_idx, filtering_range)
-    inds_filtered = np.unique(np.digitize(values_feat_filtered, bins, right=True)).astype(int) - 1
 
-    values_feat_unfiltered = results_y_list[num_transient_steps:, feat]
-    inds_unfiltered = np.unique(np.digitize(values_feat_unfiltered, bins, right=True)).astype(int) - 1
-    unique_len = len(inds_unfiltered)
+    values_feat_filtered_quantized = (np.unique((y_resolution * (values_feat_filtered / max_y + 1) / 2).astype(int))
+                                      / y_resolution * 2 - 1) * max_y
 
-    coarser_bins = bins[0::15]  # Get only 1 every 3 bins
-    inds_unfiltered_coarser = np.unique(np.digitize(values_feat_unfiltered, coarser_bins, right=True)).astype(int) - 1
+    values_feat = results_y_list[num_transient_steps:, feat]
+    values_feat_quantized = (np.unique((y_resolution * (values_feat / max_y + 1) / 2).astype(int))
+                             / y_resolution * 2 - 1) * max_y
+    unique_len = len(values_feat_quantized)
 
-    return bins[inds_filtered], coarser_bins[inds_unfiltered_coarser], unique_len
+    return values_feat_filtered_quantized, values_feat_quantized, unique_len
 
 
 def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_patterns,
@@ -368,7 +368,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
 
     col_size = 5
     row_size = 4
-    dpi = 200
+    dpi = 250
     if num_feat_patterns == 1:
         fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
     elif num_feat_patterns == 3:
@@ -400,13 +400,14 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         min_y, max_y = compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
                                        feat_name)
 
-        y_resolution = 8003
-        bins_size = (max_y - min_y) / y_resolution
-        bins = np.arange(y_resolution) * bins_size - ((max_y - min_y) / 2)
+        max_y = max(abs(min_y), abs(max_y))
+
+        y_resolution_im = 7001
+        y_resolution_plot = 5001
 
         # 1 - First plot all the quantized values for all betas
-        im_array, unique_values_list = create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
-                                       feat_name, num_transient_steps, feat, bins, y_resolution)
+        im_array = create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
+                                       feat_name, num_transient_steps, feat, y_resolution_im, max_y)
 
         local_ax.imshow(im_array, cmap=cmap, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y],
                         rasterized=True, aspect="auto", alpha=1)
@@ -417,20 +418,20 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         periodic_values_feat_list = {}
         filtered_values_feat_list = {}
         for idx in range(len(x_list)):
-            values_feat_filtered_quantized, rounded_feat_results_y_list, unique_len = (
-                get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
-                                            feat_name, num_transient_steps, feat, bins, filter_idx, filtering_range))
+            values_feat_filtered_quantized, values_feat_quantized, unique_len = \
+                (get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
+                                             feat_name, num_transient_steps, feat, y_resolution_plot, filter_idx,
+                                             filtering_range, max_y))
 
-            beta_values_feat = np.ones(len(rounded_feat_results_y_list)) * x_list[idx]
+            beta_values_feat = np.ones(len(values_feat_quantized)) * x_list[idx]
             beta_values_quantized_feat = np.ones(len(values_feat_filtered_quantized)) * x_list[idx]
 
-            periodic_values_feat_list[idx] = rounded_feat_results_y_list
+            periodic_values_feat_list[idx] = values_feat_quantized
             filtered_values_feat_list[idx] = values_feat_filtered_quantized
 
             if unique_len < filter_periodic:
-                local_ax.plot(beta_values_feat, rounded_feat_results_y_list, c=cmap(3/3), ls='',
+                local_ax.plot(beta_values_feat, values_feat_quantized, c=cmap(3/3), ls='',
                               marker=',', ms='0.04', rasterized=True)  # Periodic
-
             elif unique_len < 2500:
                 local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(1.5/4), ls='',
                               marker='.', ms='0.04', rasterized=True)  # Quasi
@@ -824,12 +825,13 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
 
     nrows = (num_feat_patterns + 1) // 2
     row_size = 3
+    col_size = 8
     if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, row_size), constrained_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True)
     elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, row_size), constrained_layout=True)
+        fig, ax = plt.subplots(1, 3, figsize=(3*col_size, row_size), constrained_layout=True)
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, row_size * nrows), constrained_layout=True)
+        fig, ax = plt.subplots(nrows, 2, figsize=(2*col_size, row_size * nrows), constrained_layout=True)
 
     # latex_str = feat_name_to_latex(stat_name)
 
