@@ -389,18 +389,6 @@ class HopfieldTransformerInfN:
         if t >= self.min_saved_step:
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
 
-    # def attention_mf_optimized(self, t):
-    #
-    #     effective_context_size = min(self.context_size, t + 1)
-    #
-    #     mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
-    #                     optimize=True)
-    #
-    #     key_prob_unnorm = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
-    #     key_prob = softmax(key_prob_unnorm)
-    #
-    #     self.att_window = self.embedding_size * (self.mv_window[:effective_context_size].T @ key_prob)
-
 
     def save_stats(self, t, mo, mo_se, mv, mq, mk):
         index_t = t - self.min_saved_step
