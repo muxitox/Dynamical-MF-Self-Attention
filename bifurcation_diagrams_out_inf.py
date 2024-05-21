@@ -1,5 +1,5 @@
 import numpy as np
-from models.HopfieldTransformerPE import Embedding
+from models.Embedding import Embedding
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram
 import os

@@ -1,6 +1,6 @@
 import numpy as np
 from models.HopfieldTransformerPEInfN_Memoryless import HopfieldTransformerInfNML
-from models.HopfieldTransformerPE import Embedding
+from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane
 
 if __name__ == "__main__":

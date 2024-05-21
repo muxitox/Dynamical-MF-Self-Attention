@@ -1,6 +1,6 @@
 import numpy as np
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
-from models.HopfieldTransformerPE import Embedding
+from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os
 

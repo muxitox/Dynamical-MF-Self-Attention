@@ -6,7 +6,7 @@ from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
 from models.HopfieldTransformerPE_Memoryless import HopfieldTransformerPEML
 from models.HopfieldTransformerPEInfN_Memoryless import HopfieldTransformerInfNML
 
-from models.HopfieldTransformerPE import Embedding
+from models.Embedding import Embedding
 from plotting.plotting import plot_2_statistics
 
 if __name__ == "__main__":

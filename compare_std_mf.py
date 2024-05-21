@@ -3,17 +3,34 @@ import copy
 import numpy as np
 from models.HopfieldTransformerPE import HopfieldTransformer
 from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
-from models.HopfieldTransformerPE_Memoryless import HopfieldTransformerPEML
-from models.HopfieldTransformerPEInfN_Memoryless import HopfieldTransformerInfNML
 
-from models.HopfieldTransformerPE import Embedding
+from models.Embedding import Embedding
 from plotting.plotting import plot_2_statistics
 
 if __name__ == "__main__":
 
-    # Instantiate vocabulary
-    semantic_embedding_size = 100
+    ######
+    # General variables
+    ########
+    seed = 1
+    beta_att = 2.2
+    scaling_att = 100
     positional_embedding_size = 2
+    scaling_o = 1
+    normalize_weights_str_att = "N**2*np.sqrt(M)"
+    normalize_weights_str_o = "N"
+    max_sim_steps = 512
+    min_saved_step = 100
+
+
+    #################
+    # STD Transformer
+    #################
+
+
+
+    # Instantiate vocabulary
+    semantic_embedding_size = 99
     embedding_size = semantic_embedding_size + positional_embedding_size
     vocab = Embedding(semantic_embedding_size, positional_embedding_size)
     # We don't initialize the vocab as it's more efficient to work without a dict with the MF implementation
@@ -31,7 +48,6 @@ if __name__ == "__main__":
     # vocab.initialize()
 
     # Create variables for the Hopfield Transformer (HT)
-    seed = 8
     beta = 1
     beta_o = beta
     beta_att = beta
@@ -40,83 +56,78 @@ if __name__ == "__main__":
     max_sim_steps = 100
     context_size = 2 ** positional_embedding_size
 
-    normalize_weights_str = "np.sqrt(N*M)"
     reorder_weights = False
 
-    # Create seed for reproducibility
+    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size,
+                             max_sim_steps=max_sim_steps, normalize_weights_str_att=normalize_weights_str_att,
+                             normalize_weights_str_o=normalize_weights_str_o, reorder_weights=False, pe_mode=0,
+                             weights_from_segments=False, scaling_o=scaling_o, scaling_att=scaling_att)
 
+    HT.simulate(x0, max_steps=max_sim_steps)
+
+    ################
     # MF Transformer
+    ################
+
     np.random.seed(seed)
 
-    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                             embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps, context_size=context_size,
-                             normalize_weights_str=normalize_weights_str, reorder_weights=reorder_weights)
+    # Instantiate vocabulary
+    tentative_semantic_embedding_size = 99
+    positional_embedding_size = 2
+    context_size = 2 ** positional_embedding_size
+    embedding_size = tentative_semantic_embedding_size + positional_embedding_size
+    vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
+    vocab.initialize_pos_encoder()
+
+    # Create variables for the Hopfield Transformer (HT)
+    seed = 1
+    beta_list = [1.255, 1.26427, 1.266, 1.27, 1.28, 1.4]
+    beta_att = 2.2
+    num_feat_patterns = 3
+    num_transient_steps = 100000
+    saved_steps = 20000
+    max_sim_steps = num_transient_steps + saved_steps
+
+    correlations_from_weights = 3
+    pe_mode = 0
+    se_per_contribution = 0.98
+    scaling_o = 1
+    scaling_att = 100
+
+    normalize_weights_str_att = "N**2*np.sqrt(M)"
+    normalize_weights_str_o = "N"
+    compute_inf_normalization = True
+    save_not_plot = True
+    show_title = True
+
+    # Create seed for reproducibility
+    np.random.seed(seed)
+
+    HT = HopfieldTransformerInfN(beta, beta_att, num_feat_patterns=num_feat_patterns,
+                                 positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
+                                 context_size=context_size, max_sim_steps=max_sim_steps,
+                                 min_saved_step=num_transient_steps,
+                                 normalize_weights_str_att=normalize_weights_str_att,
+                                 normalize_weights_str_o=normalize_weights_str_o,
+                                 correlations_from_weights=correlations_from_weights,
+                                 semantic_embedding_bitsize=tentative_semantic_embedding_size,
+                                 se_per_contribution=se_per_contribution, pe_mode=pe_mode,
+                                 compute_inf_normalization=compute_inf_normalization,
+                                 scaling_o=scaling_o,
+                                 scaling_att=scaling_att,
+                                 N_normalization=9999)
 
 
 
     print("Simulating MF Transformer...")
     HT.reset_data()
-    HT.simulate_mf(x0, max_steps=max_sim_steps)
+    HT.simulate(x0, max_steps=max_sim_steps)
     print("Done.")
 
     # print(HT.mf_statistics["mo"][0])
     # print(HT.mf_statistics["mv"][0])
     # print(HT.mf_statistics["att"][0])
     # print(HT.mf_statistics["att"][1])
-
-
-    # MF Transformer Memoryless
-    np.random.seed(seed)
-    HTPEML = HopfieldTransformerPEML(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                             embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps,
-                             context_size=context_size,
-                             normalize_weights_str=normalize_weights_str, reorder_weights=reorder_weights)
-
-    print("Simulating MF Transformer...")
-    HTPEML.reset_data()
-    HTPEML.simulate_mf(x0, max_steps=max_sim_steps)
-
-    # print(HT.mf_statistics["mo"] - HTPEML.mf_statistics["mo"][:, :])
-    # print(HT.mf_statistics["mv"] - HTPEML.mf_statistics["mv"][:, 0, :])
-
-    print("Done.")
-
-
-    # MF Transformer Inf spins
-    np.random.seed(seed)
-    correlation_from_weights = 1
-    normalize_weights_str = "np.sqrt(N*M)"
-    se_per_contribution = semantic_embedding_size / (semantic_embedding_size + positional_embedding_size)
-    HTInf = HopfieldTransformerInfN(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                                 positional_embedding_bitsize=positional_embedding_size, vocab=vocab, context_size=context_size,
-                                 max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
-                                 reorder_weights=reorder_weights, correlations_from_weights=correlation_from_weights,
-                                 semantic_embedding_bitsize=semantic_embedding_size,
-                                 se_per_contribution=se_per_contribution)
-
-
-    print("Simulating Inf MF Transformer...")
-    HTInf.reset_data()
-    HTInf.simulate_mf(x0, max_steps=max_sim_steps)
-    print("Done.")
-
-    # MF Transformer Inf spins. Memoryless version
-    np.random.seed(seed)
-    correlation_from_weights = 1
-    normalize_weights_str = "np.sqrt(N*M)"
-    se_per_contribution = semantic_embedding_size / (semantic_embedding_size + positional_embedding_size)
-    HTInfML = HopfieldTransformerInfNML(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                                    positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-                                    context_size=context_size,
-                                    max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
-                                    reorder_weights=reorder_weights, correlations_from_weights=correlation_from_weights,
-                                    semantic_embedding_bitsize=semantic_embedding_size,
-                                    se_per_contribution=se_per_contribution)
-
-    print("Simulating Inf MF Transformer...")
-    HTInfML.reset_data()
-    HTInfML.simulate_mf(x0, max_steps=max_sim_steps)
-    print("Done.")
 
 
     print("Same weights", np.array_equal(HTPEML.Wo, HT.Wo), np.array_equal(HTPEML.Wv, HT.Wv), np.array_equal(HTPEML.Wk, HT.Wk),
@@ -127,10 +138,6 @@ if __name__ == "__main__":
     num_plotting_steps = max_sim_steps
     label_tag = ["finite", "inf"]
     beta_str = r" $\beta$ =" + str(beta)
-
-    # for stat_name in HT.statistics_names:
-    #     plot_2_statistics(HT.mf_statistics[stat_name], HTInf.mf_statistics[stat_name], stat_name, num_feat_patterns,
-    #                   num_plotting_steps, label_tag, additional_msg=beta_str)
 
     label_tag = ["memory", "memoryless"]
     for stat_name in HT.statistics_names:
@@ -144,15 +151,6 @@ if __name__ == "__main__":
                       num_plotting_steps, label_tag, additional_msg=beta_str)
 
 
-    # for stat_name in HTInf.statistics_names:
-    #
-    #     if stat_name == "mk" or stat_name == "mv":
-    #         statInfML = HTInfML.mf_statistics[stat_name][:, 0, :]
-    #     else:
-    #         statInfML = HTInfML.mf_statistics[stat_name]
-    #
-    #     plot_2_statistics(HTInf.mf_statistics[stat_name], statInfML, stat_name, num_feat_patterns,
-    #                   num_plotting_steps, label_tag, additional_msg=beta_str)
 
 
     print("Done.")

@@ -1,6 +1,6 @@
 import numpy as np
 from models.HopfieldTransformerPE import HopfieldTransformer
-from models.HopfieldTransformerPE import Embedding
+from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics
 
 if __name__ == "__main__":
