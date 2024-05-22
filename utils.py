@@ -2,9 +2,7 @@ import numpy as np
 import os
 def bool2int(x):  # Transform bool array into positive integer
     """
-    Transform bool array into positive integer. Code from
-    https://github.com/MiguelAguilera/Adaptation-to-criticality-through-organizational-invariance/blob
-    /dd46c3d272f05becaaf68bef92e724e5c3560150/Network/ising.py#L185
+    Transform bool array into positive integer.
     :param x: :return:
     """
     y = 0
