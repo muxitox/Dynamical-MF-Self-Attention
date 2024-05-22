@@ -129,8 +129,8 @@ def plotter(num_feat_patterns, tentative_semantic_embedding_size, positional_emb
 
 if __name__ == "__main__":
     # Instantiate vocabulary
-    tentative_semantic_embedding_size = 99
-    positional_embedding_size = 2
+    tentative_semantic_embedding_size = 99  # Only used to create an initial weight matrix from which to compute the correlations.
+    positional_embedding_size = 2  # Number of bits for the PE
     context_size = 2**positional_embedding_size
 
     # New
