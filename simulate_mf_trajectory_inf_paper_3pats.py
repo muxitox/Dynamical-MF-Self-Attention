@@ -53,7 +53,7 @@ if __name__ == "__main__":
     show_title = True                                       # Whether to show the title on top
 
     # Load checkpoint attention values
-    chpt_path = "eurnips_chpt/beta_idx-4000_window_chpt_zoom.npz"
+    chpt_path = "neurips_chpt/beta_idx-4000_window_chpt_zoom.npz"
     mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt = load_context(chpt_path)
 
     for beta in beta_list:
@@ -98,7 +98,7 @@ if __name__ == "__main__":
                                           "-normalize_weights_o-" + normalize_weights_str_o)
 
         save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
-        folder_path = f"results_eurnips/beta{beta}"
+        folder_path = f"results_neurips/beta{beta}"
 
         # Create dir if it does not exist
         create_dir(folder_path)

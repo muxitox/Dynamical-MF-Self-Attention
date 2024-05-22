@@ -61,6 +61,8 @@ class HopfieldTransformerInfN:
         self.W[:, :self.se_bit_size] = self.W_SE
         self.W[:, -self.pe_bit_size:] = self.W_SE[:, -self.pe_bit_size:]
 
+        # Following, we have the code for initializating the weight matrices from which we compute the correlations.
+
         if reorder_weights:
             self.Wo = np.copy(self.W)
             np.random.shuffle(self.Wo)
@@ -71,7 +73,6 @@ class HopfieldTransformerInfN:
             np.random.shuffle(self.Wq)
             self.Wk = np.copy(self.W)
             np.random.shuffle(self.Wk)
-            # self.Wk = self.Wq
 
         else:
 
@@ -198,16 +199,6 @@ class HopfieldTransformerInfN:
             self.pair_corr_o_q = np.clip(self.pair_corr_o_q, -1, 1)
 
             if num_feat_patterns == 3:
-                # self.quad_corr_o_o = np.random.normal(0, sc, num_feat_patterns)
-                # self.quad_corr_o_v = np.random.normal(0, sc, num_feat_patterns)
-                # self.quad_corr_o_k = np.random.normal(0, sc, num_feat_patterns)
-                # self.quad_corr_o_q = np.random.normal(0, sc, num_feat_patterns)
-                #
-                # self.quad_corr_o_o = np.clip(self.three_corr_o_o, -1, 1)
-                # self.quad_corr_o_v = np.clip(self.three_corr_o_v, -1, 1)
-                # self.quad_corr_o_k = np.clip(self.three_corr_o_k, -1, 1)
-                # self.quad_corr_o_q = np.clip(self.three_corr_o_q, -1, 1)
-
                 self.quad_corr_o_o = np.prod(self.pair_corr_o_o, axis=0)
                 self.quad_corr_o_v = np.prod(self.pair_corr_o_v, axis=0)
                 self.quad_corr_o_k = np.prod(self.pair_corr_o_k, axis=0)
@@ -254,6 +245,7 @@ class HopfieldTransformerInfN:
         self.even_corr_o_k = self.pair_corr_o_k
         self.even_corr_o_q = self.pair_corr_o_q
 
+        # Create matrix of signs to compute the signs of the attention
         if num_feat_patterns == 1:
             self.sign_matrix = np.ones((1, 1))  # Create empty dimension in order to allow matrix indexing later
         elif num_feat_patterns == 2:
@@ -272,12 +264,13 @@ class HopfieldTransformerInfN:
         self.corr_signed_q = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_q)
         self.corr_signed_k = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_k)
 
-
+        # Create variable for the context window in the attention
         self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))
         self.mq_window = np.zeros(self.num_feat_patterns)
         self.mk_window = np.zeros((self.context_size, self.num_feat_patterns))
         self.att_window = np.zeros(self.num_feat_patterns)
 
+        # Create variables to save results
         self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
         # Create variables for saving the statistics of the mean-field model
         self.mf_statistics = {}
@@ -368,15 +361,16 @@ class HopfieldTransformerInfN:
     def attention_mf(self, t):
 
         effective_context_size = min(self.context_size, t + 1)
-
+        # Put in common queries and keys
         mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
                         optimize=True)
 
+        # Scale
         key_prob_unnorm = self.beta_att * self.scaling_att * mqk
-
         if self.run_exact_inf:
             key_prob_unnorm *= self.inf_normalization_att
 
+        # Compute softmax and average by mv
         self.softmax(key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
@@ -386,7 +380,7 @@ class HopfieldTransformerInfN:
         #     for tau in range(0, t+1):
         #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
 
-        if t >= self.min_saved_step:
+        if t >= self.min_saved_step:  # Save if required
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
 
 
@@ -400,6 +394,7 @@ class HopfieldTransformerInfN:
 
     def compute_means_from_data(self, x0, t):
 
+        # Computes mean values from data. Basically used to compute m values from a x0 token.
         self.context_index = t % self.context_size
 
         self.mv_window[self.context_index, :] = x0 @ self.Wv.T / self.embedding_size
@@ -414,6 +409,7 @@ class HopfieldTransformerInfN:
                             self.mk_window[self.context_index, :])
 
     def define_normalization_inf_o(self):
+        # Define normalization values in infinity for the output
         if self.normalize_weights_str_o == "N":
             total_normalization = 1
         elif self.normalize_weights_str_o == "N*M" or self.normalize_weights_str_o == "M*N":
@@ -426,7 +422,7 @@ class HopfieldTransformerInfN:
         return total_normalization
 
     def define_normalization_inf_att(self):
-
+        # Define normalization values in infinity for the self-attention
         if self.normalize_weights_str_att == "N**2":
             total_normalization = 1
         elif self.normalize_weights_str_att == "N**2*np.sqrt(M)":
@@ -437,10 +433,11 @@ class HopfieldTransformerInfN:
 
 
     def compute_mf(self, t):
-
+        # Load attention values
         att = self.att_window
-
+        # Encode the position
         pos_vec = self.vocab.encode_pos(t % self.context_size)
+        # Positional Embedding contribution
         pe_contribution_o = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:],
                                       pos_vec, optimize=True) / self.pe_bit_size
 
@@ -454,24 +451,25 @@ class HopfieldTransformerInfN:
                                       pos_vec, optimize=True) / self.pe_bit_size
 
 
-        if self.run_exact_inf:
-            # In infty, we are going to deal with the order of N in the attention divided by U
+        if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
 
             sign_att_patterns = (self.beta_o * self.scaling_o *
                                  np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
                                            att))
 
             idx_not_zero = np.where(sign_att_patterns != 0)
-            # If result is not 0, normalize by inf
+            # If result is not 0, normalize by inf (avoids NaNs)
             sign_att_patterns[idx_not_zero] *= self.inf_normalization_o
             tanh_j_signs = np.tanh(sign_att_patterns)
-        else:
+        else:  # Otherwise, handle it here, just compute tanh
             tanh_j_signs = np.tanh(self.beta_o * self.scaling_o * (1 / self.normalizing_constant_o) *
                                    np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
                                              att))
 
+        # Compute relative context index
         self.context_index = t % self.context_size
 
+        # Compute all mean-fields
         mv_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_v, tanh_j_signs)
                  / 2 ** (self.num_feat_patterns - 1))
         self.mv_window[self.context_index] = mv_se + (1 - self.se_per_contribution) * pe_contribution_v
@@ -484,6 +482,7 @@ class HopfieldTransformerInfN:
                  / 2 ** (self.num_feat_patterns - 1))
         self.mk_window[self.context_index] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
 
+        # Compute mean-field for o. Separate the behavior of the Semantic Embedding.
         if t >= self.min_saved_step:
             mo_se = (np.einsum("jb,j->b", self.corr_signed_o, tanh_j_signs)
                      / 2 ** (self.num_feat_patterns - 1))
@@ -492,9 +491,8 @@ class HopfieldTransformerInfN:
             self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
-
     def shift_d_window(self, shift):
-        # Roll the window of d copies by "shit" positions
+        # Roll the context window by "shit" positions
         self.mv_window = np.roll(self.mv_window, shift, axis=0)
         self.mk_window = np.roll(self.mk_window, shift, axis=0)
 
@@ -502,18 +500,6 @@ class HopfieldTransformerInfN:
         return self.att_window, self.mv_window, self.mq_window, self.mk_window
 
     def simulate_mf_from_context(self, max_steps):
-        # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
-        # self.context_size steps
-
-        # We have in self.att_window the last attention value
-
-        # We initialize the model at the end of the previous execution
-        ini_t = self.context_size
-        for t in range(ini_t, max_steps):
-            self.compute_mf(t)
-            self.attention_mf(t)
-
-    def simulate_mf_from_saved_context(self, max_steps):
         # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
         # self.context_size steps
 
