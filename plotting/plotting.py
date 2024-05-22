@@ -278,6 +278,9 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
 
 
 def compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name):
+    """
+    Computes the max and min values for all the betas
+    """
     max_y = - np.inf
     min_y = np.inf
     for idx in range(len(x_list)):
@@ -301,7 +304,9 @@ def compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str
 def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
                         num_transient_steps, feat, y_resolution, max_y):
 
-    im_array = np.ones((y_resolution, len(x_list), 4)) * colors[-1]
+    # Creates array for imshow
+
+    im_array = np.ones((y_resolution, len(x_list), 4)) * colors[-1] # By default, white color
 
     for idx in range(len(x_list)):
         b_idx = min_bidx + idx
@@ -312,17 +317,19 @@ def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode
         # Load data
         data = np.load(stats_data_path)
         results_y_list = data[f"{feat_name}_results_beta"]
-
         values_feat = results_y_list[num_transient_steps:, feat]
-
+        # Quantization into y_resolution values
         inds = np.unique((y_resolution * (values_feat/max_y + 1) / 2).astype(int)) - 1
 
-        im_array[inds, idx] = cmap(0.09)  # All points
+        im_array[inds, idx] = cmap(0.09)  # All points. Sets the color 0.09 from the colormap
 
     return im_array
 
 def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
                         num_transient_steps, feat, y_resolution, filter_idx, filtering_range, max_y):
+    """
+    Function to compute the intersection with the 0 plane.
+    """
 
     b_idx = min_bidx + idx
     stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
@@ -348,12 +355,33 @@ def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token
 
 
 def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_patterns,
-                                          save_path, num_transient_steps, feat_name,
-                                          folder_path, seed, ini_token_idx, ini_token_mode_str,
-                                          filtering_range=0.05,
-                                          show_max_num_patterns=None, save_not_plot=True, title=None,
-                                          is_beta=True, min_bidx=0, show_1_feat=None,
-                                          filter_periodic=80):
+                                                 save_path, num_transient_steps, feat_name,
+                                                 folder_path, seed, ini_token_idx, ini_token_mode_str,
+                                                 filtering_range=0.05,
+                                                 show_max_num_patterns=None, save_not_plot=True, title=None,
+                                                 is_beta=True, min_bidx=0, show_1_feat=None,
+                                                 filter_periodic=80):
+    """
+    Plots a bifurcation diagram
+    :param filter_idx: The feature by which we'll do the 0 plane intersection
+    :param x_list: x domain values. Usually betas.
+    :param num_feat_patterns: Number of patterns to plot
+    :param save_path: Plot save path.
+    :param num_transient_steps: Number of transient steps
+    :param feat_name: Feat. name. For plotting purposes.
+    :param folder_path: Folder path in which we saved the results.
+    :param seed: (For loading purposes. Plotted in some cases for internal decisions)
+    :param ini_token_idx: (Plotted in some cases for internal decisions)
+    :param ini_token_mode_str: (Plotted in some cases for internal decisions)
+    :param filtering_range: Error band for the 0 plane filter
+    :param show_max_num_patterns: Max number of patterns we want to plot
+    :param save_not_plot: True save. False plot.
+    :param title: Title of the figure.
+    :param is_beta: If x_list is beta.
+    :param min_bidx:
+    :param show_1_feat: If set, it will only show the selected feat in the figure
+    :param filter_periodic: Number of steps by which we consider some beta has a periodic behavior.
+    """
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -429,44 +457,26 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
             periodic_values_feat_list[idx] = values_feat_quantized
             filtered_values_feat_list[idx] = values_feat_filtered_quantized
 
+            ms = 0.08 # Markersize
+
             if unique_len < filter_periodic:
                 local_ax.plot(beta_values_feat, values_feat_quantized, c=cmap(3/3), ls='',
-                              marker=',', ms='0.04', rasterized=True)  # Periodic
+                              marker=',', ms=ms, rasterized=True)  # Periodic
             elif unique_len < 2500:
                 local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(1.5/4), ls='',
-                              marker='.', ms='0.04', rasterized=True)  # Quasi
+                              marker='.', ms=ms, rasterized=True)  # Quasi
             else:
                 local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(2.5/4), ls='',
-                              marker='.', ms='0.04', rasterized=True)  # Chaos
+                              marker='.', ms=ms, rasterized=True)  # Chaos
 
-
-        # max_elems_unique = -np.inf
-        # max_elems_periodic = -np.inf
-        # max_elems_filtered = -np.inf
-        # for idx in range(len(x_list)):
-        #     max_elems_unique = max(max_elems_unique, unique_values_list[idx])
-        #     max_elems_periodic = max(max_elems_periodic, periodic_values_feat_list[idx])
-        #     max_elems_filtered = max(max_elems_filtered, filtered_values_feat_list[idx])
-        #
-        # unique_elems_array = np.zeros((len(x_list), max_elems_unique))
-        # periodic_elems_array = np.zeros((len(x_list), max_elems_periodic))
-        # filtered_elems_array = np.zeros((len(x_list), max_elems_filtered))
-        #
-        # for idx in range(len(x_list)):
-
-        # save_path = f"miguel/beta_{x_list[0]}-{x_list[-1]}-feat_{feat}_filter_idx-{filter_idx}.npz"
-        # np.savez_compressed(save_path, unique_values_dict=unique_values_list,
-        #                     periodic_values_feat_dict=periodic_values_feat_list,
-        #                     filtered_values_feat_dict=filtered_values_feat_list,
-        #                     beta_list=x_list)
-
+        # Plot tiny points outside the map for the legend.
         local_ax.plot(4, 0, 'o', c=cmap(3/3), label="periodic")
         local_ax.plot(4, 0, 'o', c=cmap(1.5/4), label="quasi-periodic")
         local_ax.plot(4, 0, 'o', c=cmap(2.5/4), label="chaotic")
         local_ax.set_xlim([x_list[0], x_list[-1]])
         local_ax.set_xlabel(x_label)
 
-
+        # Rotate y label
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
@@ -542,15 +552,17 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
     if (show_max_num_patterns is not None):
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
 
-
+    # Define the feats to plot
     feat_list = np.arange(num_feat_patterns)
-    if show_1_feat is not None:
+    if show_1_feat is not None:  # If show_1_feat, only plot that feature
         feat_list = [show_1_feat]
         num_feat_patterns = 1
 
+
+    # Set params for figsize. Create fig and axes.
     nrows = (num_feat_patterns + 1) // 2
 
-    col_size = 9
+    col_size = 8
     row_size = 3
     if num_feat_patterns == 1:
         fig, ax = plt.subplots(1, 1, figsize=(col_size*num_feat_patterns, row_size), constrained_layout=True)
@@ -559,10 +571,13 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
     else:
         fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, row_size * nrows), constrained_layout=True)
 
+    # X domain
     num_plotting_steps_arange = np.arange(num_plotting_steps) + min_num_step
 
+    # Strings for the labels
     latex_str = feat_name_to_latex(stat_name)
 
+    # For each feature
     for feat_id in range(0, num_feat_patterns):
 
         feat = feat_list[feat_id]
@@ -576,18 +591,19 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         else:
             local_ax = ax[row, feat % 2]
 
-
+        # Plot trajectory
         local_ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], c="k", label="Signal")
-        if plot_hilbert:
+        if plot_hilbert:  # If set, plot Hilbert transform
             analytic_signal = hilbert(stat1[:num_plotting_steps, feat])
             local_ax.plot(num_plotting_steps_arange, np.abs(analytic_signal), c=colors[0], alpha=0.5, label="Hilbert tr")
 
-
+        # Labelling
         if num_feat_patterns == 3:
             local_ax.set_xlabel(r"$t$")
         elif feat > num_feat_patterns - 3:
             local_ax.set_xlabel(r"$t$")
 
+        # Rotate labels
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
@@ -596,6 +612,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
         local_ax.set_xlim(num_plotting_steps_arange[0], num_plotting_steps_arange[-1])
 
+        # If Hilbert tr. is requested, set the legend.
         if plot_hilbert:
             local_ax.legend()
 
@@ -618,17 +635,18 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
     if ncols != len(stats2):
         raise Exception("The length of the input stats does not coincide")
 
+
+    # Set dpi and markersize depending on the set up
     dpi = None
     ms = 0.4
     if lowres:
         dpi = 15
         ms = 0.7
-    elif larger_dots: # If not a lowres execution and larger_dots is set, print them bigger
+    elif larger_dots:  # If not a lowres execution and larger_dots is set, print them bigger
         ms = 10
 
+    # Create figure
     fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 8), constrained_layout=True, dpi=dpi)
-
-    # num_plotting_steps_arange = np.arange(num_plotting_steps)
 
     # Convert stat names to latex style
     latex_strs = []
@@ -645,21 +663,20 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
         else:
             local_ax = ax[feat % ncols]
 
+        # Plot trajectories against each other
         local_ax.plot(stats1[feat][:num_plotting_steps, feat_idx[0][feat]],
                       stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c="k", ms=ms, rasterized=True)
 
+        # x label
         local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]+1}(t)$")
 
+        # Rotate y label
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
         labelpad = 25
         local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]+1}(t)$", labelpad=labelpad, **kwargs)
 
-        # local_ax.legend()
-
-    # fig.tight_layout(pad=0.1)
-    # fig.suptitle(f"Evolution of {stat_name}")
     if title is not None:
         fig.suptitle(title)
 
@@ -722,13 +739,13 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
                   save_not_plot=False, save_path=None, mode="sq", title=None, show_1_feat=None, log=False,
                   adjust_y_axis=1.0):
 
-    # mode may be sq or real
+    # mode may be "sq" or "real"
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
 
     feat_list = np.arange(num_feat_patterns)
-    if show_1_feat is not None:
+    if show_1_feat is not None:  # If show_1_feat, only plot that feature
         feat_list = [show_1_feat]
         num_feat_patterns = 1
 
@@ -758,6 +775,7 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         else:
             local_ax = ax[row, feat % 2]
 
+        # FFT Transform
         stat_fft = np.fft.rfft(stat1[:num_plotting_steps, feat])
         if mode == "real":
             stat_fft = stat_fft.real
@@ -765,15 +783,19 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         else:
             stat_fft = stat_fft.real**2 + stat_fft.imag**2
 
+        # Normalize by length
         stat_fft /= len(stat1[:num_plotting_steps, feat])
 
+        # Get freqs
         freqs = np.fft.rfftfreq(num_plotting_steps)
 
+        # If logarithm is requested, plot it in the legend
         log_str = ""
         if log:
             log_str = "\log "
             stat_fft = np.log(stat_fft)
 
+        # Plot
         local_ax.plot(freqs, stat_fft, c="k")
 
         if num_feat_patterns == 3:
@@ -790,9 +812,10 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         else:
             local_ax.set_ylabel(fr"${log_str}|\mathcal{{F}}_f|^2$", labelpad=labelpad, **kwargs)
 
-
+        # Change xlim to better view the highest frequencies
         local_ax.set_xlim(freqs[0]-0.005, freqs[-1]+0.005)
 
+        # Adjust y axis if requested
         local_ax.set_ylim(min(stat_fft), max(stat_fft) * adjust_y_axis)
 
         if title is not None:
@@ -813,16 +836,16 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
 def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
                   save_not_plot=False, save_path=None, title=None, show_1_feat=None, plotting_window=100):
 
-    # mode may be sq or real
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
         num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
 
     feat_list = np.arange(num_feat_patterns)
-    if show_1_feat is not None:
+    if show_1_feat is not None:  # If show_1_feat, only plot that feature
         feat_list = [show_1_feat]
         num_feat_patterns = 1
 
+    # Create figsize
     nrows = (num_feat_patterns + 1) // 2
     row_size = 3
     col_size = 8
@@ -849,20 +872,25 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
         else:
             local_ax = ax[row, feat % 2]
 
+        # Compute autocorrelation
         stat_autocorr = np.correlate(stat1[:num_plotting_steps, feat], stat1[:num_plotting_steps, feat], mode="full")
 
         middle_index = len(stat1[:num_plotting_steps, feat]) - 1
 
+        # Select which values to plot
         stat_autocorr_window = stat_autocorr[middle_index:middle_index+plotting_window]
         x_vals = np.arange(len(stat_autocorr_window))
 
+        # Plot values
         local_ax.plot(x_vals, stat_autocorr_window, c="k")
 
+        #  X label
         if num_feat_patterns == 3:
             local_ax.set_xlabel(r"$\ell$")
         elif feat > num_feat_patterns - 3:
             local_ax.set_xlabel(r"$\ell$")
 
+        # Rotate labels
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
