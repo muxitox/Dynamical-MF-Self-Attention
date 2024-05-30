@@ -8,14 +8,14 @@ class HopfieldTransformerInfN:
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size,
                  max_sim_steps=512, min_saved_step=0, normalize_weights_str_att="N**2", normalize_weights_str_o="N",
                  reorder_weights=False, correlations_from_weights=True, num_segments_corrs=3, pe_mode=0,
-                 semantic_embedding_bitsize=0, se_per_contribution=0.95, gaussian_scale_str=None,
+                 semantic_embedding_bitsize=0, epsilon_pe=0.95, gaussian_scale_str=None,
                  compute_inf_normalization=True, N_normalization=None, scaling_o=1, scaling_att=1):
 
         self.beta_o = beta_o
         self.beta_att = beta_att
         self.se_bit_size = semantic_embedding_bitsize
         self.pe_bit_size = positional_embedding_bitsize
-        self.se_per_contribution = se_per_contribution
+        self.epsilon_pe = epsilon_pe
         self.vocab = vocab
 
         self.embedding_size = semantic_embedding_bitsize + positional_embedding_bitsize
@@ -277,12 +277,18 @@ class HopfieldTransformerInfN:
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, num_feat_patterns))
 
+
+    def set_beta_o(self, beta_o):
+        self.beta_o = beta_o
+
+    def set_beta_att(self, beta_att):
+        self.beta_att = beta_att
     def set_betas(self, beta_o, beta_att):
         self.beta_o = beta_o
         self.beta_att = beta_att
 
-    def set_se_per_contribution(self, se_per):
-        self.se_per_contribution = se_per
+    def set_epsilon_pe(self, epsilon_pe):
+        self.epsilon_pe = epsilon_pe
 
     def set_context_window(self, mv_window, mq_window, mk_window, att_window):
         self.mv_window = copy.deepcopy(mv_window)
@@ -470,23 +476,23 @@ class HopfieldTransformerInfN:
         self.context_index = t % self.context_size
 
         # Compute all mean-fields
-        mv_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_v, tanh_j_signs)
+        mv_se = ((1 - self.epsilon_pe) * np.einsum("jb,j->b", self.corr_signed_v, tanh_j_signs)
                  / 2 ** (self.num_feat_patterns - 1))
-        self.mv_window[self.context_index] = mv_se + (1 - self.se_per_contribution) * pe_contribution_v
+        self.mv_window[self.context_index] = mv_se + self.epsilon_pe * pe_contribution_v
 
-        mq_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_q, tanh_j_signs)
+        mq_se = ((1 - self.epsilon_pe) * np.einsum("jb,j->b", self.corr_signed_q, tanh_j_signs)
                  / 2 ** (self.num_feat_patterns - 1))
-        self.mq_window = mq_se + (1 - self.se_per_contribution) * pe_contribution_q
+        self.mq_window = mq_se + self.epsilon_pe * pe_contribution_q
 
-        mk_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_k, tanh_j_signs)
+        mk_se = ((1 - self.epsilon_pe) * np.einsum("jb,j->b", self.corr_signed_k, tanh_j_signs)
                  / 2 ** (self.num_feat_patterns - 1))
-        self.mk_window[self.context_index] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
+        self.mk_window[self.context_index] = mk_se + self.epsilon_pe * pe_contribution_k
 
         # Compute mean-field for o. Separate the behavior of the Semantic Embedding.
         if t >= self.min_saved_step:
             mo_se = (np.einsum("jb,j->b", self.corr_signed_o, tanh_j_signs)
                      / 2 ** (self.num_feat_patterns - 1))
-            mo = (self.se_per_contribution * mo_se + (1 - self.se_per_contribution) * pe_contribution_o)
+            mo = ((1 - self.epsilon_pe) * mo_se + self.epsilon_pe * pe_contribution_o)
 
             self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
