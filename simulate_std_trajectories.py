@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from models.HopfieldTransformerMFPE import HopfieldTransformer
+from models.HopfieldTransformerMFPE import HopfieldTransformerMFPE
 from models.Embedding import Embedding
 from plotting.plotting import plot_2_statistics
 
@@ -32,8 +32,8 @@ if __name__ == "__main__":
 
     np.random.seed(seed)
 
-    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size,
-                             vocab=vocab, max_sim_steps=max_sim_steps, context_size=10, normalize_weights_str=normalize_weights_str)
+    HT = HopfieldTransformerMFPE(beta_o, beta_att, num_feat_patterns=num_feat_patterns, embedding_size=embedding_size,
+                                 vocab=vocab, max_sim_steps=max_sim_steps, context_size=10, normalize_weights_str=normalize_weights_str)
 
     # Select initial token
     random_idx = True
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         mean_std_statistics[stat_name] /= num_runs
 
     print("Simulating MF Transformer...")
-    HT.simulate_mf(x0, max_steps=max_sim_steps)
+    HT.simulate(x0, max_steps=max_sim_steps)
     print("Done.")
 
     # Plotting

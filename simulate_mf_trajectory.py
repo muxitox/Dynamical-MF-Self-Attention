@@ -1,5 +1,5 @@
 import numpy as np
-from models.HopfieldTransformerMFPE import HopfieldTransformer
+from models.HopfieldTransformerMFPE import HopfieldTransformerMFPE
 from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics
 
@@ -38,14 +38,14 @@ if __name__ == "__main__":
     seed = 1
     np.random.seed(seed)
 
-    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                             embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps, context_size=context_size,
-                             normalize_weights_str=normalize_weights_str, reorder_weights=reorder_weights)
+    HT = HopfieldTransformerMFPE(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
+                                 embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps, context_size=context_size,
+                                 normalize_weights_str=normalize_weights_str, reorder_weights=reorder_weights)
 
     num_runs = 1
 
     print("Simulating MF Transformer...")
-    HT.simulate_mf(x0, max_steps=max_sim_steps)
+    HT.simulate(x0, max_steps=max_sim_steps)
     print("Done.")
 
     # Plotting

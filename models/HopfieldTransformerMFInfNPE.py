@@ -12,6 +12,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                  semantic_embedding_bitsize=0, epsilon_pe=0.95, gaussian_scale_str=None,
                  compute_inf_normalization=True, N_normalization=None, scaling_o=1, scaling_att=1):
 
+        if num_feat_patterns < 1 or num_feat_patterns > 3:
+            raise Exception("The number of patterns is neither 1, 2 or 3")
+
         self.N_normalization = N_normalization
         if N_normalization is None:
             self.N_normalization = semantic_embedding_bitsize
@@ -79,11 +82,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         else:
 
-            self.Wo = np.zeros((self.num_feat_patterns, self.embedding_size))
-            self.Wv = np.zeros((self.num_feat_patterns, self.embedding_size))
-            self.Wq = np.zeros((self.num_feat_patterns, self.embedding_size))
-            self.Wk = np.zeros((self.num_feat_patterns, self.embedding_size))
-
             self.Wo_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
             self.Wv_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
             self.Wq_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
@@ -139,53 +137,16 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
                             segment_begin = int((pe_segment_id + segments_diff) * segment_size)
 
-                            curr_W[i, segment_begin_pe:segment_end_pe] = curr_W[
-                                i, segment_begin]  # Initialize PE to its corresponding segment
+                            # Initialize PE to its corresponding segment
+                            curr_W[i, segment_begin_pe:segment_end_pe] = curr_W[i, segment_begin]
 
     def define_correlations(self, correlations_from_weights):
 
-        if correlations_from_weights == 1 or correlations_from_weights == 3:  # Create matrices and compute correlations from them
+        if correlations_from_weights == 1 or correlations_from_weights == 3:  # Compute correlations from created matrices
 
             # Create correlations from matrices for comparison
-            if self.num_feat_patterns < 1 or self.num_feat_patterns > 3:
-                raise "The number of patterns is neither 1, 2 or 3"
-
-            self.pair_corr_o_o = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
-            self.pair_corr_o_v = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
-            self.pair_corr_o_k = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
-            self.pair_corr_o_q = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
-
-            for b in range(0, self.num_feat_patterns):
-                for a in range(0, self.num_feat_patterns):
-                    for i in range(0, self.se_bit_size):
-                        self.pair_corr_o_o[a, b] += self.Wo[a, i] * self.Wo[b, i]
-                        self.pair_corr_o_v[a, b] += self.Wo[a, i] * self.Wv[b, i]
-                        self.pair_corr_o_k[a, b] += self.Wo[a, i] * self.Wk[b, i]
-                        self.pair_corr_o_q[a, b] += self.Wo[a, i] * self.Wq[b, i]
-
-            self.pair_corr_o_o /= self.se_bit_size
-            self.pair_corr_o_v /= self.se_bit_size
-            self.pair_corr_o_k /= self.se_bit_size
-            self.pair_corr_o_q /= self.se_bit_size
-
-            if self.num_feat_patterns == 3:
-                self.quad_corr_o_o = np.zeros(self.num_feat_patterns)
-                self.quad_corr_o_v = np.zeros(self.num_feat_patterns)
-                self.quad_corr_o_k = np.zeros(self.num_feat_patterns)
-                self.quad_corr_o_q = np.zeros(self.num_feat_patterns)
-
-                for b in range(0, self.num_feat_patterns):
-                    for i in range(0, self.se_bit_size):
-                        Wo_corr = self.Wo[0, i] * self.Wo[1, i] * self.Wo[2, i]
-                        self.quad_corr_o_o[b] += Wo_corr * self.Wo[b, i]
-                        self.quad_corr_o_v[b] += Wo_corr * self.Wv[b, i]
-                        self.quad_corr_o_q[b] += Wo_corr * self.Wq[b, i]
-                        self.quad_corr_o_k[b] += Wo_corr * self.Wk[b, i]
-
-                self.quad_corr_o_o /= self.se_bit_size
-                self.quad_corr_o_v /= self.se_bit_size
-                self.quad_corr_o_q /= self.se_bit_size
-                self.quad_corr_o_k /= self.se_bit_size
+            self.define_pair_correlations_from_weights()
+            self.define_quad_correlations_from_weights()
 
         elif correlations_from_weights == 0:  # Normal weights and 4 correlations come from individual corrs
             sc = self.gaussian_scale
@@ -335,7 +296,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             key_prob = softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant_att)
             self.att_window = self.N_normalization * self.mv_window[:effective_context_size].T @ key_prob
 
-    def attention_mf_unoptimized(self, t):
+    def attention_unoptimized(self, t):
 
         effective_context_size = min(self.context_size, t + 1)
 
@@ -355,7 +316,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         if t >= self.min_saved_step:
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
 
-    def attention_mf(self, t):
+    def attention(self, t):
 
         effective_context_size = min(self.context_size, t + 1)
         # Put in common queries and keys
@@ -506,121 +467,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         ini_t = self.context_size
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
-            self.attention_mf(t)
+            self.attention(t)
 
     def simulate(self, x0, max_steps):
 
         # Initialize attention with the info from the initial token
         self.compute_means_from_data(x0, t=0)
-        self.attention_mf(t=0)
+        self.attention(t=0)
 
         for t in range(1, max_steps):
             self.compute_mf(t)
-            self.attention_mf(t)
-
-    # def compute_mf_unoptimized(self, t):
-    #
-    #     att = self.att_window
-    #     pos_vec = self.vocab.encode_pos(t % self.context_size)
-    #     pe_contribution_o = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:],
-    #                                   pos_vec, optimize=True) / self.pe_bit_size
-    #
-    #     pe_contribution_v = np.einsum('bi,i ->b', self.Wv[:, self.se_bit_size:],
-    #                                   pos_vec, optimize=True) / self.pe_bit_size
-    #
-    #     pe_contribution_q = np.einsum('bi,i ->b', self.Wq[:, self.se_bit_size:],
-    #                                   pos_vec, optimize=True) / self.pe_bit_size
-    #
-    #     pe_contribution_k = np.einsum('bi,i ->b', self.Wk[:, self.se_bit_size:],
-    #                                   pos_vec, optimize=True) / self.pe_bit_size
-    #
-    #     if self.num_feat_patterns == 1:
-    #         tanh_b = np.tanh(self.beta_o * (1 / self.normalizing_constant) * att[0])
-    #
-    #         self.mf_statistics["mo_se"][t] = self.se_per_contribution * self.pair_corr_o_o * tanh_b
-    #         self.mf_statistics["mo"][t] = self.mf_statistics["mo_se"][t] + (1 - self.se_per_contribution) * pe_contribution_o
-    #         self.mf_statistics["mv"][t] = (self.se_per_contribution * self.pair_corr_o_v * tanh_b +
-    #                                        (1 - self.se_per_contribution) * pe_contribution_v)
-    #         self.mf_statistics["mq"][t] = (self.se_per_contribution * self.pair_corr_o_q * tanh_b +
-    #                                        (1 - self.se_per_contribution) * pe_contribution_q)
-    #         self.mf_statistics["mk"][t] = (self.se_per_contribution * self.pair_corr_o_k * tanh_b +
-    #                                        (1 - self.se_per_contribution) * pe_contribution_k)
-    #
-    #     elif self.num_feat_patterns == 2:
-    #
-    #         tanh_b_plus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] + att[1]))
-    #         tanh_b_minus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] - att[1]))
-    #
-    #         for b in range(0, self.num_feat_patterns):
-    #
-    #             self.mf_statistics["mo_se"][t, b] = (self.se_per_contribution *
-    #                         ((self.pair_corr_o_o[0,b] + self.pair_corr_o_o[1,b]) * tanh_b_plus
-    #                          + (self.pair_corr_o_o[0,b] - self.pair_corr_o_o[1,b]) * tanh_b_minus) / 2 )
-    #
-    #             self.mf_statistics["mo"][t, b] = (self.mf_statistics["mo_se"][t,b] +
-    #                                               (1 - self.se_per_contribution) * pe_contribution_o[b])
-    #
-    #             self.mf_statistics["mv"][t, b] = (self.se_per_contribution *
-    #                         ((self.pair_corr_o_v[0,b] + self.pair_corr_o_v[1,b]) * tanh_b_plus +
-    #                          (self.pair_corr_o_v[0,b] - self.pair_corr_o_v[1,b]) * tanh_b_minus ) / 2
-    #                             + (1 - self.se_per_contribution) * pe_contribution_v[b])
-    #
-    #             self.mf_statistics["mq"][t, b] = (self.se_per_contribution *
-    #                         ((self.pair_corr_o_q[0, b] + self.pair_corr_o_q[1, b]) * tanh_b_plus +
-    #                          (self.pair_corr_o_q[0, b] - self.pair_corr_o_q[1, b]) * tanh_b_minus ) / 2
-    #                             + (1 - self.se_per_contribution) * pe_contribution_q[b])
-    #
-    #             self.mf_statistics["mk"][t, b] = (self.se_per_contribution *
-    #                         ((self.pair_corr_o_k[0, b] + self.pair_corr_o_k[1, b]) * tanh_b_plus +
-    #                          (self.pair_corr_o_k[0, b] - self.pair_corr_o_k[1, b]) * tanh_b_minus ) / 2
-    #                           + (1 - self.se_per_contribution) * pe_contribution_k[b])
-    #
-    #     else:
-    #         tanh_b_plus_plus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] + att[1] + att[2]))
-    #         tanh_b_plus_minus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] + att[1] - att[2]))
-    #         tanh_b_minus_plus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] - att[1] + att[2]))
-    #         tanh_b_minus_minus = np.tanh(self.beta_o * (1 / self.normalizing_constant) * (att[0] - att[1] - att[2]))
-    #
-    #         for b in range(0, self.num_feat_patterns):
-    #             self.mf_statistics["mo_se"][t, b] = (self.se_per_contribution *
-    #                                                  ((self.pair_corr_o_o[0, b] + self.pair_corr_o_o[1, b] + self.pair_corr_o_o[2, b] + self.quad_corr_o_o[b]) * tanh_b_plus_plus
-    #                                                   + (self.pair_corr_o_o[0, b] + self.pair_corr_o_o[1, b] - self.pair_corr_o_o[2, b] - self.quad_corr_o_o[b]) * tanh_b_plus_minus
-    #                                                   + (self.pair_corr_o_o[0, b] - self.pair_corr_o_o[1, b] + self.pair_corr_o_o[2, b] - self.quad_corr_o_o[b]) * tanh_b_minus_plus
-    #                                                   + (self.pair_corr_o_o[0, b] - self.pair_corr_o_o[1, b] - self.pair_corr_o_o[2, b] +
-    #                                                      self.quad_corr_o_o[b]) * tanh_b_minus_minus) / 4)
-    #
-    #             self.mf_statistics["mo"][t, b] = (self.mf_statistics["mo_se"][t,b] +
-    #                                               (1 - self.se_per_contribution) * pe_contribution_o[b])
-    #
-    #             self.mf_statistics["mv"][t, b] = (self.se_per_contribution *
-    #                                               ((self.pair_corr_o_v[0, b] + self.pair_corr_o_v[1, b] + self.pair_corr_o_v[2, b]
-    #                                                 + self.quad_corr_o_v[b]) * tanh_b_plus_plus
-    #                                                + (self.pair_corr_o_v[0, b] + self.pair_corr_o_v[1, b] - self.pair_corr_o_v[2, b]
-    #                                                   - self.quad_corr_o_v[b]) * tanh_b_plus_minus
-    #                                                + (self.pair_corr_o_v[0, b] - self.pair_corr_o_v[1, b] + self.pair_corr_o_v[2, b]
-    #                                                   - self.quad_corr_o_v[b]) * tanh_b_minus_plus
-    #                                                + (self.pair_corr_o_v[0, b] - self.pair_corr_o_v[1, b] - self.pair_corr_o_v[2, b]
-    #                                                   + self.quad_corr_o_v[b]) * tanh_b_minus_minus) / 4 +
-    #                                               (1 - self.se_per_contribution) * pe_contribution_v[b])
-    #
-    #             self.mf_statistics["mq"][t, b] = (self.se_per_contribution *
-    #                                               ((self.pair_corr_o_q[0, b] + self.pair_corr_o_q[1, b] + self.pair_corr_o_q[2, b]
-    #                                                 + self.quad_corr_o_q[b]) * tanh_b_plus_plus
-    #                                                + (self.pair_corr_o_q[0, b] + self.pair_corr_o_q[1, b] - self.pair_corr_o_q[2, b]
-    #                                                   - self.quad_corr_o_q[b]) * tanh_b_plus_minus
-    #                                                + (self.pair_corr_o_q[0, b] - self.pair_corr_o_q[1, b] + self.pair_corr_o_q[2, b]
-    #                                                   - self.quad_corr_o_q[b]) * tanh_b_minus_plus
-    #                                                + (self.pair_corr_o_q[0, b] - self.pair_corr_o_q[1, b] - self.pair_corr_o_q[2, b]
-    #                                                   + self.quad_corr_o_q[b]) * tanh_b_minus_minus) / 4 +
-    #                                               (1 - self.se_per_contribution) * pe_contribution_q[b])
-    #
-    #             self.mf_statistics["mk"][t, b] = (self.se_per_contribution *
-    #                                               ((self.pair_corr_o_k[0, b] + self.pair_corr_o_k[1, b] + self.pair_corr_o_k[2, b]
-    #                                                 + self.quad_corr_o_k[b]) * tanh_b_plus_plus
-    #                                                + (self.pair_corr_o_k[0, b] + self.pair_corr_o_k[1, b] - self.pair_corr_o_k[2, b]
-    #                                                   - self.quad_corr_o_k[b]) * tanh_b_plus_minus
-    #                                                + (self.pair_corr_o_k[0, b] - self.pair_corr_o_k[1, b] + self.pair_corr_o_k[2, b]
-    #                                                   - self.quad_corr_o_k[b]) * tanh_b_minus_plus
-    #                                                + (self.pair_corr_o_k[0, b] - self.pair_corr_o_k[1, b] - self.pair_corr_o_k[2, b]
-    #                                                   + self.quad_corr_o_k[b]) * tanh_b_minus_minus) / 4 +
-    #                                               (1 - self.se_per_contribution) * pe_contribution_k[b])
+            self.attention(t)

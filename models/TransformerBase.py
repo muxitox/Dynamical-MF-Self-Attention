@@ -42,7 +42,136 @@ class TransformerBase(ABC):
         except:
             raise Exception("Either of the exec_str for the normalizing_constants is not well defined")
 
+        # Initialize matrices
+
+        self.Wo = np.zeros((self.num_feat_patterns, self.embedding_size))
+        self.Wv = np.zeros((self.num_feat_patterns, self.embedding_size))
+        self.Wq = np.zeros((self.num_feat_patterns, self.embedding_size))
+        self.Wk = np.zeros((self.num_feat_patterns, self.embedding_size))
+
+        self.pair_corr_o_o = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        self.pair_corr_o_v = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        self.pair_corr_o_k = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        self.pair_corr_o_q = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+
+        if self.num_feat_patterns == 3:
+            self.quad_corr_o_o = np.zeros(self.num_feat_patterns)
+            self.quad_corr_o_v = np.zeros(self.num_feat_patterns)
+            self.quad_corr_o_k = np.zeros(self.num_feat_patterns)
+            self.quad_corr_o_q = np.zeros(self.num_feat_patterns)
+
+    def create_W_matrices_finite_model(self, weights_from_segments, num_segments_corrs):
+
+        self.W = np.zeros((self.num_feat_patterns, self.embedding_size))
+        self.W_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
+        self.W[:, :self.se_bit_size] = self.W_SE
+        self.W[:, -self.pe_bit_size:] = self.W_SE[:, -self.pe_bit_size:]
+
+        if self.reorder_weights:
+            self.Wo = np.copy(self.W)
+            np.random.shuffle(self.Wo)
+            self.Wv = np.copy(self.W)
+            np.random.shuffle(self.Wv)
+            # self.Wv = np.roll(self.Wo, 1, 1)
+            self.Wq = np.copy(self.W)
+            np.random.shuffle(self.Wq)
+            self.Wk = np.copy(self.W)
+            np.random.shuffle(self.Wk)
+            # self.Wk = self.Wq
+
+        else:
+            self.Wo_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
+            self.Wv_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
+            self.Wq_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
+            self.Wk_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
+
+            self.Wo[:, :self.se_bit_size] = self.Wo_SE
+            self.Wv[:, :self.se_bit_size] = self.Wv_SE
+            self.Wq[:, :self.se_bit_size] = self.Wq_SE
+            self.Wk[:, :self.se_bit_size] = self.Wk_SE
+
+            if self.pe_mode == 1 or (self.pe_mode == 0 and weights_from_segments):
+                # If pe_mode==0 and correlations_from_weighst=3. We use this (its like setting them random below but found seeds are more interesting)
+                self.Wo[:, -self.pe_bit_size:] = self.Wo_SE[:, -self.pe_bit_size:]
+                self.Wv[:, -self.pe_bit_size:] = self.Wv_SE[:, -self.pe_bit_size:]
+                self.Wq[:, -self.pe_bit_size:] = self.Wq_SE[:, -self.pe_bit_size:]
+                self.Wk[:, -self.pe_bit_size:] = self.Wk_SE[:, -self.pe_bit_size:]
+            elif self.pe_mode == 0:
+                self.Wo[:, -self.pe_bit_size:] = np.random.randint(2,
+                                                                   size=(self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                self.Wv[:, -self.pe_bit_size:] = np.random.randint(2,
+                                                                   size=(self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                self.Wq[:, -self.pe_bit_size:] = np.random.randint(2,
+                                                                   size=(self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                self.Wk[:, -self.pe_bit_size:] = np.random.randint(2,
+                                                                   size=(self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
+
+            self.W = self.Wo
+
+        matrix_list = [self.Wo, self.Wv, self.Wq, self.Wk]
+
+        if weights_from_segments:  # create uniform +1 -1 segments and combine them
+
+            segment_size = self.se_bit_size / num_segments_corrs
+
+            pe_num_segments = int(self.pe_bit_size / segment_size) + 1
+            segments_diff = num_segments_corrs - pe_num_segments
+
+            for curr_W in matrix_list:
+                for i in range(0, self.num_feat_patterns):
+                    for segment_id in range(0, num_segments_corrs):
+                        plus_minus_one = np.random.randint(2, size=1) * 2 - 1
+
+                        segment_begin = int(segment_id * segment_size)
+                        segment_end = int(segment_begin + segment_size)
+                        curr_W[i, segment_begin:segment_end] = plus_minus_one  # Initialize that segment randomly to +-1
+
+                    if self.pe_mode == 1:
+                        # We want the positional encoding to be equal right to left to the segments
+                        for pe_segment_id in range(0, pe_num_segments):
+                            segment_end_pe = int(self.embedding_size - pe_segment_id * segment_size + 1)
+                            segment_begin_pe = max(self.se_bit_size, int(self.pe_bit_size - (pe_segment_id + 1)
+                                                                         * segment_size))
+
+                            segment_begin = int((pe_segment_id + segments_diff) * segment_size)
+
+                            curr_W[i, segment_begin_pe:segment_end_pe] = curr_W[
+                                i, segment_begin]  # Initialize PE to its corresponding segment
+
+    def define_pair_correlations_from_weights(self):
+
+        for b in range(0, self.num_feat_patterns):
+            for a in range(0, self.num_feat_patterns):
+                for i in range(0, self.se_bit_size):
+                    self.pair_corr_o_o[a, b] += self.Wo[a, i] * self.Wo[b, i]
+                    self.pair_corr_o_v[a, b] += self.Wo[a, i] * self.Wv[b, i]
+                    self.pair_corr_o_k[a, b] += self.Wo[a, i] * self.Wk[b, i]
+                    self.pair_corr_o_q[a, b] += self.Wo[a, i] * self.Wq[b, i]
+
+        self.pair_corr_o_o /= self.se_bit_size
+        self.pair_corr_o_v /= self.se_bit_size
+        self.pair_corr_o_k /= self.se_bit_size
+        self.pair_corr_o_q /= self.se_bit_size
+
+    def define_quad_correlations_from_weights(self):
+
+        for b in range(0, self.num_feat_patterns):
+            for i in range(0, self.se_bit_size):
+                Wo_corr = self.Wo[0, i] * self.Wo[1, i] * self.Wo[2, i]
+                self.quad_corr_o_o[b] += Wo_corr * self.Wo[b, i]
+                self.quad_corr_o_v[b] += Wo_corr * self.Wv[b, i]
+                self.quad_corr_o_q[b] += Wo_corr * self.Wq[b, i]
+                self.quad_corr_o_k[b] += Wo_corr * self.Wk[b, i]
+
+        self.quad_corr_o_o /= self.se_bit_size
+        self.quad_corr_o_v /= self.se_bit_size
+        self.quad_corr_o_q /= self.se_bit_size
+        self.quad_corr_o_k /= self.se_bit_size
 
     @abstractmethod
-    def simulate(self):
+    def attention(self, t):
+        pass
+
+    @abstractmethod
+    def simulate(self, x0, max_steps):
         pass

@@ -1,5 +1,6 @@
 import numpy as np
 from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
+from models.old_inf_model import HopfieldTransformerInfN
 from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os
@@ -8,7 +9,7 @@ def create_dir(filepath):
     plot_save_folder_path = os.path.dirname(filepath)
 
     # Create folder if it does not exist and we are saving the image
-    if save_not_plot and (not os.path.exists(plot_save_folder_path)):
+    if not os.path.exists(plot_save_folder_path):
         os.makedirs(plot_save_folder_path)
 
 def load_context(chpt_path):
@@ -32,6 +33,7 @@ if __name__ == "__main__":
     # Create variables for the Hopfield Transformer (HT)
     seed = 1  # Seed for the correlations
     beta_list = [1.255, 1.26427, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
+    beta_list = [1.26427]
     scaling_o = 1  # Not scaled
     beta_att = 2.2
     scaling_att = 100                                       # Beta_att * scaling_att make gamma
@@ -43,17 +45,17 @@ if __name__ == "__main__":
     correlations_from_weights = 3                           # Variable for choosing how to set the correlations
                                                             # If = 3, we compute them from segments as in the paper
     pe_mode = 0                                             # Choose how to initialize the PE. Set it randomly.
-    epsilon_pe = 0.02                                       # epsilon in the paper
+    epsilon_pe = 0.98                                       # epsilon in the paper
 
     normalize_weights_str_att = "N**2*np.sqrt(M)"           # U in the paper
     normalize_weights_str_o = "N"                           # Normalization in the output
     compute_inf_normalization = True                        # Deal with normalization constraint in infinity
 
-    save_not_plot = True                                    # True -> Save; False -> Plot
+    save_not_plot = False                                    # True -> Save; False -> Plot
     show_title = True                                       # Whether to show the title on top
 
     # Load checkpoint attention values
-    chpt_path = "neurips_chpt/beta_idx-4000_window_chpt_zoom.npz"
+    chpt_path = ("chpt/beta_idx-4000_window_chpt_zoom.npz")
     mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt = load_context(chpt_path)
 
     for beta in beta_list:
@@ -62,7 +64,7 @@ if __name__ == "__main__":
         np.random.seed(seed)
 
         # Create Hopfield Transformer Class
-        HT = HopfieldTransformerMFInfNPE(beta, beta_att, num_feat_patterns=num_feat_patterns,
+        HT = HopfieldTransformerInfN(beta, beta_att, num_feat_patterns=num_feat_patterns,
                                          positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
                                          context_size=context_size, max_sim_steps=max_sim_steps,
                                          min_saved_step=num_transient_steps,
@@ -70,7 +72,7 @@ if __name__ == "__main__":
                                          normalize_weights_str_o=normalize_weights_str_o,
                                          correlations_from_weights=correlations_from_weights,
                                          semantic_embedding_bitsize=tentative_semantic_embedding_size,
-                                         epsilon_pe=epsilon_pe, pe_mode=pe_mode,
+                                         se_per_contribution=epsilon_pe, pe_mode=pe_mode,
                                          compute_inf_normalization=compute_inf_normalization,
                                          scaling_o=scaling_o,
                                          scaling_att=scaling_att,
@@ -101,7 +103,8 @@ if __name__ == "__main__":
         folder_path = f"results_neurips/beta{beta}"
 
         # Create dir if it does not exist
-        create_dir(folder_path)
+        if save_not_plot:
+            create_dir(folder_path)
 
         if show_title:
             title = fr"$\beta$ = {round(beta, 5)}"

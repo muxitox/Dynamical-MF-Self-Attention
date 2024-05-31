@@ -1,7 +1,7 @@
 import copy
 
 import numpy as np
-from models.HopfieldTransformerMFPE import HopfieldTransformer
+from models.HopfieldTransformerMFPE import HopfieldTransformerMFPE
 from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.HopfieldTransformerPE_Memoryless import HopfieldTransformerPEML
 from models.HopfieldTransformerPEInfN_Memoryless import HopfieldTransformerInfNML
@@ -48,15 +48,15 @@ if __name__ == "__main__":
     # MF Transformer
     np.random.seed(seed)
 
-    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                             embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps, context_size=context_size,
-                             normalize_weights_str=normalize_weights_str, reorder_weights=reorder_weights)
+    HT = HopfieldTransformerMFPE(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
+                                 embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps, context_size=context_size,
+                                 normalize_weights_str=normalize_weights_str, reorder_weights=reorder_weights)
 
 
 
     print("Simulating MF Transformer...")
     HT.reset_data()
-    HT.simulate_mf(x0, max_steps=max_sim_steps)
+    HT.simulate(x0, max_steps=max_sim_steps)
     print("Done.")
 
     # print(HT.mf_statistics["mo"][0])
