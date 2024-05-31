@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from models.HopfieldTransformerPE import HopfieldTransformer
+from models.HopfieldTransformerMFPE import HopfieldTransformer
 from models.Embedding import Embedding
 from plotting.plotting import plot_2_statistics
 

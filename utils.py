@@ -41,3 +41,12 @@ def create_dir(dirpath):
     # Create folder if it does not exist and we are saving the image
     if not os.path.exists(dirpath):
         os.makedirs(dirpath)
+
+def str2bool(v):
+    # Parses strings to boolean values
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise Exception('Boolean value expected.')

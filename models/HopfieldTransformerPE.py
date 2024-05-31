@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 from scipy.special import softmax
-
+from TransformerBase import TransformerBase
 class HopfieldTransformer:
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
@@ -282,80 +282,6 @@ class HopfieldTransformer:
 
         return att_t
 
-    def qk_f_mf(self, t, tau):
-
-        mqk = self.mf_statistics["mq"][t] @ self.mf_statistics["mk"][tau]
-        return self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
-
-    def attention_mf_unoptimized(self, t):
-
-        idx_ctx_start = max(0, t - self.context_size + 1)
-        effective_context_size = min(self.context_size, t + 1)
-
-        key_prob = np.zeros(effective_context_size)
-        for tau in range(0, effective_context_size):
-            key_prob[tau] = self.qk_f_mf(t, idx_ctx_start + tau)
-        key_prob = softmax(key_prob)
-
-        att_t = self.embedding_size * (self.mf_statistics["mv"][idx_ctx_start:t + 1].T @ key_prob)
-
-        # # Loopy implementation for testing
-        #
-        # att_t_loopy = np.zeros(self.num_feat_patterns)
-        # for b in range(0, self.num_feat_patterns):
-        #     for tau in range(0, t+1):
-        #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
-
-        self.mf_statistics["att"][t] = att_t
-
-        return att_t
-
-    def attention_mf(self, t):
-
-        effective_context_size = min(self.context_size, t + 1)
-
-        mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
-                        optimize=True)
-
-        key_prob_unnorm = self.beta_att * self.total_normalization_att * mqk
-
-        self.softmax(key_prob_unnorm, effective_context_size)
-
-        # # Loopy implementation for testing
-        #
-        # att_t_loopy = np.zeros(self.num_feat_patterns)
-        # for b in range(0, self.num_feat_patterns):
-        #     for tau in range(0, t+1):
-        #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
-
-        if t >= self.min_saved_step:
-            self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
-
-    def attention_mf(self, t):
-
-        idx_ctx_start = max(0, t - self.context_size + 1)
-
-        mqk = np.einsum('b,tb -> t', self.mf_statistics["mq"][t], self.mf_statistics["mk"][idx_ctx_start:t + 1], optimize=True)
-
-        # key_prob = self.beta_att * self.embedding_size ** 2 / np.sqrt(self.num_feat_patterns) * mqk
-        key_prob = self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 * mqk
-        # key_prob = self.beta_att * self.embedding_size ** 2 * mqk
-
-        key_prob = softmax(key_prob)
-
-        att_t = self.embedding_size * (self.mf_statistics["mv"][idx_ctx_start:t + 1].T @ key_prob)
-
-        # # Loopy implementation for testing
-        #
-        # att_t_loopy = np.zeros(self.num_feat_patterns)
-        # for b in range(0, self.num_feat_patterns):
-        #     for tau in range(0, t+1):
-        #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
-
-        self.mf_statistics["att"][t] = att_t
-
-        return att_t
-
     def simulate(self, x0, max_steps, verbose=False):
 
         self.x_list[0, :] = x0
@@ -410,68 +336,3 @@ class HopfieldTransformer:
                 selected_tokens.append(new_x_idx)
 
         return selected_tokens
-
-    def compute_means_from_data(self, t):
-        self.mf_statistics["mo"][t] = self.x_list[t] @ self.Wo.T / self.embedding_size
-        self.mf_statistics["mo_se"][t] = self.x_list[t, :self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
-        self.mf_statistics["mv"][t] = self.x_list[t] @ self.Wv.T / self.embedding_size
-        self.mf_statistics["mq"][t] = self.x_list[t] @ self.Wq.T / self.embedding_size
-        self.mf_statistics["mk"][t] = self.x_list[t] @ self.Wk.T / self.embedding_size
-
-    def compute_mf(self, t, att):
-
-        # Compute the mean of every (semantic) spin i at time t
-        att_Wo_i = np.tanh(self.beta_o * (1 / self.normalizing_constant) *
-                           np.einsum('b,bi -> i', att, self.Wo[:, :self.se_bit_size], optimize=True))
-
-        # Concatenate semantic information with positional encoding
-        pos_vec = self.vocab.encode_pos(t % self.context_size)
-        att_Wo_i = np.concatenate((att_Wo_i, pos_vec))
-
-        # Compute only semantic information
-        unnorm_mo_se = np.einsum('bi,i ->b', self.Wo[:, :self.se_bit_size],
-                                 att_Wo_i[:self.se_bit_size], optimize=True)
-
-        # Normalize and save it. m^o is computed differently without PE since we want to analyze it separately.
-        self.mf_statistics["mo_se"][t] = unnorm_mo_se / self.se_bit_size
-
-        # Compute position information for m^o
-        pe_contribution_o = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:], pos_vec, optimize=True)
-
-        # Compute mean-fields
-        self.mf_statistics["mo"][t] = (unnorm_mo_se + pe_contribution_o) / self.embedding_size
-        self.mf_statistics["mv"][t] = np.einsum('bi,i ->b', self.Wv, att_Wo_i, optimize=True) / self.embedding_size
-        self.mf_statistics["mq"][t] = np.einsum('bi,i ->b', self.Wq, att_Wo_i, optimize=True) / self.embedding_size
-        self.mf_statistics["mk"][t] = np.einsum('bi,i ->b', self.Wk, att_Wo_i, optimize=True) / self.embedding_size
-
-        # # Loopy implementation for testing
-        # mo_t = np.zeros(self.num_feat_patterns)
-        # for b in range(0, self.num_feat_patterns):
-        #     for i in range(0, self.embedding_size):
-        #         mo_t[b] += self.Wo[b, i] * np.tanh(self.beta_o * (1 / self.normalizing_constant) *  self.Wo[:, i] @ att)
-        # mo_t /= self.embedding_size
-        # print(np.allclose(self.mo[t], mo_t))
-
-    def simulate_mf_from_context(self, max_steps):
-        # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
-        # self.context_size steps
-
-        # Initialize attention to the last computed attention
-        att = self.mf_statistics["att"][self.context_size - 1, :]
-
-        # We initialize the model at the end of the previous
-        ini_t = self.context_size
-        for t in range(ini_t, max_steps):
-            self.compute_mf(t, att)
-            att = self.attention_mf(t)
-
-    def simulate_mf(self, x0, max_steps):
-        self.x_list[0, :] = x0
-
-        # Initialize attention with the info from the initial token
-        self.compute_means_from_data(t=0)
-        att = self.attention_mf(t=0)
-
-        for t in range(1, max_steps):
-            self.compute_mf(t, att)
-            att = self.attention_mf(t)

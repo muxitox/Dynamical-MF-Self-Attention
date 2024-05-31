@@ -1,6 +1,6 @@
 import numpy as np
 from models.Embedding import Embedding
-from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram_par, plot_save_plane
 import os
 import time
@@ -96,21 +96,21 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                 np.random.seed(seed)
 
                 # Initialize transformer weights and create variables for storing results
-                HT = HopfieldTransformerInfN(0, 0, num_feat_patterns=num_feat_patterns,
-                                             positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-                                             context_size=context_size, max_sim_steps=max_sim_steps,
-                                             min_saved_step=min_saved_step,
-                                             normalize_weights_str_att=normalize_weights_str_att,
-                                             normalize_weights_str_o=normalize_weights_str_o,
-                                             reorder_weights=reorder_weights,
-                                             correlations_from_weights=correlations_from_weights,
-                                             num_segments_corrs=num_segments_corrs, pe_mode=pe_mode,
-                                             semantic_embedding_bitsize=tentative_semantic_embedding_size,
-                                             se_per_contribution=se_per_contribution,
-                                             compute_inf_normalization=compute_inf_normalization,
-                                             N_normalization=9999,
-                                             scaling_o=scaling_o,
-                                             scaling_att=scaling_att)
+                HT = HopfieldTransformerMFInfNPE(0, 0, num_feat_patterns=num_feat_patterns,
+                                                 positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
+                                                 context_size=context_size, max_sim_steps=max_sim_steps,
+                                                 min_saved_step=min_saved_step,
+                                                 normalize_weights_str_att=normalize_weights_str_att,
+                                                 normalize_weights_str_o=normalize_weights_str_o,
+                                                 reorder_weights=reorder_weights,
+                                                 correlations_from_weights=correlations_from_weights,
+                                                 num_segments_corrs=num_segments_corrs, pe_mode=pe_mode,
+                                                 semantic_embedding_bitsize=tentative_semantic_embedding_size,
+                                                 epsilon_pe=se_per_contribution,
+                                                 compute_inf_normalization=compute_inf_normalization,
+                                                 N_normalization=9999,
+                                                 scaling_o=scaling_o,
+                                                 scaling_att=scaling_att)
 
                 for ini_token_idx in range(0, num_ini_tokens):
 
@@ -134,7 +134,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                         x0[-positional_embedding_size:] = -1  # Initialize position to -1
 
                     # Simulate for max_sim_steps steps
-                    HT.simulate_mf(x0, max_steps=max_sim_steps)
+                    HT.simulate(x0, max_steps=max_sim_steps)
 
                     for stat_name in stats_to_save_plot:
                         # Accumulate results in a var of beta_list length

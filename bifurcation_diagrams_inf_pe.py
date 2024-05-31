@@ -1,6 +1,6 @@
 import numpy as np
 from models.Embedding import Embedding
-from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from plotting.plotting import plot_bifurcation_diagram
 import os
 import time
@@ -35,18 +35,18 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                 np.random.seed(seed)
 
                 # Initialize transformer weights and create variables for storing results
-                HT = HopfieldTransformerInfN(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                                             positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-                                             context_size=context_size, max_sim_steps=max_sim_steps,
-                                             min_saved_step=min_saved_step,
-                                             normalize_weights_str=normalize_weights_str,
-                                             reorder_weights=reorder_weights,
-                                             correlations_from_weights=correlations_from_weights,
-                                             num_segments_corrs=num_segments_corrs, pe_mode=pe_mode,
-                                             semantic_embedding_bitsize=tentative_semantic_embedding_size,
-                                             se_per_contribution=1,
-                                             compute_inf_normalization=compute_inf_normalization,
-                                             N_normalization=9999)
+                HT = HopfieldTransformerMFInfNPE(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
+                                                 positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
+                                                 context_size=context_size, max_sim_steps=max_sim_steps,
+                                                 min_saved_step=min_saved_step,
+                                                 normalize_weights_str=normalize_weights_str,
+                                                 reorder_weights=reorder_weights,
+                                                 correlations_from_weights=correlations_from_weights,
+                                                 num_segments_corrs=num_segments_corrs, pe_mode=pe_mode,
+                                                 semantic_embedding_bitsize=tentative_semantic_embedding_size,
+                                                 epsilon_pe=1,
+                                                 compute_inf_normalization=compute_inf_normalization,
+                                                 N_normalization=9999)
 
                 for ini_token_idx in range(0, num_ini_tokens):
 
@@ -70,7 +70,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                             x0 = ini_tokens_list[ini_token_idx]
 
                             # Simulate for max_sim_steps steps
-                            HT.simulate_mf(x0, max_steps=max_sim_steps)
+                            HT.simulate(x0, max_steps=max_sim_steps)
                         else:
                             # For the following se_pers, start from previous context in order to avoid falling into different
                             # attractors every time

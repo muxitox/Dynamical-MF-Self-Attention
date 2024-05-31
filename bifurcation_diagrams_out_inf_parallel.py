@@ -1,6 +1,6 @@
 import numpy as np
 from models.Embedding import Embedding
-from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from plotting.plotting import plot_bifurcation_diagram, plot_filtered_bifurcation_diagram, plot_filtered_bifurcation_diagram_par_imshow
 from plotting.plotting import plot_filtered_bifurcation_diagram_par, plot_filtered_bifurcation_diagram_par_imshow
 import os
@@ -164,21 +164,21 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
                 np.random.seed(seed)
 
                 # Initialize the Hopfield Transformer class. \beta will be set afterwards
-                HT = HopfieldTransformerInfN(0, 0, num_feat_patterns=num_feat_patterns,
-                                             positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-                                             context_size=context_size, max_sim_steps=max_sim_steps,
-                                             min_saved_step=min_saved_step,
-                                             normalize_weights_str_att=normalize_weights_str_att,
-                                             normalize_weights_str_o=normalize_weights_str_o,
-                                             reorder_weights=reorder_weights,
-                                             correlations_from_weights=correlations_from_weights,
-                                             num_segments_corrs=num_segments_corrs, pe_mode=pe_mode,
-                                             semantic_embedding_bitsize=tentative_semantic_embedding_size,
-                                             se_per_contribution=se_per_contribution,
-                                             compute_inf_normalization=compute_inf_normalization,
-                                             N_normalization=9999,
-                                             scaling_o=scaling_o,
-                                             scaling_att=scaling_att)
+                HT = HopfieldTransformerMFInfNPE(0, 0, num_feat_patterns=num_feat_patterns,
+                                                 positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
+                                                 context_size=context_size, max_sim_steps=max_sim_steps,
+                                                 min_saved_step=min_saved_step,
+                                                 normalize_weights_str_att=normalize_weights_str_att,
+                                                 normalize_weights_str_o=normalize_weights_str_o,
+                                                 reorder_weights=reorder_weights,
+                                                 correlations_from_weights=correlations_from_weights,
+                                                 num_segments_corrs=num_segments_corrs, pe_mode=pe_mode,
+                                                 semantic_embedding_bitsize=tentative_semantic_embedding_size,
+                                                 epsilon_pe=se_per_contribution,
+                                                 compute_inf_normalization=compute_inf_normalization,
+                                                 N_normalization=9999,
+                                                 scaling_o=scaling_o,
+                                                 scaling_att=scaling_att)
 
                 for ini_token_idx in range(0, num_ini_tokens):
 
@@ -202,7 +202,7 @@ def runner(num_feat_patterns_list, tentative_semantic_embedding_size, positional
 
                     if load_from_context_mode == 0 or load_from_context_mode == 1:
                         # Simulate for max_sim_steps steps from x0
-                        HT.simulate_mf(x0, max_steps=max_sim_steps)
+                        HT.simulate(x0, max_steps=max_sim_steps)
                         if load_from_context_mode == 1:
                             # Save context reordered for a fresh start
                             HT.reorder_context_window()
@@ -378,19 +378,19 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     beta_att = 2.2  # Write it as float
-    num_betas = 4001  # Number of betas to examine
+    num_betas = 20  # Number of betas to examine
 
-    zoom_in = True  # Whether to do the bifurcation diagram of the zoomed in part or not
+    zoom_in = False  # Whether to do the bifurcation diagram of the zoomed in part or not
     if zoom_in:
         beta_list = np.linspace(1.24, 1.28, num_betas)
     else:
         beta_list = np.linspace(0, 3, num_betas)
-    se_per_contribution_list = [0.98]
+    se_per_contribution_list = [0.02]
 
     seed_list = [1]  # List of seeds to review
     num_feat_patterns_list = [3]  # List of number of features for which to initialize the model
-    num_transient_steps = 100000
-    max_sim_steps = num_transient_steps + 20000
+    num_transient_steps = 10
+    max_sim_steps = num_transient_steps + 400
 
     num_ini_tokens = 1  # Number of initiaal tokens to try for
     ini_token_from_w = 1  # Set the mode of how to set the initial token. 0 random. 1, 2, 3, 4: One of the features of W^{o,v,q,k}
@@ -406,7 +406,7 @@ if __name__ == "__main__":
     pe_mode = 0             # Choose how to initialize the PE. 0 -> set it randomly.
     num_segments_corrs = 3  # Only applicable if correlations_from_weights=3
     save_non_transient = False  # If true, save points from the transient. Not recommended for long trajectories.
-    save_not_plot = True    # True save. False plot.
+    save_not_plot = False    # True save. False plot.
     show_title = False      # Whether to plot a title with the characteristics of the experiment. For internal use mostly.
     load_from_last_chpt = True  # Whether to first simulate the last beta and then simulate the rest from its final context.
 

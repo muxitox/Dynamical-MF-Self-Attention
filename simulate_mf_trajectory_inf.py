@@ -1,5 +1,5 @@
 import numpy as np
-from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_3Dplane
 from utils import create_dir_from_filepath
@@ -86,20 +86,20 @@ if __name__ == "__main__":
         # Create seed for reproducibility
         np.random.seed(seed)
 
-        HT = HopfieldTransformerInfN(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                                     positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-                                     context_size=context_size, max_sim_steps=max_sim_steps,
-                                     min_saved_step=num_transient_steps,
-                                     normalize_weights_str_att=normalize_weights_str_att,
-                                     normalize_weights_str_o=normalize_weights_str_o,
-                                     reorder_weights=reorder_weights,
-                                     correlations_from_weights=correlations_from_weights,
-                                     semantic_embedding_bitsize=tentative_semantic_embedding_size,
-                                     se_per_contribution=se_per_contribution, pe_mode=pe_mode,
-                                     compute_inf_normalization=compute_inf_normalization,
-                                     N_normalization=N_normalization,
-                                     scaling_o=scaling_o,
-                                     scaling_att=scaling_att)
+        HT = HopfieldTransformerMFInfNPE(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
+                                         positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
+                                         context_size=context_size, max_sim_steps=max_sim_steps,
+                                         min_saved_step=num_transient_steps,
+                                         normalize_weights_str_att=normalize_weights_str_att,
+                                         normalize_weights_str_o=normalize_weights_str_o,
+                                         reorder_weights=reorder_weights,
+                                         correlations_from_weights=correlations_from_weights,
+                                         semantic_embedding_bitsize=tentative_semantic_embedding_size,
+                                         epsilon_pe=se_per_contribution, pe_mode=pe_mode,
+                                         compute_inf_normalization=compute_inf_normalization,
+                                         N_normalization=N_normalization,
+                                         scaling_o=scaling_o,
+                                         scaling_att=scaling_att)
 
         if ini_token_from_w == 1:
             x0 = HT.Wo[ini_token_idx]
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
 
         print("Simulating MF Transformer...")
-        HT.simulate_mf(x0, max_steps=max_sim_steps)
+        HT.simulate(x0, max_steps=max_sim_steps)
         print("Done.")
 
         # Plotting

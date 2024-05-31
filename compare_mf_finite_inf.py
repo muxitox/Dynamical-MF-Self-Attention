@@ -1,8 +1,8 @@
 import copy
 
 import numpy as np
-from models.HopfieldTransformerPE import HopfieldTransformer
-from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
+from models.HopfieldTransformerMFPE import HopfieldTransformer
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.HopfieldTransformerPE_Memoryless import HopfieldTransformerPEML
 from models.HopfieldTransformerPEInfN_Memoryless import HopfieldTransformerInfNML
 
@@ -87,17 +87,17 @@ if __name__ == "__main__":
     correlation_from_weights = 1
     normalize_weights_str = "np.sqrt(N*M)"
     se_per_contribution = semantic_embedding_size / (semantic_embedding_size + positional_embedding_size)
-    HTInf = HopfieldTransformerInfN(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
-                                 positional_embedding_bitsize=positional_embedding_size, vocab=vocab, context_size=context_size,
-                                 max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
-                                 reorder_weights=reorder_weights, correlations_from_weights=correlation_from_weights,
-                                 semantic_embedding_bitsize=semantic_embedding_size,
-                                 se_per_contribution=se_per_contribution)
+    HTInf = HopfieldTransformerMFInfNPE(beta_o, beta_att, num_feat_patterns=num_feat_patterns,
+                                        positional_embedding_bitsize=positional_embedding_size, vocab=vocab, context_size=context_size,
+                                        max_sim_steps=max_sim_steps, normalize_weights_str=normalize_weights_str,
+                                        reorder_weights=reorder_weights, correlations_from_weights=correlation_from_weights,
+                                        semantic_embedding_bitsize=semantic_embedding_size,
+                                        epsilon_pe=se_per_contribution)
 
 
     print("Simulating Inf MF Transformer...")
     HTInf.reset_data()
-    HTInf.simulate_mf(x0, max_steps=max_sim_steps)
+    HTInf.simulate(x0, max_steps=max_sim_steps)
     print("Done.")
 
     # MF Transformer Inf spins. Memoryless version

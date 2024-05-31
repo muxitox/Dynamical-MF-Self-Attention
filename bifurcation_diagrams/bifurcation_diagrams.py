@@ -1,7 +1,7 @@
 import numpy as np
 from models.Embedding import Embedding
-from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
-from models.HopfieldTransformerPE import HopfieldTransformer
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
+from models.HopfieldTransformerMFPE import HopfieldTransformer
 from plotting.plotting import plot_filtered_bifurcation_diagram_par_imshow
 import os
 import time
@@ -250,21 +250,21 @@ def runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_l
 
     if cfg["inf_mode"]:
         # Initialize the Hopfield Transformer class. \beta will be set afterwards
-        HT = HopfieldTransformerInfN(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
-                                     positional_embedding_bitsize=cfg["positional_embedding_size"], vocab=vocab,
-                                     context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
-                                     min_saved_step=min_saved_step,
-                                     normalize_weights_str_att=cfg["normalize_weights_str_att"],
-                                     normalize_weights_str_o=cfg["normalize_weights_str_o"],
-                                     reorder_weights=cfg["reorder_weights"],
-                                     correlations_from_weights=cfg["correlations_from_weights"],
-                                     num_segments_corrs=cfg["num_segments_corrs"], pe_mode=cfg["pe_mode"],
-                                     semantic_embedding_bitsize=cfg["semantic_embedding_size"],
-                                     epsilon_pe=cfg["epsilon_pe"],
-                                     compute_inf_normalization=cfg["compute_inf_normalization"],
-                                     N_normalization=9999,
-                                     scaling_o=cfg["scaling_o"],
-                                     scaling_att=cfg["scaling_att"])
+        HT = HopfieldTransformerMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
+                                         positional_embedding_bitsize=cfg["positional_embedding_size"], vocab=vocab,
+                                         context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
+                                         min_saved_step=min_saved_step,
+                                         normalize_weights_str_att=cfg["normalize_weights_str_att"],
+                                         normalize_weights_str_o=cfg["normalize_weights_str_o"],
+                                         reorder_weights=cfg["reorder_weights"],
+                                         correlations_from_weights=cfg["correlations_from_weights"],
+                                         num_segments_corrs=cfg["num_segments_corrs"], pe_mode=cfg["pe_mode"],
+                                         semantic_embedding_bitsize=cfg["semantic_embedding_size"],
+                                         epsilon_pe=cfg["epsilon_pe"],
+                                         compute_inf_normalization=cfg["compute_inf_normalization"],
+                                         N_normalization=9999,
+                                         scaling_o=cfg["scaling_o"],
+                                         scaling_att=cfg["scaling_att"])
     else:
         HT = HopfieldTransformer(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
                                  embedding_size=cfg["semantic_embedding_size"] + cfg["positional_embedding_size"],
@@ -298,7 +298,7 @@ def runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_l
 
     if load_from_context_mode == 0 or load_from_context_mode == 1:
         # Simulate for max_sim_steps steps from x0
-        HT.simulate_mf(x0, max_steps=cfg["max_sim_steps"])
+        HT.simulate(x0, max_steps=cfg["max_sim_steps"])
         if load_from_context_mode == 1:
             # Save context reordered for a fresh start
             HT.reorder_context_window()
