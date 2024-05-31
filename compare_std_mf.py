@@ -1,7 +1,7 @@
 import copy
 
 import numpy as np
-from models.HopfieldTransformerMFPE import HopfieldTransformer
+from models.HopfieldTransformerMFPE import HopfieldTransformerMFPE
 from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 
 from models.Embedding import Embedding
@@ -58,10 +58,10 @@ if __name__ == "__main__":
 
     reorder_weights = False
 
-    HT = HopfieldTransformer(beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size,
-                             max_sim_steps=max_sim_steps, normalize_weights_str_att=normalize_weights_str_att,
-                             normalize_weights_str_o=normalize_weights_str_o, reorder_weights=False, pe_mode=0,
-                             weights_from_segments=False, scaling_o=scaling_o, scaling_att=scaling_att)
+    HT = HopfieldTransformerMFPE(beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size,
+                                 max_sim_steps=max_sim_steps, normalize_weights_str_att=normalize_weights_str_att,
+                                 normalize_weights_str_o=normalize_weights_str_o, reorder_weights=False, pe_mode=0,
+                                 weights_from_segments=False, scaling_o=scaling_o, scaling_att=scaling_att)
 
     HT.simulate(x0, max_steps=max_sim_steps)
 
