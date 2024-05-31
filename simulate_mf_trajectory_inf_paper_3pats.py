@@ -1,5 +1,5 @@
 import numpy as np
-from models.HopfieldTransformerPEInfN import HopfieldTransformerInfN
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     correlations_from_weights = 3                           # Variable for choosing how to set the correlations
                                                             # If = 3, we compute them from segments as in the paper
     pe_mode = 0                                             # Choose how to initialize the PE. Set it randomly.
-    se_per_contribution = 0.98                              # [1 - epsilon] in the paper
+    epsilon_pe = 0.02                                       # epsilon in the paper
 
     normalize_weights_str_att = "N**2*np.sqrt(M)"           # U in the paper
     normalize_weights_str_o = "N"                           # Normalization in the output
@@ -62,19 +62,19 @@ if __name__ == "__main__":
         np.random.seed(seed)
 
         # Create Hopfield Transformer Class
-        HT = HopfieldTransformerInfN(beta, beta_att, num_feat_patterns=num_feat_patterns,
-                                     positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-                                     context_size=context_size, max_sim_steps=max_sim_steps,
-                                     min_saved_step=num_transient_steps,
-                                     normalize_weights_str_att=normalize_weights_str_att,
-                                     normalize_weights_str_o=normalize_weights_str_o,
-                                     correlations_from_weights=correlations_from_weights,
-                                     semantic_embedding_bitsize=tentative_semantic_embedding_size,
-                                     se_per_contribution=se_per_contribution, pe_mode=pe_mode,
-                                     compute_inf_normalization=compute_inf_normalization,
-                                     scaling_o=scaling_o,
-                                     scaling_att=scaling_att,
-                                     N_normalization=9999)
+        HT = HopfieldTransformerMFInfNPE(beta, beta_att, num_feat_patterns=num_feat_patterns,
+                                         positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
+                                         context_size=context_size, max_sim_steps=max_sim_steps,
+                                         min_saved_step=num_transient_steps,
+                                         normalize_weights_str_att=normalize_weights_str_att,
+                                         normalize_weights_str_o=normalize_weights_str_o,
+                                         correlations_from_weights=correlations_from_weights,
+                                         semantic_embedding_bitsize=tentative_semantic_embedding_size,
+                                         epsilon_pe=epsilon_pe, pe_mode=pe_mode,
+                                         compute_inf_normalization=compute_inf_normalization,
+                                         scaling_o=scaling_o,
+                                         scaling_att=scaling_att,
+                                         N_normalization=9999)
 
         # Reset/initialize the structures for saving data
         HT.reset_data()
