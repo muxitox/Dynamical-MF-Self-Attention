@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
-#SBATCH -D /home/apoc/projects/TransformerMF
+#SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
 #SBATCH --output ./log_parallel/exec.%j.out
 #SBATCH --error ./log_parallel/exec.%j.err
 #SBATCH -N 1 -c 2
@@ -9,8 +9,8 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=apoc@bcamath.org
 
-#module load Python/3.9.5-GCCcore-10.3.0
-#source venv/bin/activate
+module load Python/3.9.5-GCCcore-10.3.0
+source venv/bin/activate
 
 SEED=$1
 NUM_FEAT_PATTERNS=$2
@@ -37,5 +37,5 @@ ARGS=" \
 --load_from_context_mode=$LOAD_FROM_CONTEXT_MODE
 "
 echo $ARGS
-#python bifurcation_diagrams_from_sh_run.py $ARGS
-python ../bifurcation_diagrams_from_sh_run.py $ARGS
+python bifurcation_diagrams_from_sh_run.py $ARGS
+#python ../bifurcation_diagrams_from_sh_run.py $ARGS

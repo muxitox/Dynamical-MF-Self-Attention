@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
-#SBATCH -D /home/apoc/projects/TransformerMF
+#SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
 #SBATCH --output ./log_parallel/exec.%j.out
 #SBATCH --error ./log_parallel/exec.%j.err
 #SBATCH -N 1 -c 2
@@ -20,10 +20,6 @@ INI_TOKEN_IDX=$5
 LOAD_FROM_CONTEXT_MODE=$6
 CFG_PATH=$7
 
-if [ -z "$WORKER_ID" ]; # Check if variable is not defined
-then
-WORKER_ID=$SLURM_ARRAY_TASK_ID
-fi
 
 ARGS=" \
 --seed=$SEED \
@@ -35,5 +31,5 @@ ARGS=" \
 --load_from_context_mode=$LOAD_FROM_CONTEXT_MODE
 "
 echo $ARGS
-#python bifurcation_diagrams_from_sh_plot.py $ARGS
-python ../bifurcation_diagrams_from_sh_plot.py $ARGS
+python bifurcation_diagrams_from_sh_plot.py $ARGS
+#python ../bifurcation_diagrams_from_sh_plot.py $ARGS
