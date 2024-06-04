@@ -10,23 +10,24 @@ from plotting.plotting import plot_save_plane
 import yaml
 
 
-def create_pathname_inf_betas(num_feat_patterns, context_size, worker_values_list, load_from_context_mode, cfg):
+def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
+                              load_from_context_mode, cfg):
     """
     Given the experiment parameters, creates a path to save it.
     The code is a bit intrincate for back-compatibility with older experiments.
     """
 
     if cfg["bifurcation_mode"] == "betas":
-        results_folder = "results_parallel"
+        results_folder = "results_parallel_v2"
         beta_string = ("/min_beta-" + str(worker_values_list[0]) + "-max_beta-" + str(worker_values_list[-1]) +
                        "-num_betas-" + str(len(worker_values_list)))
     elif cfg["bifurcation_mode"] == "out":
-        results_folder = "results_out_parallel"
+        results_folder = "results_out_parallel_v2"
         beta_string = (
                     "/beta_att-" + str(cfg["beta_att"]) + "-min_beta_o-" + str(worker_values_list[0]) + "-max_beta_o-" +
                     str(worker_values_list[-1]) + "-num_betas-" + str(len(worker_values_list)))
     elif cfg["bifurcation_mode"] == "att":
-        results_folder = "results_att_parallel"
+        results_folder = "results_att_parallel_v2"
         beta_string = (
                     "/beta_o-" + str(cfg["beta_o"]) + "-min_beta_att-" + str(worker_values_list[0]) + "-max_beta_att-" +
                     str(worker_values_list[-1]) + "-num_betas-" + str(len(worker_values_list)))
@@ -68,7 +69,7 @@ def create_pathname_inf_betas(num_feat_patterns, context_size, worker_values_lis
     # Save/plot results for each ini_token, W config, and num_feat_patterns
     folder_path = (f"{results_folder}/infN-correlations_from_weights-" + str(cfg["correlations_from_weights"])
                    + "-se_size-" + str(cfg["semantic_embedding_size"]) + "-pe_size-"
-                   + str(cfg["positional_embedding_size"]) + "-se_per_contribution-" + str(1 - cfg["epsilon_pe"])
+                   + str(positional_embedding_size) + "-se_per_contribution-" + str(1 - cfg["epsilon_pe"])
                    + "/num_feat_patterns-" + str(num_feat_patterns) + normalize_weights_name_str + scaling_str +
                    compute_inf_normalization_str + "-reorder_weights-" +
                    str(int(cfg["reorder_weights"])) + "-num_segments_corrs-" + str(cfg["num_segments_corrs"])
@@ -79,7 +80,8 @@ def create_pathname_inf_betas(num_feat_patterns, context_size, worker_values_lis
     return folder_path
 
 
-def create_pathname_inf_pes(num_feat_patterns, context_size, worker_values_list, load_from_context_mode, cfg):
+def create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
+                            load_from_context_mode, cfg):
     """
     Given the experiment parameters, creates a path to save it.
     The code is a bit intrincate for back-compatibility with older experiments.
@@ -126,9 +128,9 @@ def create_pathname_inf_pes(num_feat_patterns, context_size, worker_values_list,
         beta_string = "-beta_o-" + str(cfg["beta_o"]) + "-beta_att-" + str(cfg["beta_att"])
 
     # Save/plot results for each ini_token, W config, and num_feat_patterns
-    folder_path = ("results_out_parallel/infN-correlations_from_weights-" + str(cfg["correlations_from_weights"])
+    folder_path = ("results_pe_parallel_v2/infN-correlations_from_weights-" + str(cfg["correlations_from_weights"])
                    + "-se_size-" + str(cfg["semantic_embedding_size"]) + "-pe_size-"
-                   + str(cfg["positional_embedding_size"]) + beta_string
+                   + str(positional_embedding_size) + beta_string
                    + "/num_feat_patterns-" + str(num_feat_patterns) + normalize_weights_name_str + scaling_str +
                    compute_inf_normalization_str + "-reorder_weights-" +
                    str(int(cfg["reorder_weights"])) + "-num_segments_corrs-" + str(cfg["num_segments_corrs"])
@@ -139,13 +141,14 @@ def create_pathname_inf_pes(num_feat_patterns, context_size, worker_values_list,
     return folder_path
 
 
-def create_pathname(num_feat_patterns, context_size, worker_values_list, load_from_context_mode, cfg):
+def create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
+                    load_from_context_mode, cfg):
     if cfg["bifurcation_mode"] == "pe":
-        pathname = create_pathname_inf_pes(num_feat_patterns, context_size, worker_values_list, load_from_context_mode
-                                           , cfg)
+        pathname = create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, context_size,
+                                           worker_values_list, load_from_context_mode, cfg)
     else:
-        pathname = create_pathname_inf_betas(num_feat_patterns, context_size, worker_values_list, load_from_context_mode
-                                             , cfg)
+        pathname = create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, context_size,
+                                             worker_values_list, load_from_context_mode, cfg)
 
     return pathname
 
@@ -211,8 +214,8 @@ def initialize_bifurcation_variable(HT, worker_values_list, worker_id, mode):
         raise Exception("mode not recognized (not one of [\"betas\", \"out\", \"att\", \"pe\"])")
 
 
-def runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_list, worker_id, cfg,
-           load_from_context_mode=0):
+def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
+           worker_id, cfg, stats_to_save_plot, load_from_context_mode=0):
     """
 
     :param load_from_context_mode: 0 -> don't load from context, 1 -> don't load from context but save your final context
@@ -220,23 +223,23 @@ def runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_l
     :return:
     """
 
-    vocab = Embedding(cfg["semantic_embedding_size"], cfg["positional_embedding_size"])
+    vocab = Embedding(cfg["semantic_embedding_size"], positional_embedding_size)
 
     # Seed equal to 0 for initial token set up
     np.random.seed(0)
     num_ini_tokens = 10  # Number of candidate initial tokens
 
     ini_tokens_list = np.random.randint(2, size=(
-        num_ini_tokens, cfg["semantic_embedding_size"] + cfg["positional_embedding_size"])) * 2 - 1
+        num_ini_tokens, cfg["semantic_embedding_size"] + positional_embedding_size)) * 2 - 1
     # Initialize positional embedding
-    ini_tokens_list[:, -cfg["positional_embedding_size"]:] = -1
+    ini_tokens_list[:, -positional_embedding_size:] = -1
 
     min_saved_step = 0
     if not cfg["save_non_transient"]:
         min_saved_step = cfg["num_transient_steps"]
 
     # Create root folder to later save and aggregate the results
-    folder_path = create_pathname(num_feat_patterns, context_size, worker_values_list, load_from_context_mode, cfg)
+    folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list, load_from_context_mode, cfg)
 
     folder_path_chpt = folder_path + "/chpt"
     folder_path = folder_path + "/stats"
@@ -251,7 +254,7 @@ def runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_l
     if cfg["inf_mode"]:
         # Initialize the Hopfield Transformer class. \beta will be set afterwards
         HT = HopfieldTransformerMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
-                                         positional_embedding_bitsize=cfg["positional_embedding_size"], vocab=vocab,
+                                         positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
                                          context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
                                          min_saved_step=min_saved_step,
                                          normalize_weights_str_att=cfg["normalize_weights_str_att"],
@@ -267,7 +270,7 @@ def runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_l
                                          scaling_att=cfg["scaling_att"])
     else:
         HT = HopfieldTransformerMFPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
-                                     embedding_size=cfg["semantic_embedding_size"] + cfg["positional_embedding_size"],
+                                     embedding_size=cfg["semantic_embedding_size"] + positional_embedding_size,
                                      vocab=vocab, context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
                                      min_saved_step=min_saved_step,
                                      normalize_weights_str_att=cfg["normalize_weights_str_att"],
@@ -294,7 +297,7 @@ def runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_l
     x0 = define_ini_token(cfg["ini_token_from_w"], HT, ini_token_idx, ini_tokens_list)
     ini_token_from_w = cfg["ini_token_from_w"]
     if ini_token_from_w != 0:  # Otherwise it's already set
-        x0[-cfg["positional_embedding_size"]:] = -1  # Initialize position to -1
+        x0[-positional_embedding_size:] = -1  # Initialize position to -1
 
     if load_from_context_mode == 0 or load_from_context_mode == 1:
         # Simulate for max_sim_steps steps from x0
@@ -336,8 +339,8 @@ def runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_l
     print(f"Saved stats num_feat_patterns {num_feat_patterns}, seed {seed}, ini_token_idx {ini_token_idx}")
 
 
-def plotter(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_list, cfg,
-            load_from_context_mode=0, min_max_beta_to_show=None, show_title=False):
+def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list, cfg,
+            stats_to_save_plot, load_from_context_mode=0, min_max_beta_to_show=None, show_title=False):
     # Set up some parameters for loading the experiments statistics
     if min_max_beta_to_show is None:
         min_beta_idx = 0
@@ -355,7 +358,8 @@ def plotter(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_
     image_format = ".pdf"
 
     # Create pathname
-    folder_path = create_pathname(num_feat_patterns, context_size, worker_values_list, load_from_context_mode, cfg)
+    folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
+                                  load_from_context_mode, cfg)
 
     # Create some more variables for saving purposes
     ini_token_mode_str = ""
@@ -447,10 +451,13 @@ def plotter(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_
 if __name__ == "__main__":
 
     # Load cfg
-    with open('cfgs/bif_diagram_inf_0.cfg', 'r') as file:
+    with open('cfgs/bif_diagram_inf_0.yaml', 'r') as file:
         cfg = yaml.safe_load(file)
 
-    context_size = 2 ** cfg["positional_embedding_size"]
+    positional_embedding_size = 2
+    context_size = 2 ** positional_embedding_size
+
+    num_bifurcation_values = 4001  # Number of x values to examine in the bifurcation diagram
 
     zoom_in = False  # Whether to do the bifurcation diagram of the zoomed in part or not
     if zoom_in:
@@ -461,10 +468,11 @@ if __name__ == "__main__":
     seed = 1  # List of seeds to review
     num_feat_patterns = 3  # List of number of features for which to initialize the model
     ini_token_idx = 0
+    load_from_last_chpt = True # Whether to first simulate the last beta and then simulate the rest from its final context.
 
     show_title = False  # Whether to plot a title with the characteristics of the experiment. For internal use mostly.
 
-    if context_size > 2 ** cfg["positional_embedding_size"]:
+    if context_size > 2 ** positional_embedding_size:
         raise ("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise ("You cannot discard more timesteps than you are simulating.")
@@ -475,18 +483,19 @@ if __name__ == "__main__":
     num_bifurcation_values = cfg["num_bifurcation_values"]
 
     # Compute the bifurcation diagrams
-    if not cfg["load_from_last_chpt"]:
+    if not load_from_last_chpt:
         for worker_id in range(num_bifurcation_values):
-            runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_list, worker_id, cfg)
+            runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
+                   worker_id, cfg, stats_to_save_plot)
     else:
         # First compute the last beta
-        runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_list, num_bifurcation_values - 1,
-               cfg, load_from_context_mode=1)
+        runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
+               num_bifurcation_values - 1, cfg, stats_to_save_plot, load_from_context_mode=1)
 
         # Then compute the rest of the betas, setting the initial context to the last beta one
         for worker_id in range(num_bifurcation_values - 1):
-            runner(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_list, worker_id,
-                   cfg, load_from_context_mode=2)
+            runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
+                   worker_id, cfg, stats_to_save_plot, load_from_context_mode=2)
 
     end = time.time()
     elapsed_time = end - start
@@ -494,9 +503,9 @@ if __name__ == "__main__":
     print("elapsed time in hours", elapsed_time / 3600)
 
     # Once computed, load checkpoints and plot them
-    if cfg["load_from_last_chpt"]:
+    if load_from_last_chpt:
         load_from_context_mode = 1
     else:
         load_from_context_mode = 0
-    plotter(num_feat_patterns, seed, context_size, ini_token_idx, worker_values_list, cfg,
-            load_from_context_mode=load_from_context_mode, show_title=show_title)
+    plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list, cfg,
+            stats_to_save_plot, load_from_context_mode=load_from_context_mode, show_title=show_title)

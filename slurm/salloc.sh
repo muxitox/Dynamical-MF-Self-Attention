@@ -1,1 +1,0 @@
-salloc -c 1 -p short -t 30:00
