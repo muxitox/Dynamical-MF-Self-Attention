@@ -1,8 +1,6 @@
 import copy
 import numpy as np
-from scipy.special import softmax
 from models.TransformerBase import TransformerBase
-
 
 class HopfieldTransformerMFInfNPE(TransformerBase):
 
@@ -273,16 +271,25 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         mqk = self.mq_window @ self.mk_window["mk"][tau]
         return self.beta_att * mqk
 
-    def softmax(self, key_prob_unnorm, effective_context_size):
+    @staticmethod
+    def softmax(key_prob_unnorm):
+        C = 10
+        max_x = max(key_prob_unnorm)
+        expp = np.exp(key_prob_unnorm - max_x + C)
+        sum_exp = np.sum(expp)
+        key_prob = expp / sum_exp
+
+        return key_prob
+    def key_averaging(self, key_prob_unnorm, effective_context_size):
 
 
         if self.run_exact_inf:
 
             if self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)":
-                key_prob = softmax(key_prob_unnorm)
+                key_prob = self.softmax(key_prob_unnorm)
 
                 # We'll deal with normalization in the mf_computation function
-                self.att_window = self.mv_window[:effective_context_size].T @ key_prob
+                self.att_window = np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob)
 
             elif self.normalize_weights_str_att != "N**2":
                 # In infty the softmax saturates and evolves into argmax
@@ -294,8 +301,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 self.att_window = np.mean(selected_mvs, axis=0)[0]
                 # We'll deal with normalization in the mf_computation function
         else:
-            key_prob = softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant_att)
-            self.att_window = self.N_normalization * self.mv_window[:effective_context_size].T @ key_prob
+            key_prob = self.softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant_att)
+            self.att_window = (self.N_normalization *
+                               np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob))
 
     def attention_unoptimized(self, t):
 
@@ -305,7 +313,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for tau in range(0, effective_context_size):
             key_prob_unnorm[tau] = self.qk_f_mf(tau)
 
-        self.softmax(key_prob_unnorm, effective_context_size)
+        self.key_averaging(key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
         #
@@ -329,8 +337,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         if self.run_exact_inf:
             key_prob_unnorm *= self.inf_normalization_att
 
+        # if t == 400:
+        #     pass
+
         # Compute softmax and average by mv
-        self.softmax(key_prob_unnorm, effective_context_size)
+        self.key_averaging(key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
         #
@@ -339,6 +350,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         #     for tau in range(0, t+1):
         #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
 
+        # print('att', t, self.att_window)
+        # print()
+        #
+        # if t == 400:
+        #     pass
         if t >= self.min_saved_step:  # Save if required
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
 
@@ -440,12 +456,20 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                  / 2 ** (self.num_feat_patterns - 1))
         self.mk_window[self.context_index] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
 
+
+        # print("mq", t, self.mq_window)
+        # print("mk", t, self.mk_window)
+        # print("mv", t, self.mv_window)
+
         # Compute mean-field for o. Separate the behavior of the Semantic Embedding.
         if t >= self.min_saved_step:
             mo_se = (np.einsum("jb,j->b", self.corr_signed_o, tanh_j_signs)
                      / 2 ** (self.num_feat_patterns - 1))
             mo = (self.se_per_contribution * mo_se + (1 - self.se_per_contribution) * pe_contribution_o)
 
+            # print('mo', t, mo_se)
+            # if t >= 17:
+            #     pass
             self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
