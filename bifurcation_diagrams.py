@@ -459,11 +459,8 @@ if __name__ == "__main__":
 
     num_bifurcation_values = 4001  # Number of x values to examine in the bifurcation diagram
 
-    zoom_in = False  # Whether to do the bifurcation diagram of the zoomed in part or not
-    if zoom_in:
-        worker_values_list = np.linspace(1.24, 1.28, cfg["num_bifurcation_values"])  # Betas or Epsilon values
-    else:
-        worker_values_list = np.linspace(0, 3, cfg["num_bifurcation_values"])  # Betas or Epsilon values
+    worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
+                                     num_bifurcation_values)  # Betas or Epsilon values
 
     seed = 1  # List of seeds to review
     num_feat_patterns = 3  # List of number of features for which to initialize the model
@@ -480,7 +477,6 @@ if __name__ == "__main__":
     stats_to_save_plot = ["mo_se"]
 
     start = time.time()
-    num_bifurcation_values = cfg["num_bifurcation_values"]
 
     # Compute the bifurcation diagrams
     if not load_from_last_chpt:
