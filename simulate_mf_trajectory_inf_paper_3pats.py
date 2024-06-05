@@ -3,6 +3,7 @@ from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os
+import yaml
 
 def create_dir(filepath):
     plot_save_folder_path = os.path.dirname(filepath)
@@ -20,37 +21,41 @@ def load_context(chpt_path):
 if __name__ == "__main__":
 
     # Set the variables for the experiments
+    cfg_path = 'cfgs/bif_diagram_inf_0_zoom-in.yaml'
+    # Load cfg
+    with open(cfg_path, 'r') as file:
+        cfg = yaml.safe_load(file)
 
     # Instantiate vocabulary
-    tentative_semantic_embedding_size = 99  # Variable to set the size of the matrices from which to compute the corrs
+    tentative_semantic_embedding_size = cfg["semantic_embedding_size"]  # Variable to set the size of the matrices from which to compute the corrs
     positional_embedding_size = 2  # Number of bits dedicated to the positional embedding
     context_size = 2 ** positional_embedding_size  # Context size
     embedding_size = tentative_semantic_embedding_size + positional_embedding_size  # Total size of the "tentative" embedding
-    vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size) # Vocabulary helper class
+    vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)  # Vocabulary helper class
     vocab.initialize_pos_encoder()  # Initiate some functionalities
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1  # Seed for the correlations
-    beta_list = [1.255, 1.26427, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
-    scaling_o = 1  # Not scaled
-    beta_att = 2.2
-    scaling_att = 100                                       # Beta_att * scaling_att make gamma
     num_feat_patterns = 3                                   # Number of patterns
-    num_transient_steps = 100000                            # Num. of transient steps
-    saved_steps = 20000                                     # Num. of steps to save
-    max_sim_steps = num_transient_steps + saved_steps       # Max. simulated steps
+    beta_list = [1.255, 1.26405, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
+    scaling_o = cfg["scaling_o"]  # Not scaled
+    beta_att = cfg["beta_att"]
+    scaling_att = cfg["scaling_att"]                        # Beta_att * scaling_att make gamma from the paper
+    num_transient_steps = cfg["num_transient_steps"]        # Num. of transient steps
+    max_sim_steps = cfg["max_sim_steps"]                    # Max. simulated steps
+    saved_steps = max_sim_steps - num_transient_steps
 
-    correlations_from_weights = 3                           # Variable for choosing how to set the correlations
-                                                            # If = 3, we compute them from segments as in the paper
-    pe_mode = 0                                             # Choose how to initialize the PE. Set it randomly.
-    epsilon_pe = 0.02                                       # epsilon in the paper
+    correlations_from_weights = cfg["correlations_from_weights"]  # Variable for choosing how to set the correlations
+                                                                  # If = 3, we compute them from segments as in the paper
+    pe_mode = cfg["pe_mode"]                                      # Choose how to initialize the PE. Set it randomly.
+    epsilon_pe = cfg["epsilon_pe"]                                # epsilon in the paper
 
-    normalize_weights_str_att = "N**2*np.sqrt(M)"           # U in the paper
-    normalize_weights_str_o = "N"                           # Normalization in the output
-    compute_inf_normalization = True                        # Deal with normalization constraint in infinity
+    normalize_weights_str_att = cfg["normalize_weights_str_att"]  # U in the paper
+    normalize_weights_str_o = cfg["normalize_weights_str_o"]      # Normalization in the output
+    compute_inf_normalization = cfg["compute_inf_normalization"]  # Deal with normalization constraint in infinity
 
-    save_not_plot = False                                    # True -> Save; False -> Plot
-    show_title = True                                       # Whether to show the title on top
+    save_not_plot = True                          # True -> Save; False -> Plot
+    show_title = True                                             # Whether to show the title on top
 
     # Load checkpoint attention values
     chpt_path = ("chpt/beta_idx-4000_window_chpt_zoom.npz")
@@ -73,8 +78,7 @@ if __name__ == "__main__":
                                          epsilon_pe=epsilon_pe, pe_mode=pe_mode,
                                          compute_inf_normalization=compute_inf_normalization,
                                          scaling_o=scaling_o,
-                                         scaling_att=scaling_att,
-                                         N_normalization=9999)
+                                         scaling_att=scaling_att)
 
         # Reset/initialize the structures for saving data
         HT.reset_data()
@@ -98,7 +102,7 @@ if __name__ == "__main__":
                                           "-normalize_weights_o-" + normalize_weights_str_o)
 
         save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
-        folder_path = f"results_neurips/beta{beta}"
+        folder_path = f"results_betas/beta{beta}"
 
         # Create dir if it does not exist
         if save_not_plot:
@@ -121,9 +125,13 @@ if __name__ == "__main__":
             show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
             plot_windows = [250, 350, 5000]  # Different plotting windows for the trajectories
             for plot_window in plot_windows:
-                offset = 900 + plot_window  # Offset the trajectory to visit different points
+                offset = 12800  # Offset the trajectory to visit different points
                 # Define the steps to show
-                plot_range = [saved_steps - offset - 1, saved_steps - offset + plot_window - 1]  # Define the steps to plot
+                plot_range = [offset, offset + plot_window]  # Define the steps to plot
+
+                if plot_range[1] >= saved_steps:
+                    Exception("The rightmost index is greater than the number of steps. ")
+
                 rg = range(plot_range[0], plot_range[1])
                 # Define path to save
                 plot_save_path_traj = (folder_path + f"/traj-seed-{str(seed)}-{stat_name}" + "-transient_steps-" +
