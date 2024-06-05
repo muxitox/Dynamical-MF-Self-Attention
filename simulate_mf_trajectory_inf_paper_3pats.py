@@ -130,7 +130,7 @@ if __name__ == "__main__":
                 plot_range = [offset, offset + plot_window]  # Define the steps to plot
 
                 if plot_range[1] >= saved_steps:
-                    Exception("The rightmost index is greater than the number of steps. ")
+                    raise Exception("The rightmost index is greater than the number of steps.")
 
                 rg = range(plot_range[0], plot_range[1])
                 # Define path to save
