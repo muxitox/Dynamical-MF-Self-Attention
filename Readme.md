@@ -1,6 +1,6 @@
 # Dynamical Mean-Field Theory of Self-Attention Neural Networks
 
-This repository contains the code to reproduce the experiments performed in the *Dynamical Mean-Field Theory of Self-Attention Neural Networks*[link to paper] article.
+This repository contains the code to reproduce the experiments performed in the [*Dynamical Mean-Field Theory of Self-Attention Neural Networks*](https://arxiv.org/abs/2406.07247) article.
 
 ## Abstract
 
