@@ -30,3 +30,7 @@ Then, to collect the results configure and run `slurm_parallel/launcher_bifurcat
 
 The calculation of the bifurcation diagrams is very costly computationally. If you want to examine the trajectories presented in the paper, do `python simulate_mf_trajectory_inf_paper_3pats.py`.
 
+## Notes
+
+Scripts under the `pending_to_update` folder are older scripts that are planned to be updated and refactorized in the future.
+
