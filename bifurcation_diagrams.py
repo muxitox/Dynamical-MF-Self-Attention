@@ -5,6 +5,7 @@ from models.HopfieldTransformerMFPE import HopfieldTransformerMFPE
 from plotting.plotting import plot_filtered_bifurcation_diagram_par_imshow
 import os
 import time
+import copy
 from utils import create_dir, create_dir_from_filepath
 from plotting.plotting import plot_save_plane
 import yaml
@@ -161,13 +162,13 @@ def define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list):
         # Encode initial token with position 0
         x0 = ini_tokens_list[ini_token_idx]
     elif ini_token_from_w == 1:
-        x0 = HT.Wo[ini_token_idx]
+        x0 = copy.deepcopy(HT.Wo[ini_token_idx])
     elif ini_token_from_w == 2:
-        x0 = HT.Wv[ini_token_idx]
+        x0 = copy.deepcopy(HT.Wv[ini_token_idx])
     elif ini_token_from_w == 3:
-        x0 = HT.Wq[ini_token_idx]
+        x0 = copy.deepcopy(HT.Wq[ini_token_idx])
     elif ini_token_from_w == 4:
-        x0 = HT.Wk[ini_token_idx]
+        x0 = copy.deepcopy(HT.Wk[ini_token_idx])
     else:
         raise Exception("ini_token_idx is not in the range [0,4]")
 
