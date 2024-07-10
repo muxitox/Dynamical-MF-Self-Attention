@@ -1,5 +1,5 @@
 import numpy as np
-
+import copy
 from utils import bitfield, bool2int
 
 
@@ -25,7 +25,7 @@ class Embedding:
 
 
     def encode(self, idx):
-        return self.idx2word[idx]
+        return copy.deepcopy(self.idx2word[idx])
 
     def encode_force(self, idx, pos):
         # Make position with modular arithmetics to avoid a possible error
