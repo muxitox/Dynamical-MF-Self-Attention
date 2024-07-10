@@ -22,7 +22,7 @@ colors += [(1.0, 1.0, 1.0, 1.0)]  # White
 # LaTeX macros
 plt.rc('text', usetex=True)
 plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
-font = {'size': 24, 'family': 'serif', 'serif': ['latin modern roman']}
+font = {'size': 34, 'family': 'serif', 'serif': ['latin modern roman']}
 plt.rc('font', **font)
 plt.rc('legend', **{'fontsize': 14})
 
@@ -480,7 +480,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
-        labelpad = 25
+        labelpad = 34
         local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$", labelpad=labelpad, **kwargs)
         local_ax.legend(loc="upper left")
 
@@ -607,7 +607,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
-        labelpad = 25
+        labelpad = 34
         local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$", labelpad=labelpad, **kwargs)
 
         local_ax.set_xlim(num_plotting_steps_arange[0], num_plotting_steps_arange[-1])
@@ -618,7 +618,7 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
 
     # fig.tight_layout(pad=0.1)
     if title is not None:
-        fig.suptitle(title)
+        local_ax.set_title(title)
 
     if save_not_plot:
         fig.savefig(save_path, bbox_inches='tight')
@@ -678,7 +678,7 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
         local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]+1}(t)$", labelpad=labelpad, **kwargs)
 
     if title is not None:
-        fig.suptitle(title)
+        local_ax.set_title(title)
 
     if save_not_plot:
         fig.savefig(save_path, bbox_inches='tight')
@@ -806,7 +806,7 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
-        labelpad = 25
+        labelpad = 34
         if mode == "real":
             local_ax.set_ylabel(fr"${log_str}re(\mathcal{{F}}_f)$", labelpad=labelpad, **kwargs)
         else:
@@ -819,7 +819,7 @@ def plot_save_fft(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_
         local_ax.set_ylim(min(stat_fft), max(stat_fft) * adjust_y_axis)
 
         if title is not None:
-            fig.suptitle(title)
+            local_ax.set_title(title)
 
         # local_ax.legend()
 
@@ -894,13 +894,13 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
-        labelpad = 25
+        labelpad = 34
         local_ax.set_ylabel(fr"$R_\ell$", labelpad=labelpad, **kwargs)
 
         local_ax.set_xlim(x_vals[0], x_vals[-1])
 
         if title is not None:
-            fig.suptitle(title)
+            local_ax.set_title(title)
 
     if save_not_plot:
         fig.savefig(save_path, bbox_inches='tight')

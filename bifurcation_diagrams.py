@@ -452,7 +452,8 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
 if __name__ == "__main__":
 
     # Load cfg
-    with open('cfgs/bif_diagram_inf_0.yaml', 'r') as file:
+    cfg_path = 'cfgs/bif_diagram_inf_0_zoom-in.yaml'
+    with open(cfg_path, 'r') as file:
         cfg = yaml.safe_load(file)
 
     positional_embedding_size = 2
