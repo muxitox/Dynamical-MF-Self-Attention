@@ -9,7 +9,7 @@ class HopfieldTransformer(TransformerBase):
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
                  min_saved_step=0,
                  normalize_weights_str_att="N**2", normalize_weights_str_o="N", reorder_weights=False, pe_mode=0,
-                 weights_from_segments=False, scaling_o=1, scaling_att=1, num_segments_corrs=3):
+                 weights_from_segments=False, scaling_o=1, scaling_att=1, num_segments_corrs=3, sample_output=True):
 
         self.context_size = context_size
         self.context_index = 0
@@ -26,6 +26,8 @@ class HopfieldTransformer(TransformerBase):
 
         self.total_normalization_o = self.define_total_normalization_o()
         self.total_normalization_att = self.define_total_normalization_att()
+
+        self.sample_output = sample_output
 
         self.create_W_matrices_finite_model(weights_from_segments, num_segments_corrs)
         self.define_pair_correlations_from_weights()
@@ -73,12 +75,12 @@ class HopfieldTransformer(TransformerBase):
             self.mf_statistics[name_i][:self.context_size, :] = mf_statistics_copy[name_i][-self.context_size:, :]
 
     def define_total_normalization_o(self):
-        total_normalization = self.embedding_size / self.normalizing_constant_o * self.scaling_o
+        total_normalization = 1 / self.normalizing_constant_o
 
         return total_normalization
 
     def define_total_normalization_att(self):
-        total_normalization = self.embedding_size ** 2 / self.normalizing_constant_att * self.scaling_att
+        total_normalization = 1 / self.normalizing_constant_att
 
         return total_normalization
 
@@ -95,7 +97,8 @@ class HopfieldTransformer(TransformerBase):
         qk = q @ k
 
         # res = np.exp(self.beta_att / np.sqrt(self.num_feat_patterns) * qk)
-        res = np.exp(self.beta_att * (1 / self.normalizing_constant_att) * qk)
+        # scalling_att rescales the beta inv. temperature
+        res = np.exp(self.beta_att * self.scaling_att * self.total_normalization_att * qk)
 
 
         # # Loopy implementation for testing
@@ -119,7 +122,7 @@ class HopfieldTransformer(TransformerBase):
         key_prob /= np.sum(key_prob)
 
         v = self.x_list[:effective_context_size] @ self.Wv.T  # Value representation
-        att_t = key_prob @ v / self.embedding_size # Normalize A by N
+        att_t = key_prob @ v  # We will deal with attention normalization later
 
         # Save for stats comparison
         if t >= self.min_saved_step:
@@ -136,6 +139,23 @@ class HopfieldTransformer(TransformerBase):
 
         return att_t
 
+    @staticmethod
+    def spinwise_softmax(i_spin_unnorm_prob_plus):
+        """
+
+        :param i_spin_unnorm_prob_plus: string where the i element specifies the energy of the i spin being up given the
+        attention score and Wo
+        :return: a string where the element i has the probability of spin i to be +1
+        """
+
+        energies_plus_minus = np.vstack((np.exp(i_spin_unnorm_prob_plus), np.exp(-i_spin_unnorm_prob_plus)))
+
+        Z = np.sum(energies_plus_minus, axis=0)
+
+        i_spin_prob_plus = energies_plus_minus[0, :] / Z
+
+        return i_spin_prob_plus
+
     def simulate(self, x0, max_steps, verbose=False):
 
         self.x_list[0, :] = x0
@@ -146,7 +166,6 @@ class HopfieldTransformer(TransformerBase):
             self.mf_statistics["mo"][0] = x0 @ self.Wo.T / self.embedding_size
             self.mf_statistics["mo_se"][0] = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.embedding_size
 
-        selected_tokens = []
 
         for t in range(0, max_steps):
 
@@ -156,36 +175,32 @@ class HopfieldTransformer(TransformerBase):
 
             if t < max_steps - 1:  # We'll compute att once more for computing statistics
 
-
-                # We project all possible tokens in the vocabulary through Wo
-                o = self.vocab.idx2word @ self.Wo.T
-
-                # We multiply by the attention score
-                prob_unnormalized = self.beta_o * (1 / self.normalizing_constant_o) * o @ att
-
-                prob_normalized = softmax(prob_unnormalized)
-
-                if verbose == True:
-                    print("Num tokens with max probability in time", t, ":",
-                          np.sum(np.isclose(prob_normalized, max(prob_normalized))), "/", self.vocab.vocab_size)
+                # Compute unnormalized probability for each spin i to be positive
+                i_spin_unnorm_prob_plus = self.beta_o * self.scaling_o * self.total_normalization_o * self.Wo.T @ att
 
                 # Convert the above result into a probability and get the idx of the most probable token
-                sample = True
-                if sample:
-                    new_x_idx = np.random.choice(range(len(prob_normalized)), p=prob_normalized)
+                if self.sample_output:
+                    # Get the probabilities of spins being positive
+                    i_spin_prob_plus = self.spinwise_softmax(i_spin_unnorm_prob_plus)
+                    # Draw numbers from uniform distribution
+                    r = np.random.uniform(0, 1, len(i_spin_prob_plus))
+                    # Set spins positive if prob is higher than r
+                    new_x = (i_spin_prob_plus > r).astype(int) * 2 - 1
+                    new_x = self.vocab.add_pe(new_x, (t + 1) % self.context_size)
+                # 0 Temperature
                 else:
-                    new_x_idx = np.argmax(prob_normalized)
+                    new_x = (i_spin_unnorm_prob_plus > 0).astype(int) * 2 - 1
+                    new_x = self.vocab.add_pe(new_x, (t + 1) % self.context_size)
+
 
                 # Encode token and add it to the list
                 # new_x = self.vocab.encode(new_x_idx)
-                self.x_list[t + 1, :] = self.vocab.encode_w_pos(new_x_idx, (t + 1) % self.context_size)
+                self.x_list[t + 1 - self.min_saved_step, :] = copy.deepcopy(new_x)
 
                 # Save for comparison with MF
                 if t >= self.min_saved_step:
-                    self.mf_statistics["mo"][t + 1 - self.min_saved_step] = self.x_list[t + 1, :] @ self.Wo.T / self.embedding_size
-                    self.mf_statistics["mo_se"][t + 1 - self.min_saved_step] = self.x_list[t + 1, :][:self.se_bit_size] @ self.Wo[:,
-                                                                        :self.se_bit_size].T / self.embedding_size
-
-                selected_tokens.append(new_x_idx)
-
-        return selected_tokens
+                    self.mf_statistics["mo"][t + 1 - self.min_saved_step] = (self.x_list[t + 1 - self.min_saved_step, :]
+                                                                             @ self.Wo.T / self.embedding_size)
+                    self.mf_statistics["mo_se"][t + 1 - self.min_saved_step] = (
+                            self.x_list[t + 1 - self.min_saved_step, :][:self.se_bit_size] @
+                            self.Wo[:, :self.se_bit_size].T / self.embedding_size)
