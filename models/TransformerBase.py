@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+import copy
 
 class TransformerBase(ABC):
 
@@ -153,6 +154,7 @@ class TransformerBase(ABC):
         self.pair_corr_o_k /= self.se_bit_size
         self.pair_corr_o_q /= self.se_bit_size
 
+
     def define_quad_correlations_from_weights(self):
 
         for b in range(0, self.num_feat_patterns):
@@ -167,6 +169,16 @@ class TransformerBase(ABC):
         self.quad_corr_o_v /= self.se_bit_size
         self.quad_corr_o_q /= self.se_bit_size
         self.quad_corr_o_k /= self.se_bit_size
+
+        self.even_corr_o_o = copy.deepcopy(self.pair_corr_o_o)
+        self.even_corr_o_v = copy.deepcopy(self.pair_corr_o_v)
+        self.even_corr_o_k = copy.deepcopy(self.pair_corr_o_k)
+        self.even_corr_o_q = copy.deepcopy(self.pair_corr_o_q)
+
+        self.even_corr_o_o = np.vstack((self.pair_corr_o_o, self.quad_corr_o_o))
+        self.even_corr_o_v = np.vstack((self.pair_corr_o_v, self.quad_corr_o_v))
+        self.even_corr_o_k = np.vstack((self.pair_corr_o_k, self.quad_corr_o_k))
+        self.even_corr_o_q = np.vstack((self.pair_corr_o_q, self.quad_corr_o_q))
 
     @abstractmethod
     def attention(self, t):

@@ -9,7 +9,29 @@ class HopfieldTransformer(TransformerBase):
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
                  min_saved_step=0,
                  normalize_weights_str_att="N**2", normalize_weights_str_o="N", reorder_weights=False, pe_mode=0,
-                 weights_from_segments=False, scaling_o=1, scaling_att=1, num_segments_corrs=3, sample_output=True):
+                 weights_from_segments=False, scaling_o=1, scaling_att=1, num_segments_corrs=3, sample_output=True,
+                 model_to_replicate_corrs=None):
+        """
+
+        :param beta_o:
+        :param beta_att:
+        :param num_feat_patterns:
+        :param embedding_size:
+        :param vocab:
+        :param context_size:
+        :param max_sim_steps:
+        :param min_saved_step:
+        :param normalize_weights_str_att:
+        :param normalize_weights_str_o:
+        :param reorder_weights:
+        :param pe_mode:
+        :param weights_from_segments:
+        :param scaling_o:
+        :param scaling_att:
+        :param num_segments_corrs:
+        :param sample_output:
+        :param model_to_replicate_corrs: Other model from which to copy or manipulate the weights
+        """
 
         self.context_size = context_size
         self.context_index = 0
@@ -29,16 +51,15 @@ class HopfieldTransformer(TransformerBase):
 
         self.sample_output = sample_output
 
-        self.create_W_matrices_finite_model(weights_from_segments, num_segments_corrs)
+        if model_to_replicate_corrs is None:
+            self.create_W_matrices_finite_model(weights_from_segments, num_segments_corrs)
+        else:
+            self.create_W_matrices_from_other_model(model_to_replicate_corrs)
+
         self.define_pair_correlations_from_weights()
         if num_feat_patterns >= 3:
             self.define_quad_correlations_from_weights()
 
-        show_decoded_tokens = False  # Hardcoded, compute representation of the tokens codified in W
-        if show_decoded_tokens:
-            self.decoded_tokens = np.zeros(len(self.W))
-            for a in range(0, len(self.W)):
-                self.decoded_tokens[a] = vocab.decode(self.W[a])
 
         # List to save selected tokens in the standard model execution
         self.x_list = np.zeros((self.num_saved_steps, embedding_size))
@@ -50,6 +71,26 @@ class HopfieldTransformer(TransformerBase):
         self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, num_feat_patterns))
+
+    def create_W_matrices_from_other_model(self, model_copy):
+        num_rep = self.se_bit_size / model_copy.se_bit_size
+
+        if self.se_bit_size % model_copy.se_bit_size != 0:
+            raise Exception("The target model's size is not a multiple of the source model's size.")
+
+        self.Wo[:, :self.se_bit_size] = np.repeat(model_copy.Wo[:, :model_copy.se_bit_size], num_rep, axis=1)
+        self.Wv[:, :self.se_bit_size] = np.repeat(model_copy.Wv[:, :model_copy.se_bit_size], num_rep, axis=1)
+        self.Wq[:, :self.se_bit_size] = np.repeat(model_copy.Wq[:, :model_copy.se_bit_size], num_rep, axis=1)
+        self.Wk[:, :self.se_bit_size] = np.repeat(model_copy.Wk[:, :model_copy.se_bit_size], num_rep, axis=1)
+
+        if self.pe_bit_size != model_copy.pe_bit_size:
+            raise Exception("Positional embedding size of both models does not match.")
+
+        self.Wo[:, -self.pe_bit_size:] = copy.deepcopy(model_copy.Wo[:, -model_copy.pe_bit_size:])
+        self.Wv[:, -self.pe_bit_size:] = copy.deepcopy(model_copy.Wv[:, -model_copy.pe_bit_size:])
+        self.Wq[:, -self.pe_bit_size:] = copy.deepcopy(model_copy.Wq[:, -model_copy.pe_bit_size:])
+        self.Wk[:, -self.pe_bit_size:] = copy.deepcopy(model_copy.Wk[:, -model_copy.pe_bit_size:])
+
 
     def set_betas(self, beta_o, beta_att):
         self.beta_o = beta_o
@@ -121,12 +162,12 @@ class HopfieldTransformer(TransformerBase):
             key_prob[tau] = self.qk_f(t, tau)
         key_prob /= np.sum(key_prob)
 
-        v = self.x_list[:effective_context_size] @ self.Wv.T  # Value representation
+        v = self.x_window[:effective_context_size] @ self.Wv.T  # Value representation
         att_t = key_prob @ v  # We will deal with attention normalization later
 
         # Save for stats comparison
         if t >= self.min_saved_step:
-            self.mf_statistics["mv"][t - self.min_saved_step] = v[-1] / self.embedding_size
+            self.mf_statistics["mv"][t - self.min_saved_step] = v[self.context_index] / self.embedding_size
 
         # # Loopy implementation for testing
         # att_t = np.zeros(self.num_feat_patterns)
@@ -159,7 +200,7 @@ class HopfieldTransformer(TransformerBase):
     def simulate(self, x0, max_steps, verbose=False):
 
         self.x_list[0, :] = x0
-
+        self.x_window[0, :] = x0
         # Save for comparison with MF
 
         if 0 == self.min_saved_step:
@@ -195,10 +236,13 @@ class HopfieldTransformer(TransformerBase):
 
                 # Encode token and add it to the list
                 # new_x = self.vocab.encode(new_x_idx)
-                self.x_list[t + 1 - self.min_saved_step, :] = copy.deepcopy(new_x)
+
+                self.x_window[self.context_index, :] = copy.deepcopy(new_x)
 
                 # Save for comparison with MF
                 if t >= self.min_saved_step:
+                    self.x_list[t + 1 - self.min_saved_step, :] = copy.deepcopy(new_x)
+
                     self.mf_statistics["mo"][t + 1 - self.min_saved_step] = (self.x_list[t + 1 - self.min_saved_step, :]
                                                                              @ self.Wo.T / self.embedding_size)
                     self.mf_statistics["mo_se"][t + 1 - self.min_saved_step] = (

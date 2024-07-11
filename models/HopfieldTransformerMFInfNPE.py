@@ -205,10 +205,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                     self.quad_corr_o_k[b] += Wo_corr * self.corr_mk[b]
                     self.quad_corr_o_q[b] += Wo_corr * self.corr_mq[b]
 
-        self.even_corr_o_o = self.pair_corr_o_o
-        self.even_corr_o_v = self.pair_corr_o_v
-        self.even_corr_o_k = self.pair_corr_o_k
-        self.even_corr_o_q = self.pair_corr_o_q
+        self.even_corr_o_o = copy.deepcopy(self.pair_corr_o_o)
+        self.even_corr_o_v = copy.deepcopy(self.pair_corr_o_v)
+        self.even_corr_o_k = copy.deepcopy(self.pair_corr_o_k)
+        self.even_corr_o_q = copy.deepcopy(self.pair_corr_o_q)
 
         # Create matrix of signs to compute the signs of the attention
         if self.num_feat_patterns == 1:
@@ -288,7 +288,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             if self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)":
                 key_prob = self.softmax(key_prob_unnorm)
 
-                # We'll deal with normalization in the mf_computation function
+                # We'll deal with normalization in the mf_computation function, but since we are returning
+                # the average of mvs and not N*mv, we are already normalizing by a /N factor
                 self.att_window = np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob)
 
             elif self.normalize_weights_str_att != "N**2":
@@ -299,7 +300,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
                 # The array created has 1 more empty dimension than we need, so we index by 0
                 self.att_window = np.mean(selected_mvs, axis=0)[0]
-                # We'll deal with normalization in the mf_computation function
+                # We'll deal with normalization in the mf_computation function, but since we are returning
+                # the average of mvs and not N*mv, we are already normalizing by a /N factor
         else:
             key_prob = self.softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant_att)
             self.att_window = (self.N_normalization *
@@ -357,7 +359,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         #     pass
         if t >= self.min_saved_step:  # Save if required
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
-
 
     def save_stats(self, t, mo, mo_se, mv, mq, mk):
         index_t = t - self.min_saved_step
