@@ -474,7 +474,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                             self.mk_window[self.context_index, :])
 
     def shift_d_window(self, shift):
-        # Roll the context window by "shit" positions
+        # Roll the context window by "shift" positions
         self.mv_window = np.roll(self.mv_window, shift, axis=0)
         self.mk_window = np.roll(self.mk_window, shift, axis=0)
 
