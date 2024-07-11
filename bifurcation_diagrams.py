@@ -160,7 +160,7 @@ def define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list):
     """
     if ini_token_from_w == 0:
         # Encode initial token with position 0
-        x0 = ini_tokens_list[ini_token_idx]
+        x0 = copy.deepcopy(ini_tokens_list[ini_token_idx])
     elif ini_token_from_w == 1:
         x0 = copy.deepcopy(HT.Wo[ini_token_idx])
     elif ini_token_from_w == 2:
@@ -257,7 +257,7 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
         HT = HopfieldTransformerMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
                                          positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
                                          context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
-                                         min_saved_step=min_saved_step,
+                                         min_saved_steps=min_saved_step,
                                          normalize_weights_str_att=cfg["normalize_weights_str_att"],
                                          normalize_weights_str_o=cfg["normalize_weights_str_o"],
                                          reorder_weights=cfg["reorder_weights"],
