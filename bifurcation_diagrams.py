@@ -257,7 +257,7 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
         HT = HopfieldTransformerMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
                                          positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
                                          context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
-                                         min_saved_steps=min_saved_step,
+                                         min_saved_step=min_saved_step,
                                          normalize_weights_str_att=cfg["normalize_weights_str_att"],
                                          normalize_weights_str_o=cfg["normalize_weights_str_o"],
                                          reorder_weights=cfg["reorder_weights"],
