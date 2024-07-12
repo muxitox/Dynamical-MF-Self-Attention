@@ -131,7 +131,7 @@ class HopfieldTransformer(TransformerBase):
         k = self.Wk @ self.x_window[tau]  # Key representation
 
         # Save the statistics for comparison with the MF approximation
-        if t == tau and t >= self.min_saved_step:
+        if self.context_index == tau and t >= self.min_saved_step:
             self.mf_statistics["mq"][t - self.min_saved_step] = q / self.embedding_size
             self.mf_statistics["mk"][t - self.min_saved_step] = k / self.embedding_size
 
@@ -199,6 +199,7 @@ class HopfieldTransformer(TransformerBase):
 
     def simulate(self, x0, max_steps, verbose=False):
 
+        self.context_index = 0
         self.x_list[0, :] = x0
         self.x_window[0, :] = x0
         # Save for comparison with MF
@@ -207,44 +208,47 @@ class HopfieldTransformer(TransformerBase):
             self.mf_statistics["mo"][0] = x0 @ self.Wo.T / self.embedding_size
             self.mf_statistics["mo_se"][0] = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.embedding_size
 
+        att = self.attention(0)
 
-        for t in range(0, max_steps):
+        for t in range(1, max_steps):
 
             self.context_index = t % self.context_size
 
+            # Compute unnormalized probability for each spin i to be positive
+            i_spin_unnorm_prob_plus = self.beta_o * self.scaling_o * self.total_normalization_o * self.Wo.T @ att
+
+            # Convert the above result into a probability and get the idx of the most probable token
+            if self.sample_output:
+                # Get the probabilities of spins being positive
+                i_spin_prob_plus = self.spinwise_softmax(i_spin_unnorm_prob_plus)
+                # Draw numbers from uniform distribution
+                r = np.random.uniform(0, 1, len(i_spin_prob_plus))
+                # Set spins positive if prob is higher than r
+                new_x = (i_spin_prob_plus > r).astype(int) * 2 - 1
+                new_x = self.vocab.add_pe(new_x, self.context_index)
+            # 0 Temperature
+            else:
+                new_x = (i_spin_unnorm_prob_plus > 0).astype(int) * 2 - 1
+                new_x = self.vocab.add_pe(new_x, self.context_index)
+
+
+            # Encode token and add it to the list
+            # new_x = self.vocab.encode(new_x_idx)
+
+            self.x_window[self.context_index, :] = copy.deepcopy(new_x)
+
+            # Save for comparison with MF
+            if t >= self.min_saved_step:
+                self.x_list[t - self.min_saved_step, :] = copy.deepcopy(new_x)
+
+                self.mf_statistics["mo"][t - self.min_saved_step] = (self.x_list[t - self.min_saved_step, :]
+                                                                         @ self.Wo.T / self.embedding_size)
+                self.mf_statistics["mo_se"][t - self.min_saved_step] = (
+                        self.x_list[t - self.min_saved_step, :][:self.se_bit_size] @
+                        self.Wo[:, :self.se_bit_size].T / self.embedding_size)
+
+            # Compute attention for next iteration
             att = self.attention(t)
 
-            if t < max_steps - 1:  # We'll compute att once more for computing statistics
-
-                # Compute unnormalized probability for each spin i to be positive
-                i_spin_unnorm_prob_plus = self.beta_o * self.scaling_o * self.total_normalization_o * self.Wo.T @ att
-
-                # Convert the above result into a probability and get the idx of the most probable token
-                if self.sample_output:
-                    # Get the probabilities of spins being positive
-                    i_spin_prob_plus = self.spinwise_softmax(i_spin_unnorm_prob_plus)
-                    # Draw numbers from uniform distribution
-                    r = np.random.uniform(0, 1, len(i_spin_prob_plus))
-                    # Set spins positive if prob is higher than r
-                    new_x = (i_spin_prob_plus > r).astype(int) * 2 - 1
-                    new_x = self.vocab.add_pe(new_x, (t + 1) % self.context_size)
-                # 0 Temperature
-                else:
-                    new_x = (i_spin_unnorm_prob_plus > 0).astype(int) * 2 - 1
-                    new_x = self.vocab.add_pe(new_x, (t + 1) % self.context_size)
 
 
-                # Encode token and add it to the list
-                # new_x = self.vocab.encode(new_x_idx)
-
-                self.x_window[self.context_index, :] = copy.deepcopy(new_x)
-
-                # Save for comparison with MF
-                if t >= self.min_saved_step:
-                    self.x_list[t + 1 - self.min_saved_step, :] = copy.deepcopy(new_x)
-
-                    self.mf_statistics["mo"][t + 1 - self.min_saved_step] = (self.x_list[t + 1 - self.min_saved_step, :]
-                                                                             @ self.Wo.T / self.embedding_size)
-                    self.mf_statistics["mo_se"][t + 1 - self.min_saved_step] = (
-                            self.x_list[t + 1 - self.min_saved_step, :][:self.se_bit_size] @
-                            self.Wo[:, :self.se_bit_size].T / self.embedding_size)

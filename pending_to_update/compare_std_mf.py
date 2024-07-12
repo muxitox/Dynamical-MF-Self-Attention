@@ -21,11 +21,10 @@ if __name__ == "__main__":
     scaling_o = 1
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
-    max_sim_steps = 10
+    max_sim_steps = 5
     min_saved_step = 0
     num_feat_patterns = 3
     context_size = 2 ** positional_embedding_size
-
 
 
     # Define list of possible initial tokens
@@ -41,7 +40,7 @@ if __name__ == "__main__":
 
     correlations_from_weights = 3
     tentative_semantic_embedding_size = 99
-    epsilon_pe = 2 / 990
+    epsilon_pe = 2 / 992
     pe_mode = 0
     compute_inf_normalization = True
 
@@ -149,6 +148,27 @@ if __name__ == "__main__":
 
     print("Standard Statistics mq")
     print(HT.mf_statistics["mq"])
+    print()
+    print()
+    print()
+
+    print("MF Statistics mk")
+    print(HTMF.mf_statistics["mk"])
+    print()
+
+    print("Standard Statistics mk")
+    print(HT.mf_statistics["mk"])
+    print()
+    print()
+    print()
+
+
+    print("MF Statistics att")
+    print(HTMF.mf_statistics["att"])
+    print()
+
+    print("Standard Statistics att")
+    print(HT.mf_statistics["att"] * HT.total_normalization_o)
     print()
     print()
     print()
