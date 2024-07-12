@@ -2,6 +2,7 @@ import copy
 import numpy as np
 from models.TransformerBase import TransformerBase
 
+
 class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size,
@@ -99,13 +100,17 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 self.Wk[:, -self.pe_bit_size:] = self.Wk_SE[:, -self.pe_bit_size:]
             elif self.pe_mode == 0:
                 self.Wo[:, -self.pe_bit_size:] = np.random.randint(2,
-                                                                   size=(self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                                                                   size=(
+                                                                   self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
                 self.Wv[:, -self.pe_bit_size:] = np.random.randint(2,
-                                                                   size=(self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                                                                   size=(
+                                                                   self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
                 self.Wq[:, -self.pe_bit_size:] = np.random.randint(2,
-                                                                   size=(self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                                                                   size=(
+                                                                   self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
                 self.Wk[:, -self.pe_bit_size:] = np.random.randint(2,
-                                                                   size=(self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
+                                                                   size=(
+                                                                   self.num_feat_patterns, self.pe_bit_size)) * 2 - 1
 
             self.W = self.Wo
 
@@ -132,7 +137,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                         for pe_segment_id in range(0, pe_num_segments):
                             segment_end_pe = int(self.embedding_size - pe_segment_id * segment_size + 1)
                             segment_begin_pe = max(self.se_bit_size, int(self.pe_bit_size -
-                                                                                   (pe_segment_id + 1) * segment_size))
+                                                                         (pe_segment_id + 1) * segment_size))
 
                             segment_begin = int((pe_segment_id + segments_diff) * segment_size)
 
@@ -199,7 +204,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
                 for b in range(0, self.num_feat_patterns):
                     Wo_corr = self.corr_mo[0] * self.corr_mo[1] * self.corr_mo[2]
-                    Wo_corr_mo = self.corr_mo[(b + 1) % self.num_feat_patterns] * self.corr_mo[(b + 2) % self.num_feat_patterns]
+                    Wo_corr_mo = self.corr_mo[(b + 1) % self.num_feat_patterns] * self.corr_mo[
+                        (b + 2) % self.num_feat_patterns]
                     self.quad_corr_o_o[b] += Wo_corr_mo
                     self.quad_corr_o_v[b] += Wo_corr * self.corr_mv[b]
                     self.quad_corr_o_k[b] += Wo_corr * self.corr_mk[b]
@@ -234,6 +240,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def set_beta_att(self, beta_att):
         self.beta_att = beta_att
+
     def set_betas(self, beta_o, beta_att):
         self.beta_o = beta_o
         self.beta_att = beta_att
@@ -246,6 +253,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mq_window = copy.deepcopy(mq_window)
         self.mk_window = copy.deepcopy(mk_window)
         self.att_window = copy.deepcopy(att_window)
+
     def reset_data(self):
 
         self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))
@@ -280,8 +288,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         key_prob = expp / sum_exp
 
         return key_prob
-    def key_averaging(self, key_prob_unnorm, effective_context_size):
 
+    def key_averaging(self, key_prob_unnorm, effective_context_size):
 
         if self.run_exact_inf:
 
@@ -303,7 +311,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 # We'll deal with normalization in the mf_computation function, but since we are returning
                 # the average of mvs and not N*mv, we are already normalizing by a /N factor
         else:
-            key_prob = self.softmax(self.N_normalization**2 * key_prob_unnorm / self.normalizing_constant_att)
+            key_prob = self.softmax(self.N_normalization ** 2 * key_prob_unnorm / self.normalizing_constant_att)
             self.att_window = (self.N_normalization *
                                np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob))
 
@@ -368,21 +376,47 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mf_statistics["mq"][index_t] = copy.deepcopy(mq)
         self.mf_statistics["mk"][index_t] = copy.deepcopy(mk)
 
-    def compute_means_from_data(self, x0, t):
+    def compute_means_from_data(self, x0, t, ponder_pe=True):
+        # In the first version of the paper ponder_pe=False for the bif diagrams
+
 
         # Computes mean values from data. Basically used to compute m values from a x0 token.
         self.context_index = t % self.context_size
 
-        self.mv_window[self.context_index, :] = x0 @ self.Wv.T / self.embedding_size
-        self.mq_window = x0 @ self.Wq.T / self.embedding_size
-        self.mk_window[self.context_index, :] = x0 @ self.Wk.T / self.embedding_size
+        if ponder_pe:
 
-        if t >= self.min_saved_step:
-            mo = x0 @ self.Wo.T / self.embedding_size
-            mo_se = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+            self.mv_window[self.context_index, :] = \
+                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.Wv[:, :self.se_bit_size].T / self.se_bit_size) +
+                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wv[:, -self.pe_bit_size:].T / self.pe_bit_size))
 
-            self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
-                            self.mk_window[self.context_index, :])
+            self.mq_window = \
+                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.Wq[:, :self.se_bit_size].T / self.se_bit_size) +
+                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wq[:, -self.pe_bit_size:].T / self.pe_bit_size))
+
+            self.mk_window[self.context_index, :] = \
+                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.Wk[:, :self.se_bit_size].T / self.se_bit_size) +
+                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wk[:, -self.pe_bit_size:].T / self.pe_bit_size))
+
+            if t >= self.min_saved_step:
+                mo_se = self.se_per_contribution * x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+
+                mo = (mo_se +
+                      (1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wo[:, -self.pe_bit_size:].T / self.pe_bit_size)
+
+                self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
+                                self.mk_window[self.context_index, :])
+
+        else:
+            self.mv_window[self.context_index, :] = x0 @ self.Wv.T / self.embedding_size
+            self.mq_window = x0 @ self.Wq.T / self.embedding_size
+            self.mk_window[self.context_index, :] = x0 @ self.Wk.T / self.embedding_size
+
+            if t >= self.min_saved_step:
+                mo = x0 @ self.Wo.T / self.embedding_size
+                mo_se = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+
+                self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
+                                self.mk_window[self.context_index, :])
 
     def define_normalization_inf_o(self):
         # Define normalization values in infinity for the output
@@ -392,7 +426,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             total_normalization = 1 / self.num_feat_patterns
         elif self.normalize_weights_str_o == "N*np.sqrt(M)" or self.normalize_weights_str_o == "np.sqrt(M)*N":
             total_normalization = 1 / np.sqrt(self.num_feat_patterns)
-        else: # We are asuming normalization constant U < N in this case
+        else:  # We are asuming normalization constant U < N in this case
             total_normalization = np.inf
 
         return total_normalization
@@ -406,7 +440,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         else:
             raise Exception("Define properly the attention normalization")
         return total_normalization
-
 
     def compute_mf(self, t):
         # Load attention values
@@ -425,7 +458,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         pe_contribution_k = np.einsum('bi,i ->b', self.Wk[:, self.se_bit_size:],
                                       pos_vec, optimize=True) / self.pe_bit_size
-
 
         if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
 
@@ -456,7 +488,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         mk_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_k, tanh_j_signs)
                  / 2 ** (self.num_feat_patterns - 1))
         self.mk_window[self.context_index] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
-
 
         # print("mq", t, self.mq_window)
         # print("mk", t, self.mk_window)
