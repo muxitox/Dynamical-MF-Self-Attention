@@ -185,9 +185,9 @@ class HopfieldTransformer(TransformerBase):
     def spinwise_softmax(i_spin_unnorm_prob_plus):
         """
 
-        :param i_spin_unnorm_prob_plus: string where the i-th element specifies the energy of the i spin being up given the
+        :param i_spin_unnorm_prob_plus: string where the i-th element specifies the energy of the i-th spin being up given the
         attention score and Wo
-        :return: a string where the element i has the probability of spin i to be +1
+        :return: a string where the i-th element has the probability of spin i to be +1
         """
 
         energies_plus_minus = np.vstack((np.exp(i_spin_unnorm_prob_plus), np.exp(-i_spin_unnorm_prob_plus)))
