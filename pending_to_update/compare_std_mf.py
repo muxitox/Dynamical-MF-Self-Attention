@@ -15,14 +15,14 @@ if __name__ == "__main__":
     ########
     seed = 1
     beta_att = 2.2
-    beta_o = 1.266
+    beta_o = 0.1
     scaling_att = 100
     positional_embedding_size = 2
     scaling_o = 1
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
-    max_sim_steps = 5
-    min_saved_step = 0
+    min_saved_step = 100000
+    max_sim_steps = min_saved_step + 100
     num_feat_patterns = 3
     context_size = 2 ** positional_embedding_size
 
@@ -173,92 +173,19 @@ if __name__ == "__main__":
     print()
     print()
 
-    # ################
-    # # MF Transformer
-    # ################
-    #
-    # np.random.seed(seed)
-    #
-    # # Instantiate vocabulary
-    # tentative_semantic_embedding_size = 99
-    # positional_embedding_size = 2
-    # context_size = 2 ** positional_embedding_size
-    # embedding_size = tentative_semantic_embedding_size + positional_embedding_size
-    # vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
-    # vocab.initialize_pos_encoder()
-    #
-    # # Create variables for the Hopfield Transformer (HT)
-    # seed = 1
-    # beta_list = [1.255, 1.26427, 1.266, 1.27, 1.28, 1.4]
-    # beta_att = 2.2
-    # num_feat_patterns = 3
-    # num_transient_steps = 100000
-    # saved_steps = 20000
-    # max_sim_steps = num_transient_steps + saved_steps
-    #
-    # correlations_from_weights = 3
-    # pe_mode = 0
-    # se_per_contribution = 0.98
-    # scaling_o = 1
-    # scaling_att = 100
-    #
-    # normalize_weights_str_att = "N**2*np.sqrt(M)"
-    # normalize_weights_str_o = "N"
-    # compute_inf_normalization = True
-    # save_not_plot = True
-    # show_title = True
-    #
-    # # Create seed for reproducibility
-    # np.random.seed(seed)
-    #
-    # HT = HopfieldTransformerMFInfNPE(beta, beta_att, num_feat_patterns=num_feat_patterns,
-    #                                  positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-    #                                  context_size=context_size, max_sim_steps=max_sim_steps,
-    #                                  min_saved_step=num_transient_steps,
-    #                                  normalize_weights_str_att=normalize_weights_str_att,
-    #                                  normalize_weights_str_o=normalize_weights_str_o,
-    #                                  correlations_from_weights=correlations_from_weights,
-    #                                  semantic_embedding_bitsize=tentative_semantic_embedding_size,
-    #                                  epsilon_pe=se_per_contribution, pe_mode=pe_mode,
-    #                                  compute_inf_normalization=compute_inf_normalization,
-    #                                  scaling_o=scaling_o,
-    #                                  scaling_att=scaling_att,
-    #                                  N_normalization=9999)
-    #
-    #
-    #
-    # print("Simulating MF Transformer...")
-    # HT.reset_data()
-    # HT.simulate(x0, max_steps=max_sim_steps)
-    # print("Done.")
-    #
-    # # print(HT.mf_statistics["mo"][0])
-    # # print(HT.mf_statistics["mv"][0])
-    # # print(HT.mf_statistics["att"][0])
-    # # print(HT.mf_statistics["att"][1])
-    #
-    #
-    # print("Same weights", np.array_equal(HTPEML.Wo, HT.Wo), np.array_equal(HTPEML.Wv, HT.Wv), np.array_equal(HTPEML.Wk, HT.Wk),
-    #       np.array_equal(HTPEML.Wq, HT.Wq))
-    #
-    # # Plotting
-    # print("Plotting statistics...")
-    # num_plotting_steps = max_sim_steps
-    # label_tag = ["finite", "inf"]
-    # beta_str = r" $\beta$ =" + str(beta)
-    #
-    # label_tag = ["memory", "memoryless"]
-    # for stat_name in HT.statistics_names:
-    #
-    #     if stat_name == "mk" or stat_name == "mv":
-    #         statML = HTPEML.mf_statistics[stat_name][:, 0, :]
-    #     else:
-    #         statML = HTPEML.mf_statistics[stat_name]
-    #
-    #     plot_2_statistics(HT.mf_statistics[stat_name], statML, stat_name, num_feat_patterns,
-    #                   num_plotting_steps, label_tag, additional_msg=beta_str)
-    #
-    #
-    #
-    #
-    # print("Done.")
+    ##############
+    # Plotting
+    ##############
+
+    print("Plotting statistics...")
+    num_plotting_steps = max_sim_steps - min_saved_step
+    label_tag = ["MF", "STD"]
+    beta_str = r" $\beta$ =" + str(beta_o)
+
+    stats = ["mo_se", "mv", "mq", "mk", "att"]
+    for stat_name in stats:
+        plot_2_statistics(HTMF.mf_statistics[stat_name], HT.mf_statistics[stat_name], stat_name, num_feat_patterns,
+                          num_plotting_steps, label_tag, additional_msg=beta_str)
+
+
+    print("Done.")
