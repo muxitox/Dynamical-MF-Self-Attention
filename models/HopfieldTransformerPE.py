@@ -215,22 +215,21 @@ class HopfieldTransformer(TransformerBase):
 
             self.context_index = t % self.context_size
 
-            # Compute unnormalized probability for each spin i to be positive
-            i_spin_unnorm_prob_plus = self.beta_o * self.scaling_o * self.total_normalization_o * self.Wo.T @ att
+            # Compute the energy for each spin
+            i_spin_unnorm_prob = self.beta_o * self.scaling_o * self.total_normalization_o * self.Wo.T @ att
 
-            # Convert the above result into a probability and get the idx of the most probable token
-            if self.sample_output:
-                # Get the probabilities of spins being positive
-                i_spin_prob_plus = self.spinwise_softmax(i_spin_unnorm_prob_plus)
-                # Draw numbers from uniform distribution
-                r = np.random.uniform(0, 1, len(i_spin_prob_plus))
-                # Set spins positive if prob is higher than r
-                new_x = (i_spin_prob_plus > r).astype(int) * 2 - 1
-                new_x = self.vocab.add_pe(new_x, self.context_index)
-            # 0 Temperature
-            else:
-                new_x = (i_spin_unnorm_prob_plus > 0).astype(int) * 2 - 1
-                new_x = self.vocab.add_pe(new_x, self.context_index)
+            # mean of spin i
+            m_i = np.tanh(i_spin_unnorm_prob)
+            # Get the spinwise probability given the mean of each spin
+            i_spin_prob_plus = (1 + m_i) / 2
+
+            # Draw numbers from uniform distribution
+            r = np.random.uniform(0, 1, len(i_spin_prob_plus))
+            # Set spins positive if prob is higher than r
+            new_x = (i_spin_prob_plus > r).astype(int) * 2 - 1
+            # Add positional encoding
+            new_x = self.vocab.add_pe(new_x, self.context_index)
+
 
 
             # Encode token and add it to the list
