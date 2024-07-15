@@ -62,7 +62,7 @@ class HopfieldTransformer(TransformerBase):
 
 
         # List to save selected tokens in the standard model execution
-        self.x_list = np.zeros((self.num_saved_steps, embedding_size))
+        # self.x_list = np.zeros((self.num_saved_steps, embedding_size))
         # Window for the x values
         self.x_window = np.zeros((self.context_size, embedding_size))
 
@@ -97,7 +97,7 @@ class HopfieldTransformer(TransformerBase):
         self.beta_att = beta_att
 
     def reset_data(self):
-        self.x_list = np.zeros((self.max_sim_steps, self.embedding_size))
+        # self.x_list = np.zeros((self.max_sim_steps, self.embedding_size))
 
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
@@ -168,6 +168,8 @@ class HopfieldTransformer(TransformerBase):
         # Save for stats comparison
         if t >= self.min_saved_step:
             self.mf_statistics["mv"][t - self.min_saved_step] = v[self.context_index] / self.embedding_size
+            # Here we do apply normalization for plotting purposes
+            self.mf_statistics["att"][t - self.min_saved_step] = att_t / self.embedding_size
 
         # # Loopy implementation for testing
         # att_t = np.zeros(self.num_feat_patterns)
@@ -176,7 +178,6 @@ class HopfieldTransformer(TransformerBase):
         #         for tau in range(0, t + 1):
         #             att_t[b] += self.Wv[b, i] * self.x_list[tau,i] * key_prob[tau]
 
-        self.mf_statistics["att"][t - self.min_saved_step] = att_t
 
         return att_t
 
@@ -200,13 +201,13 @@ class HopfieldTransformer(TransformerBase):
     def simulate(self, x0, max_steps, verbose=False):
 
         self.context_index = 0
-        self.x_list[0, :] = x0
+        # self.x_list[0, :] = x0
         self.x_window[0, :] = x0
         # Save for comparison with MF
 
         if 0 == self.min_saved_step:
             self.mf_statistics["mo"][0] = x0 @ self.Wo.T / self.embedding_size
-            self.mf_statistics["mo_se"][0] = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.embedding_size
+            self.mf_statistics["mo_se"][0] = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
 
         att = self.attention(0)
 
@@ -239,13 +240,11 @@ class HopfieldTransformer(TransformerBase):
 
             # Save for comparison with MF
             if t >= self.min_saved_step:
-                self.x_list[t - self.min_saved_step, :] = copy.deepcopy(new_x)
+                # self.x_list[t - self.min_saved_step, :] = copy.deepcopy(new_x)
 
-                self.mf_statistics["mo"][t - self.min_saved_step] = (self.x_list[t - self.min_saved_step, :]
-                                                                         @ self.Wo.T / self.embedding_size)
-                self.mf_statistics["mo_se"][t - self.min_saved_step] = (
-                        self.x_list[t - self.min_saved_step, :][:self.se_bit_size] @
-                        self.Wo[:, :self.se_bit_size].T / self.embedding_size)
+                self.mf_statistics["mo"][t - self.min_saved_step] = (new_x @ self.Wo.T / self.embedding_size)
+                self.mf_statistics["mo_se"][t - self.min_saved_step] = \
+                    new_x[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
 
             # Compute attention for next iteration
             att = self.attention(t)
