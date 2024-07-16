@@ -398,9 +398,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                  ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wk[:, -self.pe_bit_size:].T / self.pe_bit_size))
 
             if t >= self.min_saved_step:
-                mo_se = self.se_per_contribution * x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+                mo_se =  x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
 
-                mo = (mo_se +
+                mo = (self.se_per_contribution * mo_se +
                       (1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wo[:, -self.pe_bit_size:].T / self.pe_bit_size)
 
                 self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
