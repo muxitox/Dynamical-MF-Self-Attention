@@ -9,7 +9,7 @@ class HopfieldTransformer(TransformerBase):
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
                  min_saved_step=0,
                  normalize_weights_str_att="N**2", normalize_weights_str_o="N", reorder_weights=False, pe_mode=0,
-                 weights_from_segments=False, scaling_o=1, scaling_att=1, num_segments_corrs=3, sample_output=True,
+                 epsilon_pe=None, weights_from_segments=False, scaling_o=1, scaling_att=1, num_segments_corrs=3,
                  model_to_replicate_corrs=None):
         """
 
@@ -25,6 +25,7 @@ class HopfieldTransformer(TransformerBase):
         :param normalize_weights_str_o:
         :param reorder_weights:
         :param pe_mode:
+        :param epsilon_pe:
         :param weights_from_segments:
         :param scaling_o:
         :param scaling_att:
@@ -49,7 +50,12 @@ class HopfieldTransformer(TransformerBase):
         self.total_normalization_o = self.define_total_normalization_o()
         self.total_normalization_att = self.define_total_normalization_att()
 
-        self.sample_output = sample_output
+        # Define how much the Positional Encoding weights. If not defined, it's going to be the amount of
+        # PE bits there are in the weight matrices
+        if epsilon_pe is None:
+            epsilon_pe = self.pe_bit_size / self.embedding_size
+
+        self.se_per_contribution = 1 - epsilon_pe
 
         if model_to_replicate_corrs is None:
             self.create_W_matrices_finite_model(weights_from_segments, num_segments_corrs)
@@ -127,8 +133,17 @@ class HopfieldTransformer(TransformerBase):
 
     def qk_f(self, t, tau):
 
-        q = self.x_window[self.context_index] @ self.Wq.T  # Query representation
-        k = self.Wk @ self.x_window[tau]  # Key representation
+        # Query representation
+        q = (self.se_per_contribution * self.x_window[self.context_index, :self.se_bit_size]
+             @ self.Wq[:, :self.se_bit_size].T / self.se_bit_size +
+             (1 - self.se_per_contribution) * self.x_window[self.context_index, -self.pe_bit_size:]
+             @ self.Wq[:, -self.pe_bit_size:].T / self.pe_bit_size) * self.embedding_size
+
+        # Key representation
+        k = (self.se_per_contribution * self.Wk[:, :self.se_bit_size]
+             @ self.x_window[tau, :self.se_bit_size] / self.se_bit_size +
+             (1 - self.se_per_contribution) * self.Wk[:, -self.pe_bit_size:]
+             @ self.x_window[tau, -self.pe_bit_size:] / self.pe_bit_size) * self.embedding_size
 
         # Save the statistics for comparison with the MF approximation
         if self.context_index == tau and t >= self.min_saved_step:
@@ -162,7 +177,12 @@ class HopfieldTransformer(TransformerBase):
             key_prob[tau] = self.qk_f(t, tau)
         key_prob /= np.sum(key_prob)
 
-        v = self.x_window[:effective_context_size] @ self.Wv.T  # Value representation
+        # Value representation
+        v = (self.se_per_contribution * self.x_window[:effective_context_size, :self.se_bit_size]
+             @ self.Wv[:, :self.se_bit_size].T / self.se_bit_size +
+             (1 - self.se_per_contribution) * self.x_window[:effective_context_size, -self.pe_bit_size:]
+             @ self.Wv[:, -self.pe_bit_size:].T / self.pe_bit_size) * self.embedding_size
+
         att_t = key_prob @ v  # We will deal with attention normalization later
 
         # Save for stats comparison
@@ -203,11 +223,15 @@ class HopfieldTransformer(TransformerBase):
         self.context_index = 0
         # self.x_list[0, :] = x0
         self.x_window[0, :] = x0
-        # Save for comparison with MF
 
+        # Save for comparison with MF
         if 0 == self.min_saved_step:
-            self.mf_statistics["mo"][0] = x0 @ self.Wo.T / self.embedding_size
-            self.mf_statistics["mo_se"][0] = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+            self.mf_statistics["mo_se"][0] = ( x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size)
+
+            self.mf_statistics["mo"][0] = (self.se_per_contribution * self.mf_statistics["mo_se"][0] +
+                                           (1 - self.se_per_contribution) * x0[-self.pe_bit_size:]
+                                           @ self.Wo[:, -self.pe_bit_size:].T / self.pe_bit_size)
+
 
         att = self.attention(0)
 
@@ -215,22 +239,23 @@ class HopfieldTransformer(TransformerBase):
 
             self.context_index = t % self.context_size
 
-            # Compute the energy for each spin
-            i_spin_unnorm_prob = self.beta_o * self.scaling_o * self.total_normalization_o * self.Wo.T @ att
+            # Compute the energy for each semantic spin
+            i_spin_unnorm_prob = (self.beta_o * self.scaling_o * self.total_normalization_o *
+                                  self.Wo[:, :self.se_bit_size].T @ att)
 
-            # mean of spin i
+            # mean of each spin i
             m_i = np.tanh(i_spin_unnorm_prob)
-            # Get the spinwise probability given the mean of each spin
+
+            # Get the spin-wise probability given the mean of each spin
             i_spin_prob_plus = (1 + m_i) / 2
 
             # Draw numbers from uniform distribution
-            r = np.random.uniform(0, 1, len(i_spin_prob_plus))
+            r = np.random.uniform(0, 1, self.se_bit_size)
+
             # Set spins positive if prob is higher than r
             new_x = (i_spin_prob_plus > r).astype(int) * 2 - 1
-            # Add positional encoding
-            new_x = self.vocab.add_pe(new_x, self.context_index)
-
-
+            pe_t = self.vocab.encode_pos(self.context_index)
+            new_x = np.concatenate((new_x, pe_t))
 
             # Encode token and add it to the list
             # new_x = self.vocab.encode(new_x_idx)
@@ -241,9 +266,16 @@ class HopfieldTransformer(TransformerBase):
             if t >= self.min_saved_step:
                 # self.x_list[t - self.min_saved_step, :] = copy.deepcopy(new_x)
 
-                self.mf_statistics["mo"][t - self.min_saved_step] = (new_x @ self.Wo.T / self.embedding_size)
                 self.mf_statistics["mo_se"][t - self.min_saved_step] = \
-                    new_x[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+                    (new_x[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T
+                     / self.se_bit_size)
+
+                self.mf_statistics["mo"][t - self.min_saved_step] = (self.se_per_contribution *
+                                                                     self.mf_statistics["mo_se"][t - self.min_saved_step]
+                                                                     + (1 - self.se_per_contribution)
+                                                                     * new_x[-self.pe_bit_size:]
+                                                                     @ self.Wo[:, -self.pe_bit_size:].T
+                                                                     / self.pe_bit_size)
 
             # Compute attention for next iteration
             att = self.attention(t)
