@@ -6,7 +6,8 @@ from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 
 from bifurcation_diagrams import define_ini_token
 from models.Embedding import Embedding
-from plotting.plotting import plot_2_statistics
+from plotting.plotting import plot_2_statistics, plot_save_statistics
+import time
 
 if __name__ == "__main__":
 
@@ -15,14 +16,15 @@ if __name__ == "__main__":
     ########
     seed = 1
     beta_att = 2.2
-    beta_o = 0.1
+    beta_o = 1.255
     scaling_att = 100
     positional_embedding_size = 2
     scaling_o = 1
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
     min_saved_step = 100000
-    max_sim_steps = min_saved_step + 100
+    saved_steps = 100
+    max_sim_steps = min_saved_step + saved_steps
     num_feat_patterns = 3
     context_size = 2 ** positional_embedding_size
 
@@ -40,12 +42,11 @@ if __name__ == "__main__":
 
     correlations_from_weights = 3
     tentative_semantic_embedding_size = 99
-    epsilon_pe = 2 / 992
+    epsilon_pe = 0.02
     pe_mode = 0
     compute_inf_normalization = True
 
     # Instantiate vocabulary
-    embedding_size = tentative_semantic_embedding_size + positional_embedding_size
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)
     # We don't initialize the vocab as it's more efficient to work without a dict with the MF implementation
 
@@ -77,9 +78,12 @@ if __name__ == "__main__":
 
 
     print("Simulating MF Transformer...")
-    HTMF.simulate(x0, max_steps=max_sim_steps)
-    print("Done...")
 
+    start = time.time()
+    HTMF.simulate(x0, max_steps=max_sim_steps)
+    end = time.time()
+    print("Done...")
+    print("MF Time in [s]", end - start)
 
 
     #################
@@ -103,8 +107,8 @@ if __name__ == "__main__":
                              max_sim_steps=max_sim_steps, min_saved_step=min_saved_step,
                              normalize_weights_str_att=normalize_weights_str_att,
                              normalize_weights_str_o=normalize_weights_str_o, reorder_weights=False, pe_mode=0,
-                             weights_from_segments=True, scaling_o=scaling_o, scaling_att=scaling_att,
-                             num_segments_corrs=3, model_to_replicate_corrs=HTMF)
+                             epsilon_pe=epsilon_pe, weights_from_segments=True, scaling_o=scaling_o,
+                             scaling_att=scaling_att, num_segments_corrs=3, model_to_replicate_corrs=HTMF)
 
     x0 = define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list)
 
@@ -112,8 +116,13 @@ if __name__ == "__main__":
 
 
     print("Simulating Standard Transformer...")
+
+    start = time.time()
     HT.simulate(x0, max_steps=max_sim_steps)
+    end = time.time()
     print("Done...")
+    print("Standard Time in [s]", end - start)
+
 
     print("Check weight correlations")
     print(HT.Wo.shape)
@@ -122,70 +131,79 @@ if __name__ == "__main__":
     print(HT.even_corr_o_q, HT.even_corr_o_q == HTMF.even_corr_o_q, 'mq')
     print(HT.even_corr_o_k, HT.even_corr_o_k == HTMF.even_corr_o_k, 'mk')
 
-    print("MF Statistics mo_se")
-    print(HTMF.mf_statistics["mo_se"])
-    print()
+    if saved_steps < 50:
+        print("MF Statistics mo_se")
+        print(HTMF.mf_statistics["mo_se"])
+        print()
 
-    print("Standard Statistics mo_se")
-    print(HT.mf_statistics["mo_se"])
-    print()
-    print()
-    print()
+        print("Standard Statistics mo_se")
+        print(HT.mf_statistics["mo_se"])
+        print()
+        print()
+        print()
 
-    print("MF Statistics mv")
-    print(HTMF.mf_statistics["mv"])
-    print()
+        print("MF Statistics mv")
+        print(HTMF.mf_statistics["mv"])
+        print()
 
-    print("Standard Statistics mv")
-    print(HT.mf_statistics["mv"])
-    print()
-    print()
-    print()
+        print("Standard Statistics mv")
+        print(HT.mf_statistics["mv"])
+        print()
+        print()
+        print()
 
-    print("MF Statistics mq")
-    print(HTMF.mf_statistics["mq"])
-    print()
+        print("MF Statistics mq")
+        print(HTMF.mf_statistics["mq"])
+        print()
 
-    print("Standard Statistics mq")
-    print(HT.mf_statistics["mq"])
-    print()
-    print()
-    print()
+        print("Standard Statistics mq")
+        print(HT.mf_statistics["mq"])
+        print()
+        print()
+        print()
 
-    print("MF Statistics mk")
-    print(HTMF.mf_statistics["mk"])
-    print()
+        print("MF Statistics mk")
+        print(HTMF.mf_statistics["mk"])
+        print()
 
-    print("Standard Statistics mk")
-    print(HT.mf_statistics["mk"])
-    print()
-    print()
-    print()
+        print("Standard Statistics mk")
+        print(HT.mf_statistics["mk"])
+        print()
+        print()
+        print()
 
 
-    print("MF Statistics att")
-    print(HTMF.mf_statistics["att"])
-    print()
+        print("MF Statistics att")
+        print(HTMF.mf_statistics["att"])
+        print()
 
-    print("Standard Statistics att")
-    print(HT.mf_statistics["att"] * HT.total_normalization_o)
-    print()
-    print()
-    print()
+        print("Standard Statistics att")
+        print(HT.mf_statistics["att"] * HT.total_normalization_o)
+        print()
+        print()
+        print()
 
     ##############
     # Plotting
     ##############
 
     print("Plotting statistics...")
-    num_plotting_steps = max_sim_steps - min_saved_step
+    num_plotting_steps = saved_steps
     label_tag = ["MF", "STD"]
     beta_str = r" $\beta$ =" + str(beta_o)
 
-    stats = ["mo_se", "mv", "mq", "mk", "att"]
-    for stat_name in stats:
+    stats_to_show = ["mo_se", "mv", "mq", "mk", "att"]
+    for stat_name in stats_to_show:
         plot_2_statistics(HTMF.mf_statistics[stat_name], HT.mf_statistics[stat_name], stat_name, num_feat_patterns,
                           num_plotting_steps, label_tag, additional_msg=beta_str)
 
+        show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
+
+        # Plot the trajectory
+        plot_save_statistics(HTMF.mf_statistics[stat_name], stat_name, num_feat_patterns,
+                             saved_steps, min_num_step=0,
+                             show_max_num_patterns=num_feat_patterns,
+                             save_not_plot=False, title=None,
+                             plot_hilbert=False, show_1_feat=show_1_feat)
 
     print("Done.")
