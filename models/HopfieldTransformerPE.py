@@ -76,7 +76,7 @@ class HopfieldTransformer(TransformerBase):
         self.mf_statistics = {}
         self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
         for name_i in self.statistics_names:
-            self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, num_feat_patterns))
+            self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
 
     def create_W_matrices_from_other_model(self, model_copy):
         num_rep = self.se_bit_size / model_copy.se_bit_size
@@ -105,8 +105,10 @@ class HopfieldTransformer(TransformerBase):
     def reset_data(self):
         # self.x_list = np.zeros((self.max_sim_steps, self.embedding_size))
 
+        self.x_window = np.zeros((self.context_size, self.embedding_size))
+
         for name_i in self.statistics_names:
-            self.mf_statistics[name_i] = np.zeros((self.max_sim_steps, self.num_feat_patterns))
+            self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
 
     def reset_data_keep_context(self):
         x_list_copy = copy.deepcopy(self.x_list)
