@@ -16,14 +16,14 @@ if __name__ == "__main__":
     ########
     seed = 1
     beta_att = 2.2
-    beta_o = 1.255
+    beta_o = 1.27
     scaling_att = 100
     positional_embedding_size = 2
     scaling_o = 1
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
     min_saved_step = 100000
-    saved_steps = 100
+    saved_steps = 350
     max_sim_steps = min_saved_step + saved_steps
     num_feat_patterns = 3
     context_size = 2 ** positional_embedding_size
@@ -114,14 +114,28 @@ if __name__ == "__main__":
 
 
 
+    num_std_runs = 10
 
-    print("Simulating Standard Transformer...")
+    # Create variables for saving the mean statistics over experiments
+    mean_mf_statistics = {}
+    statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
+    for name_i in statistics_names:
+        mean_mf_statistics[name_i] = np.zeros((saved_steps, num_feat_patterns))
 
-    start = time.time()
-    HT.simulate(x0, max_steps=max_sim_steps)
-    end = time.time()
-    print("Done...")
-    print("Standard Time in [s]", end - start)
+    for i in range(num_std_runs):
+        print(f"Simulating Standard Transformer {i+1}...")
+        start = time.time()
+        HT.reset_data()
+        HT.simulate(x0, max_steps=max_sim_steps)
+        end = time.time()
+
+        for name_i in statistics_names:
+            mean_mf_statistics[name_i] += HT.mf_statistics[name_i]
+        print("Done...")
+        print("Standard Time in [s]", end - start)
+
+    for name_i in statistics_names:
+        mean_mf_statistics[name_i] /= num_std_runs
 
 
     print("Check weight correlations")
@@ -194,7 +208,7 @@ if __name__ == "__main__":
 
     stats_to_show = ["mo_se", "mv", "mq", "mk", "att"]
     for stat_name in stats_to_show:
-        plot_2_statistics(HTMF.mf_statistics[stat_name], HT.mf_statistics[stat_name], stat_name, num_feat_patterns,
+        plot_2_statistics(HTMF.mf_statistics[stat_name], mean_mf_statistics[stat_name], stat_name, num_feat_patterns,
                           num_plotting_steps, label_tag, additional_msg=beta_str)
 
         show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
@@ -205,5 +219,12 @@ if __name__ == "__main__":
                              show_max_num_patterns=num_feat_patterns,
                              save_not_plot=False, title=None,
                              plot_hilbert=False, show_1_feat=show_1_feat)
+
+        # plot_save_statistics(mean_mf_statistics[stat_name], stat_name, num_feat_patterns,
+        #                      saved_steps, min_num_step=0,
+        #                      show_max_num_patterns=num_feat_patterns,
+        #                      save_not_plot=False, title=None,
+        #                      plot_hilbert=False, show_1_feat=show_1_feat)
+
 
     print("Done.")
