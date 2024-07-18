@@ -6,7 +6,7 @@ from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 
 from bifurcation_diagrams import define_ini_token
 from models.Embedding import Embedding
-from plotting.plotting import plot_2_statistics, plot_save_statistics
+from plotting.plotting import plot_2_statistics, plot_save_statistics, plot_save_plane
 import time
 
 if __name__ == "__main__":
@@ -16,14 +16,14 @@ if __name__ == "__main__":
     ########
     seed = 1
     beta_att = 2.2
-    beta_o = 1.27
+    beta_o = 4
     scaling_att = 100
     positional_embedding_size = 2
     scaling_o = 1
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
-    min_saved_step = 100000
-    saved_steps = 350
+    min_saved_step = 0
+    saved_steps = 150
     max_sim_steps = min_saved_step + saved_steps
     num_feat_patterns = 3
     context_size = 2 ** positional_embedding_size
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
 
 
-    num_std_runs = 10
+    num_std_runs = 25
 
     # Create variables for saving the mean statistics over experiments
     mean_mf_statistics = {}
@@ -225,6 +225,42 @@ if __name__ == "__main__":
         #                      show_max_num_patterns=num_feat_patterns,
         #                      save_not_plot=False, title=None,
         #                      plot_hilbert=False, show_1_feat=show_1_feat)
+
+
+    # Plot planes
+
+    # MF
+    feat_idx = [[0], [1]]
+    stats_to_plot = [["mo_se"], ["mo_se"]]
+    stat_results_beta_list_0 = [HTMF.mf_statistics[stats_to_plot[feat_idx[0][0]][0]]]
+    stat_results_beta_list_1 = [HTMF.mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
+    # Plot plane
+    plot_save_plane(stat_results_beta_list_0,
+                    stat_results_beta_list_1, saved_steps, feat_idx,
+                    tag_names=stats_to_plot, save_path=None, save_not_plot=False,
+                    title=rf"$\beta={beta_o}$ MF", larger_dots=False)
+
+    # Isolated traj 1
+    feat_idx = [[0], [1]]
+    stats_to_plot = [["mo_se"], ["mo_se"]]
+    stat_results_beta_list_0 = [HT.mf_statistics[stats_to_plot[feat_idx[0][0]][0]]]
+    stat_results_beta_list_1 = [HT.mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
+    # Plot plane
+    plot_save_plane(stat_results_beta_list_0,
+                    stat_results_beta_list_1, saved_steps, feat_idx,
+                    tag_names=stats_to_plot, save_path=None, save_not_plot=False,
+                    title=rf"$\beta={beta_o}$ STD (traj 1)", larger_dots=False)
+
+    # Isolated traj 1
+    feat_idx = [[0], [1]]
+    stats_to_plot = [["mo_se"], ["mo_se"]]
+    stat_results_beta_list_0 = [mean_mf_statistics[stats_to_plot[feat_idx[0][0]][0]]]
+    stat_results_beta_list_1 = [mean_mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
+    # Plot plane
+    plot_save_plane(stat_results_beta_list_0,
+                    stat_results_beta_list_1, saved_steps, feat_idx,
+                    tag_names=stats_to_plot, save_path=None, save_not_plot=False,
+                    title=rf"$\beta={beta_o}$ Mean STD ({num_std_runs} trajs)", larger_dots=False)
 
 
     print("Done.")
