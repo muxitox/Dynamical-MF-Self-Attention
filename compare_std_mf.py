@@ -16,14 +16,14 @@ if __name__ == "__main__":
     ########
     seed = 1
     beta_att = 2.2
-    beta_o = 4
+    beta_o = 2.3
     scaling_att = 100
     positional_embedding_size = 2
     scaling_o = 1
     normalize_weights_str_att = "N**2*np.sqrt(M)"
     normalize_weights_str_o = "N"
-    min_saved_step = 0
-    saved_steps = 150
+    min_saved_step = 100000
+    saved_steps = 20000
     max_sim_steps = min_saved_step + saved_steps
     num_feat_patterns = 3
     context_size = 2 ** positional_embedding_size
@@ -208,17 +208,33 @@ if __name__ == "__main__":
 
     stats_to_show = ["mo_se", "mv", "mq", "mk", "att"]
     for stat_name in stats_to_show:
-        plot_2_statistics(HTMF.mf_statistics[stat_name], mean_mf_statistics[stat_name], stat_name, num_feat_patterns,
-                          num_plotting_steps, label_tag, additional_msg=beta_str)
+        plot_window = 350
+        offset = 0  # Offset the trajectory to visit different points
+
+        # Define the steps to show
+        plot_range = [offset, offset + plot_window]  # Define the steps to plot
+
+        if plot_range[1] > saved_steps:
+            raise Exception("The rightmost index is greater than the number of steps.")
+
+        rg = range(plot_range[0], plot_range[1])
+
+        plot_2_statistics(HTMF.mf_statistics[stat_name][rg, :], mean_mf_statistics[stat_name][rg, :],
+                          stat_name, num_feat_patterns,
+                          plot_window, label_tag, additional_msg=beta_str + " avg")
+
+        plot_2_statistics(HTMF.mf_statistics[stat_name][rg, :],
+                          HT.mf_statistics[stat_name][rg, :], stat_name, num_feat_patterns,
+                          plot_window, label_tag, additional_msg=beta_str + " 1traj")
 
         show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
 
-        # Plot the trajectory
-        plot_save_statistics(HTMF.mf_statistics[stat_name], stat_name, num_feat_patterns,
-                             saved_steps, min_num_step=0,
-                             show_max_num_patterns=num_feat_patterns,
-                             save_not_plot=False, title=None,
-                             plot_hilbert=False, show_1_feat=show_1_feat)
+        # # Plot the MF trajectory
+        # plot_save_statistics(HTMF.mf_statistics[stat_name], stat_name, num_feat_patterns,
+        #                      saved_steps, min_num_step=0,
+        #                      show_max_num_patterns=num_feat_patterns,
+        #                      save_not_plot=False, title=None,
+        #                      plot_hilbert=False, show_1_feat=show_1_feat)
 
         # plot_save_statistics(mean_mf_statistics[stat_name], stat_name, num_feat_patterns,
         #                      saved_steps, min_num_step=0,
