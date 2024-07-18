@@ -544,6 +544,9 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
     fig.suptitle(f"Evolution of {stat_name}{additional_msg}")
     plt.show()
 
+    plt.close()
+
+
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
                          save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=False,
                          show_1_feat=None):
