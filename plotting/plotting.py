@@ -482,6 +482,8 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         kwargs["verticalalignment"] = "center"
         labelpad = 34
         local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$", labelpad=labelpad, **kwargs)
+
+        # Plot only the legend in the zoomed in version of the beta's bifurcation diagram
         if x_list[-1] < 3:
             local_ax.legend(loc="upper left")
 
