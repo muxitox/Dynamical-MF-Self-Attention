@@ -671,14 +671,14 @@ def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
                       stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c="k", ms=ms, rasterized=True)
 
         # x label
-        local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{feat_idx[0][feat]+1}(t)$")
+        local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{{{feat_idx[0][feat]+1},t}}$")
 
         # Rotate y label
         kwargs = {}
         kwargs["rotation"] = "horizontal"
         kwargs["verticalalignment"] = "center"
         labelpad = 25
-        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{feat_idx[1][feat]+1}(t)$", labelpad=labelpad, **kwargs)
+        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{{{feat_idx[1][feat]+1},t}}$", labelpad=labelpad, **kwargs)
 
     if title is not None:
         local_ax.set_title(title)
