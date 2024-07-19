@@ -19,16 +19,16 @@ def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, cont
     """
 
     if cfg["bifurcation_mode"] == "betas":
-        results_folder = "results_parallel_v2"
+        results_folder = "results_parallel"
         beta_string = ("/min_beta-" + str(worker_values_list[0]) + "-max_beta-" + str(worker_values_list[-1]) +
                        "-num_betas-" + str(len(worker_values_list)))
     elif cfg["bifurcation_mode"] == "out":
-        results_folder = "results_out_parallel_v2"
+        results_folder = "results_out_parallel"
         beta_string = (
                     "/beta_att-" + str(cfg["beta_att"]) + "-min_beta_o-" + str(worker_values_list[0]) + "-max_beta_o-" +
                     str(worker_values_list[-1]) + "-num_betas-" + str(len(worker_values_list)))
     elif cfg["bifurcation_mode"] == "att":
-        results_folder = "results_att_parallel_v2"
+        results_folder = "results_att_parallel"
         beta_string = (
                     "/beta_o-" + str(cfg["beta_o"]) + "-min_beta_att-" + str(worker_values_list[0]) + "-max_beta_att-" +
                     str(worker_values_list[-1]) + "-num_betas-" + str(len(worker_values_list)))
@@ -129,7 +129,7 @@ def create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, contex
         beta_string = "-beta_o-" + str(cfg["beta_o"]) + "-beta_att-" + str(cfg["beta_att"])
 
     # Save/plot results for each ini_token, W config, and num_feat_patterns
-    folder_path = ("results_pe_parallel_v2/infN-correlations_from_weights-" + str(cfg["correlations_from_weights"])
+    folder_path = ("results_pe_parallel/infN-correlations_from_weights-" + str(cfg["correlations_from_weights"])
                    + "-se_size-" + str(cfg["semantic_embedding_size"]) + "-pe_size-"
                    + str(positional_embedding_size) + beta_string
                    + "/num_feat_patterns-" + str(num_feat_patterns) + normalize_weights_name_str + scaling_str +
@@ -452,7 +452,7 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
 if __name__ == "__main__":
 
     # Load cfg
-    cfg_path = 'cfgs/bif_diagram_inf_0_zoom-in.yaml'
+    cfg_path = 'cfgs/bif_diagram_inf_0.yaml'
     with open(cfg_path, 'r') as file:
         cfg = yaml.safe_load(file)
 
