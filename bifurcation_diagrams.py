@@ -265,6 +265,7 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                                          num_segments_corrs=cfg["num_segments_corrs"], pe_mode=cfg["pe_mode"],
                                          semantic_embedding_bitsize=cfg["semantic_embedding_size"],
                                          epsilon_pe=cfg["epsilon_pe"],
+                                         gaussian_scale_str=cfg["gaussian_scale"],
                                          compute_inf_normalization=cfg["compute_inf_normalization"],
                                          N_normalization=9999,
                                          scaling_o=cfg["scaling_o"],
