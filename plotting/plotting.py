@@ -470,9 +470,9 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
                               marker='.', ms=ms, rasterized=True)  # Chaos
 
         # Plot tiny points outside the map for the legend.
-        local_ax.plot(4, 0, 'o', c=cmap(3/3), label="periodic")
-        local_ax.plot(4, 0, 'o', c=cmap(1.5/4), label="quasi-periodic")
-        local_ax.plot(4, 0, 'o', c=cmap(2.5/4), label="chaotic")
+        local_ax.plot(20, 0, 'o', c=cmap(3/3), label="periodic")
+        local_ax.plot(20, 0, 'o', c=cmap(1.5/4), label="quasi-periodic")
+        local_ax.plot(20, 0, 'o', c=cmap(2.5/4), label="chaotic")
         local_ax.set_xlim([x_list[0], x_list[-1]])
         local_ax.set_xlabel(x_label)
 
