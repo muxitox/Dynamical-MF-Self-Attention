@@ -5,8 +5,8 @@ NUM_FEAT_PATTERNS_LIST=(3)
 POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
 CFG_PATH="cfgs/phase_diagram_inf_0.yaml"
-NUM_VALUES_BETA_ATT=200
-NUM_VALUES_BETA_OUT=200
+NUM_VALUES_BETA_ATT=2
+NUM_VALUES_BETA_OUT=5
 NUM_BIFURCATION_VALUES=$(($NUM_VALUES_BETA_ATT*$NUM_VALUES_BETA_OUT))
 
 for SEED in "${SEED_LIST[@]}"; do
@@ -15,7 +15,7 @@ for SEED in "${SEED_LIST[@]}"; do
           for INI_TOKEN_IDX in "${INI_TOKEN_IDX_LIST[@]}"; do
 
                 echo Num betas parallel $NUM_BIFURCATION_VALUES
-                sbatch --array=$NUM_BIFURCATION_VALUES phase_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                sbatch --array=1-$NUM_BIFURCATION_VALUES phase_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                 $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $NUM_VALUES_BETA_ATT $NUM_VALUES_BETA_OUT \
                 $INI_TOKEN_IDX $CFG_PATH
           done
