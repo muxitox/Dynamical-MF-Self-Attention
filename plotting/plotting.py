@@ -325,6 +325,29 @@ def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode
 
     return im_array
 
+def get_filtered_values_by_beta_seq(results_y_list, feature_to_filter_idx, filter_by_feature_idx, num_transient_steps,
+                                filtering_range=0.05):
+    """
+    Function to compute the intersection with the 0 plane.
+    """
+
+    y_resolution = 5001
+
+    values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feature_to_filter_idx,
+                                                      filter_by_feature_idx, filtering_range)
+
+    values_feat_filtered_quantized = (np.unique((y_resolution * (values_feat_filtered + 1) / 2).astype(int))
+                                      / y_resolution * 2 - 1)
+
+    values_feat = results_y_list[num_transient_steps:, feature_to_filter_idx]
+    values_feat_quantized = (np.unique((y_resolution * (values_feat + 1) / 2).astype(int))
+                             / y_resolution * 2 - 1)
+
+    unique_filtered_len = len(values_feat_filtered_quantized)
+    unique_len = len(values_feat_quantized)
+
+    return unique_filtered_len, unique_len
+
 def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
                         num_transient_steps, feat, y_resolution, filter_idx, filtering_range, max_y):
     """
