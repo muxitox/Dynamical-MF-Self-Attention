@@ -282,115 +282,59 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                         beta_att=att_values_list[beta_att_idx],
                         beta_out=out_values_list[beta_out_idx])
 
+def rejoin_data(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, att_values_list,
+                out_values_list, cfg):
 
-def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list, cfg,
-            stats_to_save_plot, load_from_context_mode=0, min_max_beta_to_show=None, show_title=False):
-    # Set up some parameters for loading the experiments statistics
-    if min_max_beta_to_show is None:
-        min_beta_idx = 0
-        max_beta_idx = None
-    else:  # In this else, if set, we can zoom_in the bif. diagram but without much resolution
-        min_beta_idx = np.searchsorted(worker_values_list, min_max_beta_to_show[0])
-        max_beta_idx = np.searchsorted(worker_values_list, min_max_beta_to_show[1]) + 1
+    num_betas_att = len(att_values_list)
+    num_betas_out = len(out_values_list)
 
-    if cfg["save_non_transient"] == True:
-        num_transient_steps_plot_arg = cfg["num_transient_steps"]
-    else:
-        num_transient_steps_plot_arg = 0
+    # Create root folder to later save and aggregate the results
+    folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, att_values_list,
+                                  out_values_list, cfg)
 
-    # image_format = ".jpeg"
-    image_format = ".pdf"
 
-    # Create pathname
-    folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                                  load_from_context_mode, cfg)
-
-    # Create some more variables for saving purposes
-    ini_token_mode_str = ""
     ini_token_from_w = cfg["ini_token_from_w"]
+
+    # Set up some more variables for saving purposes
+    ini_token_mode_str = ""
     if ini_token_from_w != 0:
         ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
 
-    correlations_from_weights = cfg["correlations_from_weights"]
-    filtering_range = cfg["filtering_range"]
 
-    # Get the requested list of betas
-    filtered_beta_list = worker_values_list[min_beta_idx:max_beta_idx]
+    unique_points_matrix = np.zeros((num_betas_att, num_betas_out))
+    unique_points_filtered_matrix = np.zeros((num_betas_att, num_betas_out))
+    for beta_att_idx in range(num_betas_att):
+        for beta_out_idx in range(num_betas_out):
 
-    show_max_num_patterns = 6  # Just important if we are plotting more than 6 features at the same time
+            folder_path_unique_points = (folder_path + "/unique_points/seed-" + str(seed)
+                                         + "-ini_token_idx-" + str(ini_token_idx) + ini_token_mode_str)
+            # Save unique points in mo_se
+            unique_data_path = (folder_path_unique_points + "/beta_att-" + str(beta_att_idx) + "-beta_o-" + str(beta_out_idx) + ".npz")
 
-    # If `show_1_feat` is defined it will only plot one feature at a time.
-    # The value of the list is the index of the feature to plot.
-    show_1_feat = [1, 0, 0]
-    # show_1_feat = [None, None, None]
-    # Load each stat and plot/save it
-    for stat_name in stats_to_save_plot:
+            unique_data = np.load(unique_data_path)
 
-        # Create folder if it does not exist and we are saving the image
-        if cfg["save_not_plot"] and (not os.path.exists(folder_path + f"/{stat_name}/")):
-            os.makedirs(folder_path + f"/{stat_name}/")
+            unique_points_matrix[beta_att_idx][beta_out_idx] = unique_data["mo_se_num_unique"]
+            unique_points_filtered_matrix[beta_att_idx][beta_out_idx] = unique_data["mo_se_num_filtered_unique"]
 
-        # filter_idx defines what feature we are using for intersecting with 0.
-        for filter_idx in range(num_feat_patterns):
 
-            # Title for internal use
-            if show_title:
-                title = (
-                    f"CORRm={correlations_from_weights} CTX={context_size} NUM_PAT={num_feat_patterns} "
-                    f"SEED={seed} Filter={filtering_range}")
-            else:
-                title = None
 
-            # Save path
-            filtered_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
-                                  str(ini_token_idx) + "-transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
-                                  "-filter_rg-" + str(filtering_range) + image_format)
+    folder_path_unique_points_agg = (folder_path + "/unique_points_agg/seed-" + str(seed)
+                                 + "-ini_token_idx-" + str(ini_token_idx) + ini_token_mode_str)
 
-            # Plotting and saving
-            print("Creating and saving diagram")
-            plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, num_feat_patterns,
-                                                         filtered_save_path, num_transient_steps_plot_arg,
-                                                         stat_name, folder_path, seed, ini_token_idx,
-                                                         ini_token_mode_str, filtering_range=filtering_range,
-                                                         show_max_num_patterns=show_max_num_patterns,
-                                                         save_not_plot=cfg["save_not_plot"], title=title,
-                                                         show_1_feat=show_1_feat[filter_idx])
+    create_dir(folder_path_unique_points_agg)
+    # Save unique points in mo_se
+    unique_data_agg_path = (
+                folder_path_unique_points_agg + "/beta_att-" + str(beta_att_idx) + "-beta_o-" + str(beta_out_idx) + ".npz")
 
-    # For internal use mostly, to decide the final plots. Creates low resolution images of the planes.
-    plot_lowres_planes = False
-    if plot_lowres_planes:
-        for idx in range(len(filtered_beta_list)):
 
-            print(f"Plotting lowres planes for beta {idx + 1}/{len(filtered_beta_list)} ")
+    np.savez_compressed(unique_data_agg_path,
+                        unique_points_matrix=unique_points_matrix,
+                        unique_points_filtered_matrix=unique_points_filtered_matrix)
 
-            beta_idx = min_beta_idx + idx
-            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(beta_idx)
-                               + ".npz")
+def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, num_betas_att,
+                num_betas_out, cfg):
 
-            # Load data
-            data = np.load(stats_data_path)
-            mo_se_results = data[f"mo_se_results_beta"]
-            # 3 feats
-            stats_to_plot = [["mo_se"], ["mo_se"]]
-            feat_idx = [[0], [1]]
-
-            plot_save_path_plane = (folder_path + f"/indiv_traj_lowres/seed-{str(seed)}/planes"
-                                    + f"/plane-beta-{worker_values_list[beta_idx]}-ini_token_idx-" +
-                                    str(ini_token_idx) + "-transient_steps-" +
-                                    str(cfg["num_transient_steps"]) + image_format)
-
-            if cfg["save_not_plot"]:
-                create_dir_from_filepath(plot_save_path_plane)
-
-            stat_results_beta_list_0 = [mo_se_results]
-            stat_results_beta_list_1 = [mo_se_results]
-
-            plot_save_plane(stat_results_beta_list_0,
-                            stat_results_beta_list_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx,
-                            tag_names=stats_to_plot, save_path=plot_save_path_plane,
-                            save_not_plot=cfg["save_not_plot"], lowres=True)
-
+    print()
 
 if __name__ == "__main__":
 
@@ -445,5 +389,5 @@ if __name__ == "__main__":
     #     load_from_context_mode = 1
     # else:
     #     load_from_context_mode = 0
-    # plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list, cfg,
-    #         stats_to_save_plot, load_from_context_mode=load_from_context_mode, show_title=show_title)
+    # plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, num_betas_att, num_betas_out, cfg,
+    #         )
