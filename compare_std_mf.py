@@ -8,6 +8,7 @@ from bifurcation_diagrams import define_ini_token
 from models.Embedding import Embedding
 from plotting.plotting import plot_2_statistics, plot_save_statistics, plot_save_plane
 import time
+from utils import create_dir
 
 if __name__ == "__main__":
 
@@ -16,7 +17,7 @@ if __name__ == "__main__":
     ########
     seed = 1
     beta_att = 2.2
-    beta_o = 2.3
+    beta_o = 1.26405
     scaling_att = 100
     positional_embedding_size = 2
     scaling_o = 1
@@ -80,7 +81,7 @@ if __name__ == "__main__":
     print("Simulating MF Transformer...")
 
     start = time.time()
-    HTMF.simulate(x0, max_steps=max_sim_steps)
+    # HTMF.simulate(x0, max_steps=max_sim_steps)
     end = time.time()
     print("Done...")
     print("MF Time in [s]", end - start)
@@ -90,7 +91,7 @@ if __name__ == "__main__":
     # STD Transformer
     #################
 
-    semantic_embedding_size = 990
+    semantic_embedding_size = tentative_semantic_embedding_size * 10000
 
     # Instantiate vocabulary
     embedding_size = semantic_embedding_size + positional_embedding_size
@@ -113,8 +114,11 @@ if __name__ == "__main__":
     x0 = define_ini_token(ini_token_from_w, HT, ini_token_idx, ini_tokens_list)
 
 
+    results_std_folder = f"results_std/beta{beta_o}/"
+    create_dir(results_std_folder)
 
-    num_std_runs = 25
+
+    num_std_runs = 1
 
     # Create variables for saving the mean statistics over experiments
     mean_mf_statistics = {}
@@ -122,8 +126,8 @@ if __name__ == "__main__":
     for name_i in statistics_names:
         mean_mf_statistics[name_i] = np.zeros((saved_steps, num_feat_patterns))
 
-    for i in range(num_std_runs):
-        print(f"Simulating Standard Transformer {i+1}...")
+    for run_i in range(num_std_runs):
+        print(f"Simulating Standard Transformer {run_i + 1}...")
         start = time.time()
         HT.reset_data()
         HT.simulate(x0, max_steps=max_sim_steps)
@@ -262,10 +266,13 @@ if __name__ == "__main__":
     stat_results_beta_list_0 = [HT.mf_statistics[stats_to_plot[feat_idx[0][0]][0]]]
     stat_results_beta_list_1 = [HT.mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
     # Plot plane
+    save_not_plot = True
+    plane_savepath = results_std_folder + f"run_{run_i}_plane.pdf"
+    title = fr"$\beta$ = {round(beta_o, 5)}"
     plot_save_plane(stat_results_beta_list_0,
                     stat_results_beta_list_1, saved_steps, feat_idx,
-                    tag_names=stats_to_plot, save_path=None, save_not_plot=False,
-                    title=rf"$\beta={beta_o}$ STD (traj 1)", larger_dots=False)
+                    tag_names=stats_to_plot, save_path=plane_savepath, save_not_plot=save_not_plot,
+                    title=title, larger_dots=False)
 
     # Isolated traj 1
     feat_idx = [[0], [1]]
@@ -273,10 +280,12 @@ if __name__ == "__main__":
     stat_results_beta_list_0 = [mean_mf_statistics[stats_to_plot[feat_idx[0][0]][0]]]
     stat_results_beta_list_1 = [mean_mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
     # Plot plane
+
+
     plot_save_plane(stat_results_beta_list_0,
                     stat_results_beta_list_1, saved_steps, feat_idx,
                     tag_names=stats_to_plot, save_path=None, save_not_plot=False,
-                    title=rf"$\beta={beta_o}$ Mean STD ({num_std_runs} trajs)", larger_dots=False)
+                    title=rf"$\beta={beta_o}$ STD (avg trajs)", larger_dots=False)
 
 
     print("Done.")
