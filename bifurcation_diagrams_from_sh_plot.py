@@ -42,14 +42,14 @@ if __name__ == "__main__":
     num_feat_patterns = args.num_feat_patterns
     ini_token_idx = args.ini_token_idx
     load_from_context_mode = args.load_from_context_mode
-    show_title = True
+    show_title = False
 
     if context_size > 2 ** positional_embedding_size:
         raise ("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise ("You cannot discard more timesteps than you are simulating.")
 
-    stats_to_save_plot = ["mo", "mo_se", "att"]
+    stats_to_save_plot = ["mo_se"]
 
     start = time.time()
 
