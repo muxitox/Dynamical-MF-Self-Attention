@@ -324,7 +324,7 @@ def rejoin_data(num_feat_patterns, seed, positional_embedding_size, context_size
     create_dir(folder_path_unique_points_agg)
     # Save unique points in mo_se
     unique_data_agg_path = (
-                folder_path_unique_points_agg + "/beta_att-" + str(beta_att_idx) + "-beta_o-" + str(beta_out_idx) + ".npz")
+                folder_path_unique_points_agg + "/aggretaded_matrix" + ".npz")
 
 
     np.savez_compressed(unique_data_agg_path,

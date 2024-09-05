@@ -1,6 +1,7 @@
 import yaml
 import numpy as np
 from phase_diagrams import rejoin_data
+from plotting.plotting import plot_phase_diagram
 
 if __name__ == "__main__":
 
@@ -12,8 +13,8 @@ if __name__ == "__main__":
     positional_embedding_size = 2
     context_size = 2 ** positional_embedding_size
 
-    num_bifurcation_values_att = 15  # Number of x values to examine in the bifurcation diagram
-    num_bifurcation_values_o = 5  # Number of x values to examine in the bifurcation diagram
+    num_bifurcation_values_att = 200  # Number of x values to examine in the bifurcation diagram
+    num_bifurcation_values_o = 200  # Number of x values to examine in the bifurcation diagram
 
     att_values_list = np.linspace(cfg["min_bifurcation_value_beta"], cfg["max_bifurcation_value_beta"],
                                      num_bifurcation_values_att)  # Betas or Epsilon values
@@ -34,5 +35,19 @@ if __name__ == "__main__":
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise ("You cannot discard more timesteps than you are simulating.")
 
-    rejoin_data(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, att_values_list,
-                out_values_list, cfg)
+    # rejoin_data(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, att_values_list,
+    #             out_values_list, cfg)
+
+    data = np.load("results_phase/agg_matrix.npz")
+
+    unique_points_matrix = data['unique_points_matrix']
+    unique_points_filtered_matrix = data['unique_points_filtered_matrix']
+
+    print(unique_points_matrix)
+    print(unique_points_filtered_matrix, att_values_list, out_values_list)
+
+    save_path = "results_phase/phase_diagram.png"
+    plot_phase_diagram(unique_points_matrix, unique_points_filtered_matrix, att_values_list, out_values_list, save_path)
+
+
+

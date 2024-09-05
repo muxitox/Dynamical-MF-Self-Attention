@@ -520,6 +520,52 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         plt.show()
     plt.close()
 
+def plot_phase_diagram(unique_matrix, unique_filtered_matrix, att_values_list, out_values_list, save_path):
+
+    num_betas_att = len(att_values_list)
+    num_betas_out = len(out_values_list)
+    im_array = np.ones((num_betas_att, num_betas_out, 4)) * colors[-1]  # By default, white color
+
+    for i in range(num_betas_att):
+        for j in range(num_betas_out):
+            if unique_matrix[i][j] <= 80:
+                # periodic
+                im_array[i][j] = cmap(3/3)
+                # pass
+            elif unique_matrix[i][j] <= 625:
+                # quasi
+                im_array[i][j] = cmap(1.5/4)
+            else:
+                # chaos
+                im_array[i][j] = cmap(2.5/4)
+
+    plt.imshow(im_array, cmap=cmap, interpolation=None, extent=(att_values_list[0], att_values_list[-1],
+                                                                out_values_list[0], out_values_list[-1]),
+                    rasterized=True, aspect="auto", alpha=1)
+
+    # Plot tiny points outside the map for the legend.
+    plt.plot(20, 0, 'o', c=cmap(3 / 3), label="periodic")
+    plt.plot(20, 0, 'o', c=cmap(1.5 / 4), label="quasi-periodic")
+    plt.plot(20, 0, 'o', c=cmap(2.5 / 4), label="chaotic")
+
+    kwargs = {}
+    kwargs["rotation"] = "horizontal"
+    kwargs["verticalalignment"] = "center"
+    labelpad = 15
+
+    plt.xlim([out_values_list[0], out_values_list[-1]],)
+
+    plt.ylabel(rf"$\gamma$", labelpad=labelpad, **kwargs)
+    plt.xlabel(rf"$\beta$")
+    plt.tight_layout()
+    plt.legend(loc="upper left", fontsize=12)
+    plt.savefig(save_path)
+    plt.show()
+
+
+    plt.close()
+
+
 
 def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps, label_tag,
                       show_max_num_patterns=None, additional_msg=""):
