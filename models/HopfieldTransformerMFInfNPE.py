@@ -289,6 +289,89 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return key_prob
 
+    def der_att_dmv(self, key_prob_unnorm):
+
+        if self.run_exact_inf and \
+                (self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)"):
+
+            key_prob_unnorm *= self.inf_normalization_att
+            key_prob = self.softmax(key_prob_unnorm)
+
+        else:
+            raise Exception("\"normalize_weights_str_att\" is not either \"N**2\" or \"N**2*np.sqrt(M)\". "
+                            "Please implement this method")
+
+        datt_dmv = self.context_size * key_prob
+
+        # The derivative of the attention wrt mv has the form (1,context_size) since the derivative is the same for
+        # different b indices
+
+        return datt_dmv
+
+
+    def der_att_dmq(self, t, key_prob_unnorm):
+
+        effective_context_size = min(self.context_size, t + 1)
+
+        key_prob = self.softmax(key_prob_unnorm)
+        Z = np.sum(key_prob_unnorm)
+
+        # TODO: check scaling factors
+
+        derv_part_1_loop = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        for a in range(self.num_feat_patterns):
+            for c in range(self.num_feat_patterns):
+                for d in range(effective_context_size):
+                    derv_part_1_loop[a, c] += (self.mv_window["mv"][d, a] * self.mk_window["mk"][d, c]
+                                             * key_prob_unnorm[d])
+        derv_part_1_loop /= Z
+
+        derv_part_2_loop = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        for a in range(self.num_feat_patterns):
+            for c in range(self.num_feat_patterns):
+                prod1 = 0
+                prod2 = 0
+                for d in range(effective_context_size):
+                    prod1 += (self.mv_window["mv"][d, a] * key_prob_unnorm[d])
+                    prod2 += (self.mk_window["mk"][d, c] * key_prob_unnorm[d])
+                    derv_part_2_loop[a, c] = prod1 * prod2
+
+
+        # TODO: review this optimization, I think it is mostly wrong
+        mvd_mkd_1 = np.einsum("di,dj->dij", self.mf_statistics["mk"][t, :effective_context_size],
+                              self.mf_statistics["mv"][t, :effective_context_size])
+        derv_part_1 = self.beta_att * (
+                    1 / self.normalizing_constant) * self.embedding_size ** 3 * mvd_mkd_1.T @ key_prob
+
+        att_mk_t = (self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 *
+                    (self.mf_statistics["mk"][t, :effective_context_size].T @ key_prob))
+
+        att_mv_t = self.embedding_size * (self.mf_statistics["mv"][t, :effective_context_size].T @ key_prob)
+        derv_part_2 = np.einsum("i,j->ij", att_mk_t, att_mv_t).T
+
+        print("Test1", derv_part_1 - derv_part_12)
+        print("Test2", derv_part_2 - derv_part_22)
+
+        derv = derv_part_1 - derv_part_2
+        print(derv)
+        # The derivative of the attention wrt mv has the form (1,context_size) since the derivative is the same for
+        # different b indices
+
+        return derv  # Dimensions are (att_b, mq_c)
+
+
+    def attention_derivatives(self, t):
+        effective_context_size = min(self.context_size, t + 1)
+        # Put in common queries and keys
+        mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
+                        optimize=True)
+
+        # Scale
+        key_prob_unnorm = self.beta_att * self.scaling_att * mqk
+
+
+        dAdmv = self.der_att_dmv(self, key_prob_unnorm)
+
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
         if self.run_exact_inf:
@@ -337,10 +420,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def attention(self, t):
 
-        effective_context_size = min(self.context_size, t + 1)
-        # Put in common queries and keys
-        mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
-                        optimize=True)
+
 
         # Scale
         key_prob_unnorm = self.beta_att * self.scaling_att * mqk
