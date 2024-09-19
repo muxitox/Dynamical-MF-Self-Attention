@@ -289,7 +289,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return key_prob
 
-    def der_att_dmv(self, key_prob_unnorm):
+    def der_att_dmv(self, key_prob_unnorm, effective_context_size):
 
         if self.run_exact_inf and \
                 (self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)"):
@@ -301,7 +301,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             raise Exception("\"normalize_weights_str_att\" is not either \"N**2\" or \"N**2*np.sqrt(M)\". "
                             "Please implement this method")
 
-        datt_dmv = self.context_size * key_prob
+        datt_dmv = effective_context_size * key_prob
 
         # The derivative of the attention wrt mv has the form (1,context_size) since the derivative is the same for
         # different b indices
@@ -309,55 +309,89 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         return datt_dmv
 
 
-    def der_att_dmq(self, t, key_prob_unnorm):
+    def der_att_dmq(self, key_prob_unnorm, effective_context_size):
 
-        effective_context_size = min(self.context_size, t + 1)
 
-        key_prob = self.softmax(key_prob_unnorm)
+        Z = np.sum(key_prob_unnorm)
+
+        # TODO: check scaling factors
+        mk_exp = np.multiply(self.mk_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
+        derv_part_1 = np.einsum("da,dc->ac", self.mv_window[:effective_context_size, :], mk_exp[:,:])
+        derv_part_1 /= Z
+
+        mv_exp = np.multiply(self.mv_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
+        derv_part_2 = np.einsum("a,c->ac", np.sum(mv_exp, axis=0), np.sum(mk_exp, axis=0))
+        derv_part_2 /= Z**2
+
+        derv = derv_part_1 - derv_part_2
+
+        return derv  # Dimensions are (att_a, mq_c)
+
+
+    def der_att_dmq_loopy(self, key_prob_unnorm, effective_context_size):
+
         Z = np.sum(key_prob_unnorm)
 
         # TODO: check scaling factors
 
         derv_part_1_loop = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
-        for a in range(self.num_feat_patterns):
-            for c in range(self.num_feat_patterns):
-                for d in range(effective_context_size):
-                    derv_part_1_loop[a, c] += (self.mv_window["mv"][d, a] * self.mk_window["mk"][d, c]
-                                             * key_prob_unnorm[d])
-        derv_part_1_loop /= Z
-
         derv_part_2_loop = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+
         for a in range(self.num_feat_patterns):
             for c in range(self.num_feat_patterns):
                 prod1 = 0
                 prod2 = 0
                 for d in range(effective_context_size):
-                    prod1 += (self.mv_window["mv"][d, a] * key_prob_unnorm[d])
-                    prod2 += (self.mk_window["mk"][d, c] * key_prob_unnorm[d])
+                    derv_part_1_loop[a, c] += (self.mv_window[d, a] * self.mk_window[d, c]
+                                             * key_prob_unnorm[d])
+
+                    prod1 += (self.mv_window[d, a] * key_prob_unnorm[d])
+                    prod2 += (self.mk_window[d, c] * key_prob_unnorm[d])
                     derv_part_2_loop[a, c] = prod1 * prod2
+        derv_part_1_loop /= Z
+        derv_part_2_loop /= Z**2
 
 
-        # TODO: review this optimization, I think it is mostly wrong
-        mvd_mkd_1 = np.einsum("di,dj->dij", self.mf_statistics["mk"][t, :effective_context_size],
-                              self.mf_statistics["mv"][t, :effective_context_size])
-        derv_part_1 = self.beta_att * (
-                    1 / self.normalizing_constant) * self.embedding_size ** 3 * mvd_mkd_1.T @ key_prob
+        derv_loop = derv_part_1_loop - derv_part_2_loop
 
-        att_mk_t = (self.beta_att * (1 / self.normalizing_constant) * self.embedding_size ** 2 *
-                    (self.mf_statistics["mk"][t, :effective_context_size].T @ key_prob))
+        return derv_loop  # Dimensions are (att_a, mq_c)
 
-        att_mv_t = self.embedding_size * (self.mf_statistics["mv"][t, :effective_context_size].T @ key_prob)
-        derv_part_2 = np.einsum("i,j->ij", att_mk_t, att_mv_t).T
+    def der_att_dmk_loopy(self, key_prob_unnorm, effective_context_size):
 
-        print("Test1", derv_part_1 - derv_part_12)
-        print("Test2", derv_part_2 - derv_part_22)
+        Z = np.sum(key_prob_unnorm)
 
-        derv = derv_part_1 - derv_part_2
-        print(derv)
-        # The derivative of the attention wrt mv has the form (1,context_size) since the derivative is the same for
-        # different b indices
+        # TODO: check scaling factors
 
-        return derv  # Dimensions are (att_b, mq_c)
+        derv_loopy = np.zeros((self.num_feat_patterns, self.num_feat_patterns, effective_context_size))
+
+        for a in range(self.num_feat_patterns):
+            term2_a = 0
+            for d in range(effective_context_size):
+                term2_a += (self.mv_window[d, a] * key_prob_unnorm[d])
+            term2_a /= Z**2
+
+            for c in range(self.num_feat_patterns):
+                for u in range(effective_context_size):
+                    derv_loopy[a, c, u] = self.mq_window[c] * key_prob_unnorm[u] * (self.mv_window[u, a] / Z - term2_a)
+
+        return derv_loopy  # Dimensions are (att_a, mk_c, mk_u)
+
+    def der_att_dmk(self, key_prob_unnorm, effective_context_size):
+
+        Z = np.sum(key_prob_unnorm)
+
+        # TODO: check scaling factors
+
+        derv_term1 = self.mv_window[:effective_context_size, :] / Z
+        mv_exp = np.multiply(self.mv_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
+        derv_term2 = np.sum(mv_exp, axis=0) / Z ** 2
+
+        derv_prod2 = derv_term1 - derv_term2
+
+        mq_exp = np.einsum("c,u->uc", self.mq_window, key_prob_unnorm)
+        derv = np.einsum("dc,da->acd", mq_exp, derv_prod2)
+
+        return derv  # Dimensions are (att_a, mk_c, mk_u)
 
 
     def attention_derivatives(self, t):
@@ -365,15 +399,18 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Put in common queries and keys
         mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
                         optimize=True)
-
         # Scale
         key_prob_unnorm = self.beta_att * self.scaling_att * mqk
 
+        dAdmv = self.der_att_dmv(key_prob_unnorm, effective_context_size)
+        dAdmq = self.der_att_dmq(key_prob_unnorm, effective_context_size)
+        dAdmk = self.der_att_dmk(key_prob_unnorm, effective_context_size)
 
-        dAdmv = self.der_att_dmv(self, key_prob_unnorm)
 
-    def jacobian(self,t):
-        self.attention_derivatives(self,t)
+        return dAdmv, dAdmq, dAdmk
+
+    def jacobian(self, t):
+        dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
@@ -619,10 +656,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.attention(t=0)
 
         # TODO: uncomment this and check if boundary conditions are met
-        # self.jacobian()
+        # self.jacobian(t)
 
         for t in range(1, max_steps):
             self.compute_mf(t)
             self.attention(t)
 
-            self.jacobian()
+            self.jacobian(t)
