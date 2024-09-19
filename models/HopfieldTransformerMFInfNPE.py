@@ -372,6 +372,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         dAdmv = self.der_att_dmv(self, key_prob_unnorm)
 
+    def jacobian(self,t):
+        self.attention_derivatives(self,t)
+
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
         if self.run_exact_inf:
@@ -418,9 +421,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         if t >= self.min_saved_step:
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
 
-    def attention(self, t):
+    def attention(self, t, mqk):
 
 
+        effective_context_size = min(self.context_size, t + 1)
+        # Put in common queries and keys
+        mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
+                        optimize=True)
 
         # Scale
         key_prob_unnorm = self.beta_att * self.scaling_att * mqk
@@ -604,6 +611,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
             self.attention(t)
+            self.jacobian(t)
 
     def simulate(self, x0, max_steps):
 
@@ -611,6 +619,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.compute_means_from_data(x0, t=0)
         self.attention(t=0)
 
+        # TODO: uncomment this and check if boundary conditions are met
+        # self.jacobian()
+
         for t in range(1, max_steps):
             self.compute_mf(t)
             self.attention(t)
+
+            self.jacobian()
