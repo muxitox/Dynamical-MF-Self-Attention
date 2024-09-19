@@ -421,8 +421,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         if t >= self.min_saved_step:
             self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
 
-    def attention(self, t, mqk):
-
+    def attention(self, t):
 
         effective_context_size = min(self.context_size, t + 1)
         # Put in common queries and keys
