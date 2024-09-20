@@ -417,8 +417,43 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return dAdmv, dAdmq, dAdmk
 
-    def jacobian(self, t):
+    def jacobian(self, t, att):
         dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
+
+
+        if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
+
+            sign_att_patterns = (self.beta_o * self.scaling_o *
+                                 np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
+                                           att))
+
+            idx_not_zero = np.where(sign_att_patterns != 0)
+            # If result is not 0, normalize by inf (avoids NaNs)
+            sign_att_patterns[idx_not_zero] *= self.inf_normalization_o
+            d_tanh_j_signs = 1 - np.tanh(sign_att_patterns)**2
+        else:  # Otherwise, handle it here, just compute tanh
+            d_tanh_j_signs = 1 - np.tanh(self.beta_o * self.scaling_o * (1 / self.normalizing_constant_o) *
+                                   np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
+                                             att))**2
+
+        # TODO: review all of this, above all the shape of the final dmv_dmv
+
+        # Compute the semantic part of every mean field needed for the attention
+        dm_alpha_se = {}
+        for feat_name in self.features_names:
+            dm_alpha_se[feat_name] = (self.se_per_contribution * np.einsum("jb,j->b",
+                                                                          self.corr_signed[feat_name], d_tanh_j_signs)
+                                     / 2 ** (self.num_feat_patterns - 1)) # Size (num_features)
+
+
+        sign_dAtt_patterns_dmv = (self.beta_o * self.scaling_o *
+                                 np.einsum("jb,c->bc", self.sign_matrix[:, :self.num_feat_patterns],
+                                           dAdmv))
+
+        dmv_mv = np.einsum("a,bc->ac", dm_alpha_se["v"], sign_dAtt_patterns_dmv)
+
+        print()
+
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
@@ -647,7 +682,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
             self.attention(t)
-            self.jacobian(t)
+            self.jacobian(t, self.att_window)
 
     def simulate(self, x0, max_steps):
 
@@ -662,4 +697,4 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.compute_mf(t)
             self.attention(t)
 
-            self.jacobian(t)
+            self.jacobian(t, self.att_window)
