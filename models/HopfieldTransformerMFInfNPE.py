@@ -116,6 +116,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         matrix_list = [self.Wo, self.Wv, self.Wq, self.Wk]
 
+        self.W_dict = {}
+        self.features_names = ["o", "v", "q", "k"]
+        self.W_dict["o"] = self.Wo
+        self.W_dict["v"] = self.Wv
+        self.W_dict["q"] = self.Wq
+        self.W_dict["k"] = self.Wk
+
         if correlations_from_weights == 3:  # create uniform +1 -1 segments and combine them
 
             segment_size = self.se_bit_size / num_segments_corrs
@@ -230,10 +237,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.even_corr_o_q = np.vstack((self.pair_corr_o_q, self.quad_corr_o_q))
 
         # Pre-compute the signs of the correlations
-        self.corr_signed_o = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_o)
-        self.corr_signed_v = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_v)
-        self.corr_signed_q = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_q)
-        self.corr_signed_k = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_k)
+        self.corr_signed = {}
+        self.corr_signed["o"] = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_o)
+        self.corr_signed["v"] = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_v)
+        self.corr_signed["q"] = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_q)
+        self.corr_signed["k"] = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_k)
 
     def set_beta_o(self, beta_o):
         self.beta_o = beta_o
@@ -509,34 +517,34 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         if ponder_pe:
 
             self.mv_window[self.context_index, :] = \
-                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.Wv[:, :self.se_bit_size].T / self.se_bit_size) +
-                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wv[:, -self.pe_bit_size:].T / self.pe_bit_size))
+                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.W_dict["v"][:, :self.se_bit_size].T / self.se_bit_size) +
+                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.W_dict["v"][:, -self.pe_bit_size:].T / self.pe_bit_size))
 
             self.mq_window = \
-                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.Wq[:, :self.se_bit_size].T / self.se_bit_size) +
-                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wq[:, -self.pe_bit_size:].T / self.pe_bit_size))
+                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.W_dict["q"][:, :self.se_bit_size].T / self.se_bit_size) +
+                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.W_dict["q"][:, -self.pe_bit_size:].T / self.pe_bit_size))
 
             self.mk_window[self.context_index, :] = \
-                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.Wk[:, :self.se_bit_size].T / self.se_bit_size) +
-                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wk[:, -self.pe_bit_size:].T / self.pe_bit_size))
+                ((self.se_per_contribution * x0[:self.se_bit_size] @ self.W_dict["k"][:, :self.se_bit_size].T / self.se_bit_size) +
+                 ((1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.W_dict["k"][:, -self.pe_bit_size:].T / self.pe_bit_size))
 
             if t >= self.min_saved_step:
-                mo_se =  x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+                mo_se =  x0[:self.se_bit_size] @ self.W_dict["o"][:, :self.se_bit_size].T / self.se_bit_size
 
                 mo = (self.se_per_contribution * mo_se +
-                      (1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.Wo[:, -self.pe_bit_size:].T / self.pe_bit_size)
+                      (1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.W_dict["o"][:, -self.pe_bit_size:].T / self.pe_bit_size)
 
                 self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
                                 self.mk_window[self.context_index, :])
 
         else:
-            self.mv_window[self.context_index, :] = x0 @ self.Wv.T / self.embedding_size
-            self.mq_window = x0 @ self.Wq.T / self.embedding_size
-            self.mk_window[self.context_index, :] = x0 @ self.Wk.T / self.embedding_size
+            self.mv_window[self.context_index, :] = x0 @ self.W_dict["v"].T / self.embedding_size
+            self.mq_window = x0 @ self.W_dict["q"].T / self.embedding_size
+            self.mk_window[self.context_index, :] = x0 @ self.W_dict["k"].T / self.embedding_size
 
             if t >= self.min_saved_step:
-                mo = x0 @ self.Wo.T / self.embedding_size
-                mo_se = x0[:self.se_bit_size] @ self.Wo[:, :self.se_bit_size].T / self.se_bit_size
+                mo = x0 @ self.W_dict["o"].T / self.embedding_size
+                mo_se = x0[:self.se_bit_size] @ self.W_dict["o"][:, :self.se_bit_size].T / self.se_bit_size
 
                 self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
                                 self.mk_window[self.context_index, :])
@@ -570,16 +578,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Encode the position
         pos_vec = self.vocab.encode_pos(t % self.context_size)
         # Positional Embedding contribution
-        pe_contribution_o = np.einsum('bi,i ->b', self.Wo[:, self.se_bit_size:],
-                                      pos_vec, optimize=True) / self.pe_bit_size
-
-        pe_contribution_v = np.einsum('bi,i ->b', self.Wv[:, self.se_bit_size:],
-                                      pos_vec, optimize=True) / self.pe_bit_size
-
-        pe_contribution_q = np.einsum('bi,i ->b', self.Wq[:, self.se_bit_size:],
-                                      pos_vec, optimize=True) / self.pe_bit_size
-
-        pe_contribution_k = np.einsum('bi,i ->b', self.Wk[:, self.se_bit_size:],
+        pe_contribution = {}
+        for feat_name in self.features_names:
+            pe_contribution[feat_name] = np.einsum('bi,i ->b', self.W_dict[feat_name][:, self.se_bit_size:],
                                       pos_vec, optimize=True) / self.pe_bit_size
 
         if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
@@ -600,17 +601,16 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Compute relative context index
         self.context_index = t % self.context_size
 
-        mv_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_v, tanh_j_signs)
-                 / 2 ** (self.num_feat_patterns - 1))
-        self.mv_window[self.context_index] = mv_se + (1 - self.se_per_contribution) * pe_contribution_v
+        # Compute the semantic part of every mean field needed for the attention
+        m_alpha_se = {}
+        for feat_name in self.features_names:
+            m_alpha_se[feat_name] = (self.se_per_contribution * np.einsum("jb,j->b",
+                                                                          self.corr_signed[feat_name], tanh_j_signs)
+                                 / 2 ** (self.num_feat_patterns - 1))
 
-        mq_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_q, tanh_j_signs)
-                 / 2 ** (self.num_feat_patterns - 1))
-        self.mq_window = mq_se + (1 - self.se_per_contribution) * pe_contribution_q
-
-        mk_se = (self.se_per_contribution * np.einsum("jb,j->b", self.corr_signed_k, tanh_j_signs)
-                 / 2 ** (self.num_feat_patterns - 1))
-        self.mk_window[self.context_index] = mk_se + (1 - self.se_per_contribution) * pe_contribution_k
+        self.mv_window[self.context_index] = m_alpha_se["v"] + (1 - self.se_per_contribution) * pe_contribution["v"]
+        self.mq_window = m_alpha_se["q"] + (1 - self.se_per_contribution) * pe_contribution["q"]
+        self.mk_window[self.context_index] = m_alpha_se["k"] + (1 - self.se_per_contribution) * pe_contribution["k"]
 
         # print("mq", t, self.mq_window)
         # print("mk", t, self.mk_window)
@@ -618,14 +618,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Compute mean-field for o. Separate the behavior of the Semantic Embedding.
         if t >= self.min_saved_step:
-            mo_se = (np.einsum("jb,j->b", self.corr_signed_o, tanh_j_signs)
+            m_alpha_se["o"] = (np.einsum("jb,j->b", self.corr_signed["o"], tanh_j_signs)
                      / 2 ** (self.num_feat_patterns - 1))
-            mo = (self.se_per_contribution * mo_se + (1 - self.se_per_contribution) * pe_contribution_o)
+            mo = (self.se_per_contribution * m_alpha_se["o"] + (1 - self.se_per_contribution) * pe_contribution["o"])
 
             # print('mo', t, mo_se)
             # if t >= 17:
             #     pass
-            self.save_stats(t, mo, mo_se, self.mv_window[self.context_index, :], self.mq_window,
+            self.save_stats(t, mo, m_alpha_se["o"], self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
     def shift_d_window(self, shift):
