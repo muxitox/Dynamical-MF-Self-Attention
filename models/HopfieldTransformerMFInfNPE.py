@@ -237,11 +237,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.even_corr_o_q = np.vstack((self.pair_corr_o_q, self.quad_corr_o_q))
 
         # Pre-compute the signs of the correlations
+        # Per every pattern a, we have j combinations of correlations with other patterns (a,)
         self.corr_signed = {}
-        self.corr_signed["o"] = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_o)
-        self.corr_signed["v"] = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_v)
-        self.corr_signed["q"] = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_q)
-        self.corr_signed["k"] = np.einsum("ja,ab->jb", self.sign_matrix, self.even_corr_o_k)
+        self.corr_signed["o"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_o)
+        self.corr_signed["v"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_v)
+        self.corr_signed["q"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_q)
+        self.corr_signed["k"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_k)
 
     def set_beta_o(self, beta_o):
         self.beta_o = beta_o
@@ -309,10 +310,16 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             raise Exception("\"normalize_weights_str_att\" is not either \"N**2\" or \"N**2*np.sqrt(M)\". "
                             "Please implement this method")
 
-        datt_dmv = effective_context_size * key_prob
+        datt_dmv_diag = effective_context_size * key_prob
 
-        # The derivative of the attention wrt mv has the form (1,context_size) since the derivative is the same for
-        # different b indices
+        # We have the derivative of A_a wrt m^v_{b,d} for different d and a=c. When a!=c it's all zeros.
+        # All the derivatives are equal for the different a's. It only changes wrt which d we are deriving to.
+
+        # Create matrix of zeros in 3D (A_a, mv_c, context_size)
+        datt_dmv = np.zeros((self.num_feat_patterns, self.num_feat_patterns, self.context_size))
+        # Set only the diagonal elements, because when a!=c, all elements are zero
+        diag_indices = np.diag_indices(self.num_feat_patterns, ndim=2)
+        datt_dmv[diag_indices] = datt_dmv_diag
 
         return datt_dmv
 
@@ -441,16 +448,16 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Compute the semantic part of every mean field needed for the attention
         dm_alpha_se = {}
         for feat_name in self.features_names:
-            dm_alpha_se[feat_name] = (self.se_per_contribution * np.einsum("jb,j->b",
+            dm_alpha_se[feat_name] = (self.se_per_contribution * np.einsum("ja,j->a",
                                                                           self.corr_signed[feat_name], d_tanh_j_signs)
                                      / 2 ** (self.num_feat_patterns - 1)) # Size (num_features)
 
 
         sign_dAtt_patterns_dmv = (self.beta_o * self.scaling_o *
-                                 np.einsum("jb,c->bc", self.sign_matrix[:, :self.num_feat_patterns],
+                                 np.einsum("jb,bcd->bcd", self.sign_matrix[:, :self.num_feat_patterns],
                                            dAdmv))
 
-        dmv_mv = np.einsum("a,bc->ac", dm_alpha_se["v"], sign_dAtt_patterns_dmv)
+        dmv_mv = np.einsum("a,bcd->acd", dm_alpha_se["v"], sign_dAtt_patterns_dmv)
 
         print()
 
@@ -639,7 +646,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Compute the semantic part of every mean field needed for the attention
         m_alpha_se = {}
         for feat_name in self.features_names:
-            m_alpha_se[feat_name] = (self.se_per_contribution * np.einsum("jb,j->b",
+            # corr_signed has shape (num_combinations_signs, num_features_a).
+            # For every feature a, you put together all the j combinations of signs
+            m_alpha_se[feat_name] = (self.se_per_contribution * np.einsum("ja,j->a",
                                                                           self.corr_signed[feat_name], tanh_j_signs)
                                  / 2 ** (self.num_feat_patterns - 1))
 
