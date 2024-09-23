@@ -340,7 +340,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         derv = derv_part_1 - derv_part_2
 
-        return derv  # Dimensions are (att_a, mq_c)
+        # derv dimensions are (att_a, mq_c)
+
+        # Create matrix of zeros in 3D (A_a, mq_c, context_size)
+        datt_dmq = np.zeros((self.num_feat_patterns, self.num_feat_patterns, self.context_size))
+        # In u=0 (current time) we set the derivative, the rest of the derivatives are 0.
+        datt_dmq[:,:,0] = derv
+
+        return datt_dmq
 
 
     def der_att_dmq_loopy(self, key_prob_unnorm, effective_context_size):
@@ -443,8 +450,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                                    np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
                                              att))**2
 
-        # TODO: review all of this, above all the shape of the final dmv_dmv
-
         # Compute the semantic part of every mean field needed for the attention
         dm_alpha_se = {}
         for feat_name in self.features_names:
@@ -457,7 +462,21 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                                  np.einsum("jb,bcd->bcd", self.sign_matrix[:, :self.num_feat_patterns],
                                            dAdmv))
 
+        sign_dAtt_patterns_dmq = (self.beta_o * self.scaling_o *
+                                  np.einsum("jb,bcd->bcd", self.sign_matrix[:, :self.num_feat_patterns],
+                                            dAdmq))
+
+        sign_dAtt_patterns_dmk = (self.beta_o * self.scaling_o *
+                                  np.einsum("jb,bcd->bcd", self.sign_matrix[:, :self.num_feat_patterns],
+                                            dAdmk))
+
         dmv_mv = np.einsum("a,bcd->acd", dm_alpha_se["v"], sign_dAtt_patterns_dmv)
+        dmv_mq = np.einsum("a,bcd->acd", dm_alpha_se["v"], sign_dAtt_patterns_dmq)
+        dmv_mk = np.einsum("a,bcd->acd", dm_alpha_se["v"], sign_dAtt_patterns_dmk)
+
+        dmq_mv = np.einsum("a,bcd->acd", dm_alpha_se["q"], sign_dAtt_patterns_dmv)
+        dmq_mq = np.einsum("a,bcd->acd", dm_alpha_se["q"], sign_dAtt_patterns_dmq)
+        dmq_mk = np.einsum("a,bcd->acd", dm_alpha_se["q"], sign_dAtt_patterns_dmk)
 
         print()
 
