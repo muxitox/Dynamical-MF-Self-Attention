@@ -338,14 +338,15 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         derv_part_2 = np.einsum("a,c->ac", np.sum(mv_exp, axis=0), np.sum(mk_exp, axis=0))
         derv_part_2 /= Z**2
 
-        derv = derv_part_1 - derv_part_2
+        datt_dmq = derv_part_1 - derv_part_2
 
-        # derv dimensions are (att_a, mq_c)
+        # derv dimensions are (att_a, mq_c) we don't have a contex_size dimension because we dont keep copies of q
+        # at different times
 
-        # Create matrix of zeros in 3D (A_a, mq_c, context_size)
-        datt_dmq = np.zeros((self.num_feat_patterns, self.num_feat_patterns, self.context_size))
-        # In u=0 (current time) we set the derivative, the rest of the derivatives are 0.
-        datt_dmq[:,:,0] = derv
+        # # WRONG: Create matrix of zeros in 3D (A_a, mq_c, context_size)
+        # datt_dmq = np.zeros((self.num_feat_patterns, self.num_feat_patterns, self.context_size))
+        # # In u=0 (current time) we set the derivative, the rest of the derivatives are 0.
+        # datt_dmq[:,:,0] = derv
 
         return datt_dmq
 
@@ -431,10 +432,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return dAdmv, dAdmq, dAdmk
 
-    def jacobian(self, t, att):
-        dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
 
-
+    def mean_field_derivatives(self, att, dAdm):
         if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
 
             sign_att_patterns = (self.beta_o * self.scaling_o *
@@ -457,28 +456,127 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                                                                           self.corr_signed[feat_name], d_tanh_j_signs)
                                      / 2 ** (self.num_feat_patterns - 1)) # Size (num_features)
 
-
-        sign_dAtt_patterns_dmv = (self.beta_o * self.scaling_o *
+        sign_dAtt_patterns_dm = {}
+        for feat_name in self.features_names:
+            if feat_name == "o":  # We only have the derivatives wrt v q k
+                continue
+            elif feat_name == "q":
+                sign_dAtt_patterns_dm[feat_name] = (self.beta_o * self.scaling_o *
+                                                    np.einsum("jb,bc->bc",
+                                                              self.sign_matrix[:, :self.num_feat_patterns],
+                                                              dAdm[feat_name]))
+            else:
+                sign_dAtt_patterns_dm[feat_name] = (self.beta_o * self.scaling_o *
                                  np.einsum("jb,bcd->bcd", self.sign_matrix[:, :self.num_feat_patterns],
-                                           dAdmv))
+                                           dAdm[feat_name]))
 
-        sign_dAtt_patterns_dmq = (self.beta_o * self.scaling_o *
-                                  np.einsum("jb,bcd->bcd", self.sign_matrix[:, :self.num_feat_patterns],
-                                            dAdmq))
+        # Compute the derivatives of the mean-fields wrt to each other
+        dm_dm = {}
+        for feat_name_1 in self.features_names:
+            dm_dm[feat_name_1] = {}
+            for feat_name_2 in self.features_names:
+                if feat_name_2 == "o":  # We only compute the derivatives wrt v q k, ("o" does not affect the evolution)
+                    continue
+                elif feat_name_2 == "q":
+                    dm_dm[feat_name_1][feat_name_2] = (
+                        np.einsum("a,bc->ac", dm_alpha_se[feat_name_1],
+                                  sign_dAtt_patterns_dm[feat_name_2]))
+                else:
+                    dm_dm[feat_name_1][feat_name_2] = (
+                        np.einsum("a,bcd->acd", dm_alpha_se[feat_name_1],
+                                  sign_dAtt_patterns_dm[feat_name_2]))
 
-        sign_dAtt_patterns_dmk = (self.beta_o * self.scaling_o *
-                                  np.einsum("jb,bcd->bcd", self.sign_matrix[:, :self.num_feat_patterns],
-                                            dAdmk))
+        return dm_dm
 
-        dmv_mv = np.einsum("a,bcd->acd", dm_alpha_se["v"], sign_dAtt_patterns_dmv)
-        dmv_mq = np.einsum("a,bcd->acd", dm_alpha_se["v"], sign_dAtt_patterns_dmq)
-        dmv_mk = np.einsum("a,bcd->acd", dm_alpha_se["v"], sign_dAtt_patterns_dmk)
 
-        dmq_mv = np.einsum("a,bcd->acd", dm_alpha_se["q"], sign_dAtt_patterns_dmv)
-        dmq_mq = np.einsum("a,bcd->acd", dm_alpha_se["q"], sign_dAtt_patterns_dmq)
-        dmq_mk = np.einsum("a,bcd->acd", dm_alpha_se["q"], sign_dAtt_patterns_dmk)
+    def initialize_jacobian(self):
+        # Initialize jacobian, dims
+        # (num_mean_field_types x num_features x context_size + num_bits_pe)
+        # order mean-fields: o, v, q, k
+        # order features: 0, 1, 2, ...
+        # order context_size: 0, 1, 2... u=0, current time, u>0 delay
+        # v and k have num_feat_patterns*context_size, q only has num_feat_patterns
+        jacobian_col_size = 2 * self.num_feat_patterns * self.context_size + self.num_feat_patterns + self.pe_bit_size
+        # v and k have num_feat_patterns*context_size, o and q only have num_feat_patterns
+        jacobian_row_size = 2 * self.num_feat_patterns * self.context_size + 2 * self.num_feat_patterns + self.pe_bit_size
+        self.J = np.zeros((jacobian_row_size, jacobian_col_size))
 
-        print()
+        # The derivatives of mean-fields of d>0 wrt d-1 are constant and equal to 1 for large simulations.
+        first_loop = zip(list(range(len(self.features_names))), self.features_names)
+        derivative_feat_names = ["v", "q", "k"]
+        second_loop = zip(list(range(3)), derivative_feat_names)
+
+        # Idxs of start of o, v, q, k, pe sections in the matrix
+        self.J_row_mf_type_start_idxs = [0, 0, 0, 0, 0, None]
+        # v start
+        self.J_row_mf_type_start_idxs[1] = self.num_feat_patterns
+        # q start
+        self.J_row_mf_type_start_idxs[2] = self.J_row_mf_type_start_idxs[1] + self.num_feat_patterns * self.context_size
+        # k start
+        self.J_row_mf_type_start_idxs[3] = self.J_row_mf_type_start_idxs[2] + self.num_feat_patterns
+        # pe start
+        self.J_row_mf_type_start_idxs[4] = self.J_row_mf_type_start_idxs[3] + self.num_feat_patterns + self.context_size
+
+        # Idxs of start of o, v, q, k, pe sections in the matrix
+        self.J_col_mf_type_start_idxs = [0, 0, 0, 0, None]
+        # q start
+        self.J_col_mf_type_start_idxs[1] = self.J_row_mf_type_start_idxs[1] + self.num_feat_patterns * self.context_size
+        # k start
+        self.J_col_mf_type_start_idxs[2] = self.J_row_mf_type_start_idxs[2] + self.num_feat_patterns
+        # pe start
+        self.J_col_mf_type_start_idxs[3] = self.J_row_mf_type_start_idxs[3] + self.num_feat_patterns + self.context_size
+
+        # for v and k, set the derivatives of m^alpha_{a,d>0} wrt m^alpha_{a,d+1} = 1
+        for i, feat_1 in first_loop:
+            if feat_1 == "o" or feat_1 == "q": continue
+
+            # Indices of the derivatives of mean-fields with d=0
+            idx_i_0 = self.J_row_mf_type_start_idxs[i]
+            idx_i_1 = idx_i_0 + self.num_feat_patterns
+
+
+            for j, feat_2 in second_loop:
+                if feat_1 == "o" or feat_1 == "q": continue
+                idx_j_0 = j * num_columns_per_type
+                idx_j_1 = idx_j_0 + num_columns_per_type
+
+                print()
+
+    def jacobian(self, t, att):
+
+        # Compute the derivatives of the attention wrt MFs v q k
+        dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
+        # Create dict structure
+        dAdm = {"v": dAdmv, "q": dAdmq, "k": dAdmk}
+        dm_dm = self.mean_field_derivatives(att, dAdm)
+
+        first_loop = zip(list(range(len(self.features_names))), self.features_names)
+        derivative_feat_names = ["v", "q", "k"]
+        second_loop = zip(list(range(3)), derivative_feat_names)
+
+        for i, feat_1 in first_loop:
+            # Indices of the derivatives of mean-fields with d=0
+            idx_i_0 = self.J_row_mf_type_start_idxs[i]
+            idx_i_1 = idx_i_0 + self.num_feat_patterns
+
+            for j, feat_2 in second_loop:
+
+                if feat_2 == "o" or feat_2 == "q":
+                    num_columns_per_type = self.num_feat_patterns
+                else:
+                    num_columns_per_type = self.num_feat_patterns * self.context_size
+
+                idx_j_0 = self.J_col_mf_type_start_idxs[i]
+                idx_j_1 = idx_j_0 + num_columns_per_type
+
+                dmalpha_dmlambda_flatten = np.reshape(dm_dm[self.features_names[i]][feat_2],
+                                                      (self.num_feat_patterns, self.num_feat_patterns * self.context_size), order="A")
+
+                self.J[idx_i_0:idx_i_1, idx_j_0:idx_j_1] = dmalpha_dmlambda_flatten
+
+                print()
+
+        # Q, R = np.linalg.qr(self.J)
 
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
@@ -704,9 +802,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # self.context_size steps
 
         # We have in self.att_window the last attention value
-
         # We initialize the model at the end of the previous execution
         ini_t = self.context_size
+
+        # Initialize Jacobian if needed
+        # TODO: check jacobian requirement
+        initialize_jacobian()
+
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
             self.attention(t)
