@@ -1,6 +1,7 @@
 import copy
 import numpy as np
 from models.TransformerBase import TransformerBase
+from tests.compute_correlations import num_feat_patterns
 
 
 class HopfieldTransformerMFInfNPE(TransformerBase):
@@ -452,7 +453,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Compute the semantic part of every mean field needed for the attention
         dm_alpha_se = {}
         for feat_name in self.features_names:
-            dm_alpha_se[feat_name] = (self.se_per_contribution * np.einsum("ja,j->a",
+            dm_alpha_se[feat_name] = (self.se_per_contribution * np.einsum("ja,j->ja",
                                                                           self.corr_signed[feat_name], d_tanh_j_signs)
                                      / 2 ** (self.num_feat_patterns - 1)) # Size (num_features)
 
@@ -462,12 +463,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 continue
             elif feat_name == "q":
                 sign_dAtt_patterns_dm[feat_name] = (self.beta_o * self.scaling_o *
-                                                    np.einsum("jb,bc->bc",
+                                                    np.einsum("jb,bc->jbc",
                                                               self.sign_matrix[:, :self.num_feat_patterns],
                                                               dAdm[feat_name]))
             else:
                 sign_dAtt_patterns_dm[feat_name] = (self.beta_o * self.scaling_o *
-                                 np.einsum("jb,bcd->bcd", self.sign_matrix[:, :self.num_feat_patterns],
+                                 np.einsum("jb,bcd->jbcd", self.sign_matrix[:, :self.num_feat_patterns],
                                            dAdm[feat_name]))
 
         # Compute the derivatives of the mean-fields wrt to each other
@@ -479,11 +480,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                     continue
                 elif feat_name_2 == "q":
                     dm_dm[feat_name_1][feat_name_2] = (
-                        np.einsum("a,bc->ac", dm_alpha_se[feat_name_1],
+                        np.einsum("ja,jbc->ac", dm_alpha_se[feat_name_1],
                                   sign_dAtt_patterns_dm[feat_name_2]))
                 else:
                     dm_dm[feat_name_1][feat_name_2] = (
-                        np.einsum("a,bcd->acd", dm_alpha_se[feat_name_1],
+                        np.einsum("ja,jbcd->acd", dm_alpha_se[feat_name_1],
                                   sign_dAtt_patterns_dm[feat_name_2]))
 
         return dm_dm
@@ -493,8 +494,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Initialize jacobian, dims
         # (num_mean_field_types x num_features x context_size + num_bits_pe)
         # order mean-fields: o, v, q, k
-        # order features: 0, 1, 2, ...
         # order context_size: 0, 1, 2... u=0, current time, u>0 delay
+        # order features: 0, 1, 2, ...
+        # cols: m^v_{a,t-1,d=0}, m^v_{a,t-1,d=1}, ..., m^v_{a,t-1,d=2}, m^v_{b,t-1,d=0}, ... m^q_{a,t-1,d=0}, ...
+        # cols: m^v_{a,t-1,d=0}, m^v_{b,t-1,d=0}, ..., m^v_{c,t-1,d=0}, m^v_{a,t-1,d=1}, ... m^q_{a,t-1,d=0}, ...
+
         # v and k have num_feat_patterns*context_size, q only has num_feat_patterns
         jacobian_col_size = 2 * self.num_feat_patterns * self.context_size + self.num_feat_patterns + self.pe_bit_size
         # v and k have num_feat_patterns*context_size, o and q only have num_feat_patterns
@@ -517,7 +521,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # pe start
         self.J_row_mf_type_start_idxs[4] = self.J_row_mf_type_start_idxs[3] + self.num_feat_patterns + self.context_size
 
-        # Idxs of start of o, v, q, k, pe sections in the matrix
+        # Idxs of start of v, q, k, pe sections in the matrix
         self.J_col_mf_type_start_idxs = [0, 0, 0, 0, None]
         # q start
         self.J_col_mf_type_start_idxs[1] = self.J_row_mf_type_start_idxs[1] + self.num_feat_patterns * self.context_size
@@ -526,21 +530,27 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # pe start
         self.J_col_mf_type_start_idxs[3] = self.J_row_mf_type_start_idxs[3] + self.num_feat_patterns + self.context_size
 
-        # for v and k, set the derivatives of m^alpha_{a,d>0} wrt m^alpha_{a,d+1} = 1
-        for i, feat_1 in first_loop:
-            if feat_1 == "o" or feat_1 == "q": continue
-
-            # Indices of the derivatives of mean-fields with d=0
-            idx_i_0 = self.J_row_mf_type_start_idxs[i]
-            idx_i_1 = idx_i_0 + self.num_feat_patterns
+        # window_derivatives = np.zeros((self.num_features * self.num_copies))
 
 
-            for j, feat_2 in second_loop:
-                if feat_1 == "o" or feat_1 == "q": continue
-                idx_j_0 = j * num_columns_per_type
-                idx_j_1 = idx_j_0 + num_columns_per_type
-
-                print()
+        # # for v and k, set the derivatives of m^alpha_{a,d>0} wrt m^alpha_{a,d+1} = 1
+        # for i, feat_1 in first_loop:
+        #     if feat_1 == "o" or feat_1 == "q": continue
+        #
+        #     # Indices of the derivatives of mean-fields with d=0
+        #     idx_i_0 = self.J_row_mf_type_start_idxs[i]
+        #     idx_i_1 = idx_i_0 + self.num_feat_patterns
+        #
+        #     for j, feat_2 in second_loop:
+        #         if feat_1 == "o" or feat_1 == "q": continue
+        #         if feat_1 != feat_2: continue
+        #
+        #         num_columns_per_type = self.num_feat_patterns * self.context_size
+        #
+        #         idx_j_0 = j * num_columns_per_type
+        #         idx_j_1 = idx_j_0 + num_columns_per_type
+        #
+        #         print()
 
     def jacobian(self, t, att):
 
@@ -554,14 +564,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         derivative_feat_names = ["v", "q", "k"]
         second_loop = zip(list(range(3)), derivative_feat_names)
 
-        for i, feat_1 in first_loop:
+        for i, feat_1_name in first_loop:
             # Indices of the derivatives of mean-fields with d=0
             idx_i_0 = self.J_row_mf_type_start_idxs[i]
             idx_i_1 = idx_i_0 + self.num_feat_patterns
 
-            for j, feat_2 in second_loop:
+            for j, feat_2_name in second_loop:
 
-                if feat_2 == "o" or feat_2 == "q":
+                if feat_2_name == "o" or feat_2_name == "q":
                     num_columns_per_type = self.num_feat_patterns
                 else:
                     num_columns_per_type = self.num_feat_patterns * self.context_size
@@ -569,8 +579,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 idx_j_0 = self.J_col_mf_type_start_idxs[i]
                 idx_j_1 = idx_j_0 + num_columns_per_type
 
-                dmalpha_dmlambda_flatten = np.reshape(dm_dm[self.features_names[i]][feat_2],
-                                                      (self.num_feat_patterns, self.num_feat_patterns * self.context_size), order="A")
+                dmalpha_dmlambda_flatten = np.reshape(dm_dm[self.features_names[i]][feat_2_name],
+                                                      (self.num_feat_patterns, self.num_feat_patterns * self.context_size), order="F")
 
                 self.J[idx_i_0:idx_i_1, idx_j_0:idx_j_1] = dmalpha_dmlambda_flatten
 
@@ -807,7 +817,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Initialize Jacobian if needed
         # TODO: check jacobian requirement
-        initialize_jacobian()
+        self.initialize_jacobian()
 
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
