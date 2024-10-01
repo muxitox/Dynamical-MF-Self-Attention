@@ -499,9 +499,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # cols: m^v_{a,t-1,d=0}, m^v_{b,t-1,d=0}, ..., m^v_{c,t-1,d=0}, m^v_{a,t-1,d=1}, ... m^q_{a,t-1,d=0}, ...
 
         # v and k have num_feat_patterns*context_size, q only has num_feat_patterns
-        jacobian_col_size = 2 * self.num_feat_patterns * self.context_size + self.num_feat_patterns + self.pe_bit_size
+        # We have "context_size" copies of the position that we rotate every timestep
+        jacobian_col_size = (2 * self.num_feat_patterns * self.context_size + self.num_feat_patterns +
+                             self.pe_bit_size * self.context_size)
         # v and k have num_feat_patterns*context_size, o and q only have num_feat_patterns
-        jacobian_row_size = 2 * self.num_feat_patterns * self.context_size + 2 * self.num_feat_patterns + self.pe_bit_size
+        # We have "context_size" copies of the position that we rotate every timestep
+        jacobian_row_size = (2 * self.num_feat_patterns * self.context_size + 2 * self.num_feat_patterns +
+                             self.pe_bit_size * self.context_size)
         self.J = np.zeros((jacobian_row_size, jacobian_col_size))
 
         # The derivatives of mean-fields of d>0 wrt d-1 are constant and equal to 1 for large simulations.
@@ -517,7 +521,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # k start
         self.J_row_mf_type_start_idxs[3] = self.J_row_mf_type_start_idxs[2] + self.num_feat_patterns
         # pe start
-        self.J_row_mf_type_start_idxs[4] = self.J_row_mf_type_start_idxs[3] + self.num_feat_patterns + self.context_size
+        self.J_row_mf_type_start_idxs[4] = self.J_row_mf_type_start_idxs[3] + self.num_feat_patterns * self.context_size
 
         # Idxs of start of v, q, k, pe sections in the matrix
         self.J_col_mf_type_start_idxs = [0, 0, 0, 0, None]
@@ -540,28 +544,22 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
             # Indices of the derivatives of mean-fields with d=0
             idx_i_0 = self.J_row_mf_type_start_idxs[i]
-            idx_i_1 = idx_i_0 + self.num_feat_patterns * self.context_size
+            idx_i_1 = self.J_row_mf_type_start_idxs[i+1]
 
             second_loop = zip(list(range(3)), derivative_feat_names)
-
             for j, feat_2 in second_loop:
                 if feat_2 == "o" or feat_2 == "q": continue
                 if feat_1 == feat_2:
-
-                    num_columns_per_type = self.num_feat_patterns * self.context_size
-
                     idx_j_0 = self.J_col_mf_type_start_idxs[j]
-                    idx_j_1 = idx_j_0 + num_columns_per_type
+                    idx_j_1 = self.J_col_mf_type_start_idxs[j+1]
 
-
-                    # TODO: CHECK NUMBER OF COLUMNS IS CREATE RIGHT
                     # Start and end indices for setting the diagonal to 1. (That is, to set the derivatives wrt to copies).
                     idx_i_0_diag = idx_i_0 + self.num_feat_patterns
                     idx_j_1_diag = idx_j_1 - self.num_feat_patterns
 
                     self.J[idx_i_0_diag:idx_i_1, idx_j_0:idx_j_1_diag] = I
-                    print("combi", feat_1, feat_2)
-                    print()
+
+        # TODO: add derivatives of positional encoding
 
     def jacobian(self, t, att):
 
@@ -582,23 +580,23 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             second_loop = zip(list(range(3)), derivative_feat_names)
             for j, feat_2_name in second_loop:
 
-                if feat_2_name == "o" or feat_2_name == "q":
-                    num_columns_per_type = self.num_feat_patterns
-                else:
-                    num_columns_per_type = self.num_feat_patterns * self.context_size
 
                 idx_j_0 = self.J_col_mf_type_start_idxs[j]
-                idx_j_1 = idx_j_0 + num_columns_per_type
+                idx_j_1 = self.J_col_mf_type_start_idxs[j+1]
+                num_cols = idx_j_1 - idx_j_0
 
-                dmalpha_dmlambda_flatten = np.reshape(dm_dm[self.features_names[i]][feat_2_name],
-                                                      (self.num_feat_patterns, self.num_feat_patterns * self.context_size), order="F")
+                dmalpha_dmlambda_flatten = dm_dm[self.features_names[i]][feat_2_name]
+                # Reshape features with copies
+                if feat_2_name == "v" or feat_2_name == "k":
+                    dmalpha_dmlambda_flatten = np.reshape(dm_dm[self.features_names[i]][feat_2_name],
+                                                      (self.num_feat_patterns, num_cols), order="F")
 
                 self.J[idx_i_0:idx_i_1, idx_j_0:idx_j_1] = dmalpha_dmlambda_flatten
 
-                print()
 
-        # Q, R = np.linalg.qr(self.J)
+        Q, R = np.linalg.qr(self.J, mode="complete")
 
+        print()
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
