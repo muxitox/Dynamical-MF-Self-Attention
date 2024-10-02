@@ -498,53 +498,36 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # cols: m^v_{a,t-1,d=0}, m^v_{a,t-1,d=1}, ..., m^v_{a,t-1,d=2}, m^v_{b,t-1,d=0}, ... m^q_{a,t-1,d=0}, ...
         # cols: m^v_{a,t-1,d=0}, m^v_{b,t-1,d=0}, ..., m^v_{c,t-1,d=0}, m^v_{a,t-1,d=1}, ... m^q_{a,t-1,d=0}, ...
 
-        # v and k have num_feat_patterns*context_size, q only has num_feat_patterns
+        # v and k have num_feat_patterns*context_size,q only has num_feat_patterns
         # We have "context_size" copies of the position that we rotate every timestep
-        jacobian_col_size = (2 * self.num_feat_patterns * self.context_size + self.num_feat_patterns +
+        jacobian_size = (2 * self.num_feat_patterns * self.context_size + self.num_feat_patterns +
                              self.pe_bit_size * self.context_size)
-        # v and k have num_feat_patterns*context_size, o and q only have num_feat_patterns
-        # We have "context_size" copies of the position that we rotate every timestep
-        jacobian_row_size = (2 * self.num_feat_patterns * self.context_size + 2 * self.num_feat_patterns +
-                             self.pe_bit_size * self.context_size)
-        self.J = np.zeros((jacobian_row_size, jacobian_col_size))
+        self.J = np.zeros((jacobian_size, jacobian_size))
 
         # The derivatives of mean-fields of d>0 wrt d-1 are constant and equal to 1 for large simulations.
-        first_loop = zip(list(range(len(self.features_names))), self.features_names)
-        derivative_feat_names = ["v", "q", "k"]
-
-        # Idxs of start of o, v, q, k, pe sections in the matrix
-        self.J_row_mf_type_start_idxs = [0, 0, 0, 0, 0, None]
-        # v start
-        self.J_row_mf_type_start_idxs[1] = self.num_feat_patterns
-        # q start
-        self.J_row_mf_type_start_idxs[2] = self.J_row_mf_type_start_idxs[1] + self.num_feat_patterns * self.context_size
-        # k start
-        self.J_row_mf_type_start_idxs[3] = self.J_row_mf_type_start_idxs[2] + self.num_feat_patterns
-        # pe start
-        self.J_row_mf_type_start_idxs[4] = self.J_row_mf_type_start_idxs[3] + self.num_feat_patterns * self.context_size
 
         # Idxs of start of v, q, k, pe sections in the matrix
-        self.J_col_mf_type_start_idxs = [0, 0, 0, 0, None]
+        self.J_mf_type_start_idxs = [0, 0, 0, 0, None]
         # q start
-        self.J_col_mf_type_start_idxs[1] = self.J_col_mf_type_start_idxs[0] + self.num_feat_patterns * self.context_size
+        self.J_mf_type_start_idxs[1] = self.J_mf_type_start_idxs[0] + self.num_feat_patterns * self.context_size
         # k start
-        self.J_col_mf_type_start_idxs[2] = self.J_col_mf_type_start_idxs[1] + self.num_feat_patterns
+        self.J_mf_type_start_idxs[2] = self.J_mf_type_start_idxs[1] + self.num_feat_patterns
         # pe start
-        self.J_col_mf_type_start_idxs[3] = self.J_col_mf_type_start_idxs[2] + self.num_feat_patterns * self.context_size
+        self.J_mf_type_start_idxs[3] = self.J_mf_type_start_idxs[2] + self.num_feat_patterns * self.context_size
 
         I = np.identity(self.num_feat_patterns * (self.context_size-1))
-
-
 
         # for v and k, set the derivatives of m^alpha_{a,d>0} wrt m^alpha_{a,d-1} = 1
         # In the way the jacobian is ordered, this is accomplished by setting the diagonal elements of
         # \frac{\partial m^{\alpha}_{t+1,d}}{\partial m^{\alpha}_{t,u}} for d>1
+        derivative_feat_names = ["v", "q", "k"]
+        first_loop = zip(list(range(3)), derivative_feat_names)
         for i, feat_1 in first_loop:
             # if feat_1 == "o" or feat_1 == "q": continue
 
             # Indices of the derivatives of mean-fields with d=0
-            idx_i_0 = self.J_row_mf_type_start_idxs[i]
-            idx_i_1 = self.J_row_mf_type_start_idxs[i+1]
+            idx_i_0 = self.J_mf_type_start_idxs[i]
+            idx_i_1 = self.J_mf_type_start_idxs[i+1]
 
 
             # Treat in this inner loop the derivatives of mean-fields wrt mean-fields
@@ -552,8 +535,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             for j, feat_2 in second_loop:
                 if feat_2 == "o" or feat_2 == "q": continue
                 if feat_1 == feat_2:
-                    idx_j_0 = self.J_col_mf_type_start_idxs[j]
-                    idx_j_1 = self.J_col_mf_type_start_idxs[j+1]
+                    idx_j_0 = self.J_mf_type_start_idxs[j]
+                    idx_j_1 = self.J_mf_type_start_idxs[j + 1]
 
                     # Start and end indices for setting the diagonal to 1. (That is, to set the derivatives wrt to copies).
                     idx_i_0_diag = idx_i_0 + self.num_feat_patterns
@@ -564,15 +547,15 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             # Treat now the derivatives of mean-fields wrt positional encodings
             dalpha_dp = (1 - self.se_per_contribution) * self.W_dict[feat_1][:, -self.pe_bit_size:] / self.pe_bit_size
             idx_i_1_mf_pe = idx_i_0 + self.num_feat_patterns
-            idx_j_0_pe = self.J_col_mf_type_start_idxs[-2]
+            idx_j_0_pe = self.J_mf_type_start_idxs[-2]
             idx_j_1_pe = idx_j_0_pe + self.pe_bit_size
             self.J[idx_i_0:idx_i_1_mf_pe, idx_j_0_pe:idx_j_1_pe] = dalpha_dp
 
         # Now treat the derivatives of the positional encoding with respect to itself
         # p_{i,t+1,d} = p_{i,t,d-1 mod context_size}
-        idx_i_0_pe = self.J_row_mf_type_start_idxs[-2]
-        idx_i_1_pe = self.J_row_mf_type_start_idxs[-1]
-        idx_j_0_pe = self.J_col_mf_type_start_idxs[-2]
+        idx_i_0_pe = self.J_mf_type_start_idxs[-2]
+        idx_i_1_pe = self.J_mf_type_start_idxs[-1]
+        idx_j_0_pe = self.J_mf_type_start_idxs[-2]
         # First, p_{i,t+1,0} = p_{i,t,CS-1}
         I = np.identity(self.pe_bit_size)
         self.J[idx_i_0_pe:idx_i_0_pe+self.pe_bit_size, -self.pe_bit_size:] = I
@@ -589,20 +572,19 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         dAdm = {"v": dAdmv, "q": dAdmq, "k": dAdmk}
         dm_dm = self.mean_field_derivatives(att, dAdm)
 
-        first_loop = zip(list(range(len(self.features_names))), self.features_names)
         derivative_feat_names = ["v", "q", "k"]
-
+        first_loop = zip(list(range(3)), derivative_feat_names)
         for i, feat_1_name in first_loop:
             # Indices of the derivatives of mean-fields with d=0
-            idx_i_0 = self.J_row_mf_type_start_idxs[i]
+            idx_i_0 = self.J_mf_type_start_idxs[i]
             idx_i_1 = idx_i_0 + self.num_feat_patterns
 
             second_loop = zip(list(range(3)), derivative_feat_names)
             for j, feat_2_name in second_loop:
 
 
-                idx_j_0 = self.J_col_mf_type_start_idxs[j]
-                idx_j_1 = self.J_col_mf_type_start_idxs[j+1]
+                idx_j_0 = self.J_mf_type_start_idxs[j]
+                idx_j_1 = self.J_mf_type_start_idxs[j + 1]
                 num_cols = idx_j_1 - idx_j_0
 
                 dmalpha_dmlambda_flatten = dm_dm[self.features_names[i]][feat_2_name]
@@ -614,7 +596,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 self.J[idx_i_0:idx_i_1, idx_j_0:idx_j_1] = dmalpha_dmlambda_flatten
 
 
-        Q, R = np.linalg.qr(self.J, mode="complete")
+        Q, R = np.linalg.qr(self.J)
+        detJ = np.linalg.det(self.J)
+
+        print(detJ)
+        print(R.diagonal())
         print()
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
