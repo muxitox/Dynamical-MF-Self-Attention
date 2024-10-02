@@ -540,12 +540,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # In the way the jacobian is ordered, this is accomplished by setting the diagonal elements of
         # \frac{\partial m^{\alpha}_{t+1,d}}{\partial m^{\alpha}_{t,u}} for d>1
         for i, feat_1 in first_loop:
-            if feat_1 == "o" or feat_1 == "q": continue
+            # if feat_1 == "o" or feat_1 == "q": continue
 
             # Indices of the derivatives of mean-fields with d=0
             idx_i_0 = self.J_row_mf_type_start_idxs[i]
             idx_i_1 = self.J_row_mf_type_start_idxs[i+1]
 
+
+            # Treat in this inner loop the derivatives of mean-fields wrt mean-fields
             second_loop = zip(list(range(3)), derivative_feat_names)
             for j, feat_2 in second_loop:
                 if feat_2 == "o" or feat_2 == "q": continue
@@ -559,7 +561,25 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
                     self.J[idx_i_0_diag:idx_i_1, idx_j_0:idx_j_1_diag] = I
 
-        # TODO: add derivatives of positional encoding
+            # Treat now the derivatives of mean-fields wrt positional encodings
+            dalpha_dp = (1 - self.se_per_contribution) * self.W_dict[feat_1][:, -self.pe_bit_size:] / self.pe_bit_size
+            idx_i_1_mf_pe = idx_i_0 + self.num_feat_patterns
+            idx_j_0_pe = self.J_col_mf_type_start_idxs[-2]
+            idx_j_1_pe = idx_j_0_pe + self.pe_bit_size
+            self.J[idx_i_0:idx_i_1_mf_pe, idx_j_0_pe:idx_j_1_pe] = dalpha_dp
+
+        # Now treat the derivatives of the positional encoding with respect to itself
+        # p_{i,t+1,d} = p_{i,t,d-1 mod context_size}
+        idx_i_0_pe = self.J_row_mf_type_start_idxs[-2]
+        idx_i_1_pe = self.J_row_mf_type_start_idxs[-1]
+        idx_j_0_pe = self.J_col_mf_type_start_idxs[-2]
+        # First, p_{i,t+1,0} = p_{i,t,CS-1}
+        I = np.identity(self.pe_bit_size)
+        self.J[idx_i_0_pe:idx_i_0_pe+self.pe_bit_size, -self.pe_bit_size:] = I
+        # Then set the remaining
+        I = np.identity(self.pe_bit_size * (self.context_size - 1))
+        self.J[idx_i_0_pe+self.pe_bit_size:idx_i_1_pe, idx_j_0_pe:-self.pe_bit_size] = I
+
 
     def jacobian(self, t, att):
 
@@ -595,7 +615,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
         Q, R = np.linalg.qr(self.J, mode="complete")
-
         print()
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
