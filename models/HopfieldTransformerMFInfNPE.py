@@ -38,6 +38,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.inf_normalization_o = self.define_normalization_inf_o()
         self.inf_normalization_att = self.define_normalization_inf_att()
 
+        if self.run_exact_inf:
+            self.gamma = self.inf_normalization_att * self.beta_att * self.scaling_att
+
         # Dynamically compute the normalize_weights_str string
         try:
             exec_str = f"self.gaussian_scale = {gaussian_scale_str}"
@@ -629,25 +632,27 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.att_window = (self.N_normalization *
                                np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob))
 
-    def attention_unoptimized(self, t):
-
-        effective_context_size = min(self.context_size, t + 1)
-
-        key_prob_unnorm = np.zeros(effective_context_size)
-        for tau in range(0, effective_context_size):
-            key_prob_unnorm[tau] = self.qk_f_mf(tau)
-
-        self.key_averaging(key_prob_unnorm, effective_context_size)
-
-        # # Loopy implementation for testing
-        #
-        # att_t_loopy = np.zeros(self.num_feat_patterns)
-        # for b in range(0, self.num_feat_patterns):
-        #     for tau in range(0, t+1):
-        #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
-
-        if t >= self.min_saved_step:
-            self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
+    # def attention_unoptimized(self, t):
+    #
+    #     effective_context_size = min(self.context_size, t + 1)
+    #
+    #     key_prob_unnorm = np.zeros(effective_context_size)
+    #     for tau in range(0, effective_context_size):
+    #         key_prob_unnorm[tau] = self.qk_f_mf(tau)
+    #
+    #     # Cannot be used for testing anymore, it's missing the scaling and normalizing factors here
+    #
+    #     self.key_averaging(key_prob_unnorm, effective_context_size)
+    #
+    #     # # Loopy implementation for testing
+    #     #
+    #     # att_t_loopy = np.zeros(self.num_feat_patterns)
+    #     # for b in range(0, self.num_feat_patterns):
+    #     #     for tau in range(0, t+1):
+    #     #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
+    #
+    #     if t >= self.min_saved_step:
+    #         self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
 
     def attention(self, t):
 
@@ -657,9 +662,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                         optimize=True)
 
         # Scale
-        key_prob_unnorm = self.beta_att * self.scaling_att * mqk
         if self.run_exact_inf:
-            key_prob_unnorm *= self.inf_normalization_att
+            key_prob_unnorm = self.gamma * mqk
+        else:
+            key_prob_unnorm = self.beta_att * self.scaling_att * mqk
 
         # if t == 400:
         #     pass
@@ -831,12 +837,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Initialize Jacobian if needed
         # TODO: check jacobian requirement
-        self.initialize_jacobian()
+        # self.initialize_jacobian()
 
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
             self.attention(t)
-            self.jacobian(t, self.att_window)
+            # self.jacobian(t, self.att_window)
 
     def simulate(self, x0, max_steps):
 
