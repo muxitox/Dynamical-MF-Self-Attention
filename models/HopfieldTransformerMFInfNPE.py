@@ -269,17 +269,28 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
     def reset_data(self):
 
         self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))
+        # We don't need to order it every step normally. Order is only important for the Jacobian
+        self.ordered_mv_window = np.zeros((self.context_size, self.num_feat_patterns))
         self.mq_window = np.zeros(self.num_feat_patterns)
         self.mk_window = np.zeros((self.context_size, self.num_feat_patterns))
+        # We don't need to order it every step normally. Order is only important for the Jacobian
+        self.ordered_mk_window = np.zeros((self.context_size, self.num_feat_patterns))
         self.att_window = np.zeros(self.num_feat_patterns)
 
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
 
+    def shift_d_window(self, shift):
+        # Roll the context window by "shift" positions
+        shifted_mv_window = np.roll(self.mv_window, shift, axis=0)
+        shifted_mk_window = np.roll(self.mk_window, shift, axis=0)
+
+        return shifted_mv_window, shifted_mk_window
+
     def reorder_context_window(self):
         # Shift values so the first value erased in the context window is the oldest one
         shift_amount = self.context_size - self.context_index - 1
-        self.shift_d_window(shift_amount)
+        self.mv_window, self.mk_window = self.shift_d_window(shift_amount)
 
     def reset_data_keep_context(self):
         self.reorder_context_window()
@@ -332,11 +343,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         Z = np.sum(key_prob_unnorm)
 
-        mk_exp = np.multiply(self.mk_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
-        derv_part_1 = np.einsum("da,dc->ac", self.mv_window[:effective_context_size, :], mk_exp[:,:])
+        mk_exp = np.multiply(self.ordered_mk_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
+        derv_part_1 = np.einsum("da,dc->ac", self.ordered_mv_window[:effective_context_size, :], mk_exp[:,:])
         derv_part_1 /= Z
 
-        mv_exp = np.multiply(self.mv_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
+        mv_exp = np.multiply(self.ordered_mv_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
         derv_part_2 = np.einsum("a,c->ac", np.sum(mv_exp, axis=0), np.sum(mk_exp, axis=0))
         derv_part_2 /= Z**2
 
@@ -351,8 +362,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         Z = np.sum(key_prob_unnorm)
 
-        derv_term1 = self.mv_window[:effective_context_size, :] / Z
-        mv_exp = np.multiply(self.mv_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
+        derv_term1 = self.ordered_mv_window[:effective_context_size, :] / Z
+        mv_exp = np.multiply(self.ordered_mv_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
         derv_term2 = np.sum(mv_exp, axis=0) / Z ** 2
 
         derv_prod2 = derv_term1 - derv_term2
@@ -374,11 +385,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 prod1 = 0
                 prod2 = 0
                 for d in range(effective_context_size):
-                    derv_part_1_loop[a, c] += (self.mv_window[d, a] * self.mk_window[d, c]
+                    derv_part_1_loop[a, c] += (self.ordered_mv_window[d, a] * self.ordered_mk_window[d, c]
                                              * key_prob_unnorm[d])
 
-                    prod1 += (self.mv_window[d, a] * key_prob_unnorm[d])
-                    prod2 += (self.mk_window[d, c] * key_prob_unnorm[d])
+                    prod1 += (self.ordered_mv_window[d, a] * key_prob_unnorm[d])
+                    prod2 += (self.ordered_mk_window[d, c] * key_prob_unnorm[d])
                     derv_part_2_loop[a, c] = prod1 * prod2
         derv_part_1_loop /= Z
         derv_part_2_loop /= Z**2
@@ -396,13 +407,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for a in range(self.num_feat_patterns):
             term2_a = 0
             for d in range(effective_context_size):
-                term2_a += (self.mv_window[d, a] * key_prob_unnorm[d])
+                term2_a += (self.ordered_mv_window[d, a] * key_prob_unnorm[d])
             term2_a /= Z**2
 
             for c in range(self.num_feat_patterns):
                 for u in range(effective_context_size):
                     derv_loopy[a, c, u] = (self.gamma * self.mq_window[c] * key_prob_unnorm[u] *
-                                           (self.mv_window[u, a] / Z - term2_a))
+                                           (self.ordered_mv_window[u, a] / Z - term2_a))
 
         return derv_loopy  # Dimensions are (att_a, mk_c, mk_u)
 
@@ -410,7 +421,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
     def attention_derivatives(self, t):
         effective_context_size = min(self.context_size, t + 1)
         # Put in common queries and keys
-        mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
+        mqk = np.einsum('b,tb -> t', self.mq_window, self.ordered_mk_window[:effective_context_size],
                         optimize=True)
         # Scale
         key_prob_unnorm = self.gamma * mqk
@@ -560,6 +571,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
     def jacobian(self, t, att):
+
+        shift_amount = self.context_size - self.context_index - 1
+        self.ordered_mv_window, self.ordered_mk_window = self.shift_d_window(shift_amount)
 
         # Compute the derivatives of the attention wrt MFs v q k
         dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
@@ -818,10 +832,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.save_stats(t, mo, m_alpha_se["o"], self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
-    def shift_d_window(self, shift):
-        # Roll the context window by "shift" positions
-        self.mv_window = np.roll(self.mv_window, shift, axis=0)
-        self.mk_window = np.roll(self.mk_window, shift, axis=0)
 
     def return_context_window(self):
         return self.att_window, self.mv_window, self.mq_window, self.mk_window
