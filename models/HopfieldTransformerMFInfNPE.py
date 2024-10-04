@@ -332,7 +332,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         Z = np.sum(key_prob_unnorm)
 
-        # TODO: check scaling factors
         mk_exp = np.multiply(self.mk_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
         derv_part_1 = np.einsum("da,dc->ac", self.mv_window[:effective_context_size, :], mk_exp[:,:])
         derv_part_1 /= Z
@@ -341,24 +340,31 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         derv_part_2 = np.einsum("a,c->ac", np.sum(mv_exp, axis=0), np.sum(mk_exp, axis=0))
         derv_part_2 /= Z**2
 
-        datt_dmq = derv_part_1 - derv_part_2
+        datt_dmq = self.gamma * (derv_part_1 - derv_part_2)
 
-        # derv dimensions are (att_a, mq_c) we don't have a contex_size dimension because we dont keep copies of q
+        # derv dimensions are (att_a, mq_c) we don't have a contex_size dimension because we don't keep copies of q
         # at different times
-
-        # # WRONG: Create matrix of zeros in 3D (A_a, mq_c, context_size)
-        # datt_dmq = np.zeros((self.num_feat_patterns, self.num_feat_patterns, self.context_size))
-        # # In u=0 (current time) we set the derivative, the rest of the derivatives are 0.
-        # datt_dmq[:,:,0] = derv
 
         return datt_dmq
 
+    def der_att_dmk(self, key_prob_unnorm, effective_context_size):
+
+        Z = np.sum(key_prob_unnorm)
+
+        derv_term1 = self.mv_window[:effective_context_size, :] / Z
+        mv_exp = np.multiply(self.mv_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
+        derv_term2 = np.sum(mv_exp, axis=0) / Z ** 2
+
+        derv_prod2 = derv_term1 - derv_term2
+
+        mq_exp = np.einsum("c,u->uc", self.gamma * self.mq_window, key_prob_unnorm)
+        derv = np.einsum("dc,da->acd", mq_exp, derv_prod2)
+
+        return derv  # Dimensions are (att_a, mk_c, mk_u)
 
     def der_att_dmq_loopy(self, key_prob_unnorm, effective_context_size):
 
         Z = np.sum(key_prob_unnorm)
-
-        # TODO: check scaling factors
 
         derv_part_1_loop = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
         derv_part_2_loop = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
@@ -377,16 +383,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         derv_part_1_loop /= Z
         derv_part_2_loop /= Z**2
 
-
-        derv_loop = derv_part_1_loop - derv_part_2_loop
+        derv_loop = self.gamma * (derv_part_1_loop - derv_part_2_loop)
 
         return derv_loop  # Dimensions are (att_a, mq_c)
 
     def der_att_dmk_loopy(self, key_prob_unnorm, effective_context_size):
 
         Z = np.sum(key_prob_unnorm)
-
-        # TODO: check scaling factors
 
         derv_loopy = np.zeros((self.num_feat_patterns, self.num_feat_patterns, effective_context_size))
 
@@ -398,26 +401,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
             for c in range(self.num_feat_patterns):
                 for u in range(effective_context_size):
-                    derv_loopy[a, c, u] = self.mq_window[c] * key_prob_unnorm[u] * (self.mv_window[u, a] / Z - term2_a)
+                    derv_loopy[a, c, u] = (self.gamma * self.mq_window[c] * key_prob_unnorm[u] *
+                                           (self.mv_window[u, a] / Z - term2_a))
 
         return derv_loopy  # Dimensions are (att_a, mk_c, mk_u)
-
-    def der_att_dmk(self, key_prob_unnorm, effective_context_size):
-
-        Z = np.sum(key_prob_unnorm)
-
-        # TODO: check scaling factors
-
-        derv_term1 = self.mv_window[:effective_context_size, :] / Z
-        mv_exp = np.multiply(self.mv_window[:effective_context_size, :], key_prob_unnorm[:, np.newaxis])
-        derv_term2 = np.sum(mv_exp, axis=0) / Z ** 2
-
-        derv_prod2 = derv_term1 - derv_term2
-
-        mq_exp = np.einsum("c,u->uc", self.mq_window, key_prob_unnorm)
-        derv = np.einsum("dc,da->acd", mq_exp, derv_prod2)
-
-        return derv  # Dimensions are (att_a, mk_c, mk_u)
 
 
     def attention_derivatives(self, t):
@@ -426,12 +413,17 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
                         optimize=True)
         # Scale
-        key_prob_unnorm = self.beta_att * self.scaling_att * mqk
+        key_prob_unnorm = self.gamma * mqk
+
+        if (not self.run_exact_inf and
+                (self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)")):
+
+            raise Exception(f"Scaling is not well defined for the derivatives for "
+                            f"normalize_weights_str_att={self.normalize_weights_str_att}")
 
         dAdmv = self.der_att_dmv(key_prob_unnorm, effective_context_size)
         dAdmq = self.der_att_dmq(key_prob_unnorm, effective_context_size)
         dAdmk = self.der_att_dmk(key_prob_unnorm, effective_context_size)
-
 
         return dAdmv, dAdmq, dAdmk
 
@@ -464,12 +456,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             if feat_name == "o":  # We only have the derivatives wrt v q k
                 continue
             elif feat_name == "q":
-                sign_dAtt_patterns_dm[feat_name] = (self.beta_o * self.scaling_o *
+                sign_dAtt_patterns_dm[feat_name] = (self.beta_o * self.scaling_o *  self.inf_normalization_o *
                                                     np.einsum("jb,bc->jbc",
                                                               self.sign_matrix[:, :self.num_feat_patterns],
                                                               dAdm[feat_name]))
             else:
-                sign_dAtt_patterns_dm[feat_name] = (self.beta_o * self.scaling_o *
+                sign_dAtt_patterns_dm[feat_name] = (self.beta_o * self.scaling_o *  self.inf_normalization_o *
                                  np.einsum("jb,bcd->jbcd", self.sign_matrix[:, :self.num_feat_patterns],
                                            dAdm[feat_name]))
 
@@ -602,7 +594,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         Q, R = np.linalg.qr(self.J)
         detJ = np.linalg.det(self.J)
 
+        for valid_idxs in range(0, 35):
+            # valid_idxs = 17
+            JnoPE =  self.J[:valid_idxs,:valid_idxs]
+            detJnoPE = np.linalg.det(JnoPE)
+            print(valid_idxs, detJnoPE)
+
         print(detJ)
+        print(detJnoPE)
         print(R.diagonal())
         print()
 
@@ -837,12 +836,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Initialize Jacobian if needed
         # TODO: check jacobian requirement
-        # self.initialize_jacobian()
+        self.initialize_jacobian()
 
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
             self.attention(t)
-            # self.jacobian(t, self.att_window)
+            self.jacobian(t, self.att_window)
 
     def simulate(self, x0, max_steps):
 
