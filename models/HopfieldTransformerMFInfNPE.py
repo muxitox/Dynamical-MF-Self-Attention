@@ -1,6 +1,8 @@
 import copy
 import numpy as np
 from models.TransformerBase import TransformerBase
+import scipy
+from scipy.linalg import lu
 
 
 class HopfieldTransformerMFInfNPE(TransformerBase):
@@ -239,6 +241,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.even_corr_o_k = np.vstack((self.pair_corr_o_k, self.quad_corr_o_k))
             self.even_corr_o_q = np.vstack((self.pair_corr_o_q, self.quad_corr_o_q))
 
+        self.even_corr = {}
+        self.even_corr["o"] = self.even_corr_o_o
+        self.even_corr["v"] = self.even_corr_o_v
+        self.even_corr["q"] = self.even_corr_o_q
+        self.even_corr["k"] = self.even_corr_o_k
+
+
         # Pre-compute the signs of the correlations
         # Per every pattern a, we have j combinations of correlations with other patterns (a,)
         self.corr_signed = {}
@@ -368,9 +377,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         derv_prod2 = derv_term1 - derv_term2
 
-        mq_exp = np.einsum("c,u->uc", self.gamma * self.mq_window, key_prob_unnorm)
+        mq_exp = np.einsum("c,u->uc",  self.gamma * self.mq_window, key_prob_unnorm)
         derv = np.einsum("dc,da->acd", mq_exp, derv_prod2)
-
+        
         return derv  # Dimensions are (att_a, mk_c, mk_u)
 
     def der_att_dmq_loopy(self, key_prob_unnorm, effective_context_size):
@@ -438,6 +447,59 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return dAdmv, dAdmq, dAdmk
 
+    def dm_dA(self, att):
+        """
+        Derivatives of the mean-fields wrt. attention
+        :return:
+        """
+
+        if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
+
+            sign_att_patterns = (self.beta_o * self.scaling_o *
+                                 np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
+                                           att))
+
+            idx_not_zero = np.where(sign_att_patterns != 0)
+            # If result is not 0, normalize by inf (avoids NaNs)
+            sign_att_patterns[idx_not_zero] *= self.inf_normalization_o
+            d_tanh_j_signs = 1 - np.tanh(sign_att_patterns)**2
+        else:  # Otherwise, handle it here, just compute tanh
+            d_tanh_j_signs = 1 - np.tanh(self.beta_o * self.scaling_o * (1 / self.normalizing_constant_o) *
+                                   np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
+                                             att))**2
+
+        d_tanh_j_signs_c = np.einsum("j,jc->jc", d_tanh_j_signs, self.sign_matrix[:, :self.num_feat_patterns])
+
+        # Compute the semantic part of every mean field needed for the attention
+        dm_alpha_se = {}
+        for feat_name in self.features_names:
+            dm_alpha_se[feat_name] = (np.einsum("ja,jc->ac", self.corr_signed[feat_name],
+                                                self.beta_o * self.scaling_o * d_tanh_j_signs_c))  # Size (num_features)
+
+            dm_alpha_se[feat_name] = self.se_per_contribution * dm_alpha_se[feat_name] / 2 ** (self.num_feat_patterns - 1)
+
+
+        # Loopy implementation for testing
+        # dm_alpha_se_loop = {}
+        # for feat_name in self.features_names:
+        #     dm_alpha_se_loop[feat_name] = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        #     for a in range(self.num_feat_patterns):
+        #         for c in range(self.num_feat_patterns):
+        #             for j in range(len(self.corr_signed[feat_name])):
+        #                 var1 = 0
+        #                 var2 = 0
+        #                 for b in range(self.num_feat_patterns + 1):
+        #                     var1 += self.sign_matrix[j,b] * self.even_corr[feat_name][b,a]
+        #                 for b in range(self.num_feat_patterns):
+        #                     var2 += self.sign_matrix[j,b] * att[b]
+        #
+        #                 var2 = var2 *  self.beta_o * self.scaling_o
+        #                 tanh_var = 1 - np.tanh(var2)**2
+        #                 dm_alpha_se_loop[feat_name][a,c] += (var1 * tanh_var * self.beta_o * self.scaling_o
+        #                                                     * self.sign_matrix[j,c])
+        #
+        #     dm_alpha_se_loop[feat_name] = self.se_per_contribution * dm_alpha_se_loop[feat_name] / 2 ** (self.num_feat_patterns - 1)
+
 
     def mean_field_derivatives(self, att, dAdm):
         if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
@@ -478,19 +540,19 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Compute the derivatives of the mean-fields wrt to each other
         dm_dm = {}
-        for feat_name_1 in self.features_names:
+        feats = ["v", "q", "k"]
+        for feat_name_1 in feats:
             dm_dm[feat_name_1] = {}
-            for feat_name_2 in self.features_names:
-                if feat_name_2 == "o":  # We only compute the derivatives wrt v q k, ("o" does not affect the evolution)
-                    continue
-                elif feat_name_2 == "q":
+            for feat_name_2 in feats:
+                if feat_name_2 == "q":
                     dm_dm[feat_name_1][feat_name_2] = (
                         np.einsum("ja,jbc->ac", dm_alpha_se[feat_name_1],
                                   sign_dAtt_patterns_dm[feat_name_2]))
-                else:
+                else:  # v or k
                     dm_dm[feat_name_1][feat_name_2] = (
                         np.einsum("ja,jbcd->acd", dm_alpha_se[feat_name_1],
                                   sign_dAtt_patterns_dm[feat_name_2]))
+
 
         return dm_dm
 
@@ -569,11 +631,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         I = np.identity(self.pe_bit_size * (self.context_size - 1))
         self.J[idx_i_0_pe+self.pe_bit_size:idx_i_1_pe, idx_j_0_pe:-self.pe_bit_size] = I
 
-
     def jacobian(self, t, att):
 
         shift_amount = self.context_size - self.context_index - 1
         self.ordered_mv_window, self.ordered_mk_window = self.shift_d_window(shift_amount)
+
+        self.dm_dA(att)
 
         # Compute the derivatives of the attention wrt MFs v q k
         dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
@@ -591,15 +654,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             second_loop = zip(list(range(3)), derivative_feat_names)
             for j, feat_2_name in second_loop:
 
-
                 idx_j_0 = self.J_mf_type_start_idxs[j]
                 idx_j_1 = self.J_mf_type_start_idxs[j + 1]
                 num_cols = idx_j_1 - idx_j_0
 
-                dmalpha_dmlambda_flatten = dm_dm[self.features_names[i]][feat_2_name]
+                dmalpha_dmlambda_flatten = dm_dm[feat_1_name][feat_2_name]
                 # Reshape features with copies
                 if feat_2_name == "v" or feat_2_name == "k":
-                    dmalpha_dmlambda_flatten = np.reshape(dm_dm[self.features_names[i]][feat_2_name],
+                    dmalpha_dmlambda_flatten = np.reshape(dm_dm[feat_1_name][feat_2_name],
                                                       (self.num_feat_patterns, num_cols), order="F")
 
                 self.J[idx_i_0:idx_i_1, idx_j_0:idx_j_1] = dmalpha_dmlambda_flatten
@@ -608,16 +670,35 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         Q, R = np.linalg.qr(self.J)
         detJ = np.linalg.det(self.J)
 
+        dets = np.zeros(35)
+        self.J *= 1
         for valid_idxs in range(0, 35):
             # valid_idxs = 17
-            JnoPE =  self.J[:valid_idxs,:valid_idxs]
-            detJnoPE = np.linalg.det(JnoPE)
-            print(valid_idxs, detJnoPE)
+            JnoPE =  copy.deepcopy(self.J[:valid_idxs,:valid_idxs])
+            dets[valid_idxs] = np.linalg.det(JnoPE)
 
-        print(detJ)
-        print(detJnoPE)
-        print(R.diagonal())
+        print("v", "v")
+        thisJ = copy.deepcopy(self.J[0:12, 0:12])
+        print(thisJ)
+        print(thisJ.shape)
+        print("det", np.linalg.det(thisJ))
+        # p, l, u = lu(thisJ)
+        # print(u)
         print()
+
+        print("v_q0", "v_q0")
+        thisJ = copy.deepcopy(self.J[0:15, 0:15])
+        print(thisJ)
+        print(thisJ.shape)
+        print("det", np.linalg.det(thisJ))
+        # p, l, u = lu(thisJ)
+        # print("u", u)
+
+        print(self.J[0]/self.J[14])
+
+        print("determinant", dets)
+
+        # print(R.diagonal())
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
