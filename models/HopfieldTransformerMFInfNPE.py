@@ -502,6 +502,60 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         #     dm_alpha_se_loop[feat_name] = self.se_per_contribution * dm_alpha_se_loop[feat_name] / 2 ** (self.num_feat_patterns - 1)
 
 
+    def dA_dA(self, t, dm_alpha_se_dA):
+
+        effective_context_size = min(self.context_size, t + 1)
+
+        # local t, where t values are found in the context window
+        lt = t % self.context_size
+
+        # Put in common queries and keys
+        mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
+                        optimize=True)
+        # Scale
+        # TODO: CHECK IF I CAN MAKE THIS A CLASS VARIABLE SO I DONT HAVE TO RE-COMPUTE IT
+        key_prob_unnorm = self.gamma * mqk
+
+        if (not self.run_exact_inf and
+                (self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)")):
+            raise Exception(f"Scaling is not well defined for the derivatives for "
+                            f"normalize_weights_str_att={self.normalize_weights_str_att}")
+
+        # Loopy implementation for testing
+        dA_dA_loopy = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        for a in range(self.num_feat_patterns):
+
+            numerator_term2_part1 = 0
+            for tau in range(effective_context_size):
+                numerator_term2_part1 += self.mv_window[tau, a] * key_prob_unnorm[tau]
+
+            for c in range(self.num_feat_patterns):
+                numerator_term1 = 0
+                numerator_term2_part2 = 0
+
+                for tau in range(effective_context_size):
+                    numerator_term1 += dm_alpha_se_dA["v"][a, c] * key_prob_unnorm[tau]
+
+                    dmq_dA_mk = 0
+                    for b in range(self.num_feat_patterns):
+                        dmq_dA_mk += dm_alpha_se_dA["v"][b, c] * self.mk_window[tau, b]
+                    numerator_term1 += self.mv_window[tau, a] * key_prob_unnorm[tau] * self.gamma * dmq_dA_mk
+
+                    numerator_term2_part2  += key_prob_unnorm[tau] * self.gamma * dmq_dA_mk
+
+                mq_dmk_dA = 0
+                for b in range(self.num_feat_patterns):
+                    mq_dmk_dA += self.mq_window[b] * dm_alpha_se_dA["v"][b, c]
+                numerator_term1 += self.mv_window[lt, a] * key_prob_unnorm[lt] * self.gamma * mq_dmk_dA
+                numerator_term2_part2 += key_prob_unnorm[lt] * self.gamma * mq_dmk_dA
+
+
+                term_1 = numerator_term1 / np.sum(key_prob_unnorm)
+                term_2 = numerator_term2_part1 * numerator_term2_part2 / np.sum(key_prob_unnorm)**2
+
+                dA_dA_loopy[a, c] = term_1 - term_2
+
+
     def initialize_jacobian(self):
         jacobian_size = (self.num_feat_patterns + self.num_feat_patterns +
                              self.pe_bit_size)
@@ -510,6 +564,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
     def jacobian(self, t, att):
         # Dictionary with the derivatives of m wrt A for "v" "q" and "k"
         dm_alpha_se_dA = self.dm_dA(att)
+
+        self.dA_dA(t, dm_alpha_se_dA)
 
 
     def dm_dm(self, att, dAdm):
