@@ -558,6 +558,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
     def initialize_jacobian(self):
+        jacobian_size = (self.num_feat_patterns + self.num_feat_patterns +
+                             self.pe_bit_size)
+        self.J = np.zeros((jacobian_size, jacobian_size))
+
+    def jacobian(self, t, att):
+        self.dm_dA(att)
+
+    def initialize_degenerate_jacobian(self):
         # Initialize jacobian, dims
         # (num_mean_field_types x num_features x context_size + num_bits_pe)
         # order mean-fields: o, v, q, k
@@ -631,12 +639,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         I = np.identity(self.pe_bit_size * (self.context_size - 1))
         self.J[idx_i_0_pe+self.pe_bit_size:idx_i_1_pe, idx_j_0_pe:-self.pe_bit_size] = I
 
-    def jacobian(self, t, att):
+    def degenerate_jacobian(self, t, att):
 
         shift_amount = self.context_size - self.context_index - 1
         self.ordered_mv_window, self.ordered_mk_window = self.shift_d_window(shift_amount)
-
-        self.dm_dA(att)
 
         # Compute the derivatives of the attention wrt MFs v q k
         dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
