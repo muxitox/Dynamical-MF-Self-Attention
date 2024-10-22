@@ -502,7 +502,17 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         #     dm_alpha_se_loop[feat_name] = self.se_per_contribution * dm_alpha_se_loop[feat_name] / 2 ** (self.num_feat_patterns - 1)
 
 
-    def mean_field_derivatives(self, att, dAdm):
+    def initialize_jacobian(self):
+        jacobian_size = (self.num_feat_patterns + self.num_feat_patterns +
+                             self.pe_bit_size)
+        self.J = np.zeros((jacobian_size, jacobian_size))
+
+    def jacobian(self, t, att):
+        # Dictionary with the derivatives of m wrt A for "v" "q" and "k"
+        dm_alpha_se_dA = self.dm_dA(att)
+
+
+    def dm_dm(self, att, dAdm):
         if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
 
             sign_att_patterns = (self.beta_o * self.scaling_o *
@@ -557,15 +567,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return dm_dm
 
-
-    def initialize_jacobian(self):
-        jacobian_size = (self.num_feat_patterns + self.num_feat_patterns +
-                             self.pe_bit_size)
-        self.J = np.zeros((jacobian_size, jacobian_size))
-
-    def jacobian(self, t, att):
-        # Dictionary with the derivatives of m wrt A for "v" "q" and "k"
-        dm_alpha_se_dA = self.dm_dA(att)
 
     def initialize_degenerate_jacobian(self):
         # Initialize jacobian, dims
@@ -650,7 +651,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
         # Create dict structure
         dAdm = {"v": dAdmv, "q": dAdmq, "k": dAdmk}
-        dm_dm = self.mean_field_derivatives(att, dAdm)
+        dm_dm = self.dm_dm(att, dAdm)
 
         derivative_feat_names = ["v", "q", "k"]
         first_loop = zip(list(range(3)), derivative_feat_names)
