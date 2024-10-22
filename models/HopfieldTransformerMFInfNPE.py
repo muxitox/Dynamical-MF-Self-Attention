@@ -471,13 +471,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         d_tanh_j_signs_c = np.einsum("j,jc->jc", d_tanh_j_signs, self.sign_matrix[:, :self.num_feat_patterns])
 
         # Compute the semantic part of every mean field needed for the attention
-        dm_alpha_se = {}
-        for feat_name in self.features_names:
-            dm_alpha_se[feat_name] = (np.einsum("ja,jc->ac", self.corr_signed[feat_name],
+        dm_alpha_se_dA = {}
+        for feat_name in ["v", "q", "k"]:
+            dm_alpha_se_dA[feat_name] = (np.einsum("ja,jc->ac", self.corr_signed[feat_name],
                                                 self.beta_o * self.scaling_o * d_tanh_j_signs_c))  # Size (num_features)
 
-            dm_alpha_se[feat_name] = self.se_per_contribution * dm_alpha_se[feat_name] / 2 ** (self.num_feat_patterns - 1)
+            dm_alpha_se_dA[feat_name] = self.se_per_contribution * dm_alpha_se_dA[feat_name] / 2 ** (self.num_feat_patterns - 1)
 
+        return dm_alpha_se_dA
 
         # Loopy implementation for testing
         # dm_alpha_se_loop = {}
@@ -563,7 +564,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.J = np.zeros((jacobian_size, jacobian_size))
 
     def jacobian(self, t, att):
-        self.dm_dA(att)
+        # Dictionary with the derivatives of m wrt A for "v" "q" and "k"
+        dm_alpha_se_dA = self.dm_dA(att)
 
     def initialize_degenerate_jacobian(self):
         # Initialize jacobian, dims
