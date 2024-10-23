@@ -525,7 +525,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # First term:
         # First term within the first term
-        dmq_dA_key_prob = np.einsum("ac,t -> tac", dm_alpha_se_dA["v"], key_prob_unnorm)
+        dmv_dA_key_prob = np.einsum("ac,t -> tac", dm_alpha_se_dA["v"], key_prob_unnorm)
 
         # Second term within the first term
         dmq_dA_mk = np.einsum('bc,tb -> tc', dm_alpha_se_dA["q"],
@@ -546,7 +546,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                               * self.gamma)
 
         # Aggregate the first term
-        first_term = np.einsum("tac,tac -> ac", dmq_dA_key_prob, mv_key_prob_dmq_mk, optimize=True)
+        first_term = dmv_dA_key_prob + mv_key_prob_dmq_mk
+        # Sum over tau dimension (0)
+        first_term = np.sum(first_term, axis=0)
         first_term += mv_key_prob_t_mq_dmk
         first_term /= Z
 
@@ -554,56 +556,60 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # First term within the second term
         mv_key_prob = np.einsum("ta,t -> a", self.mv_window, key_prob_unnorm)
         # Second term within the second term
-        mv_key_prob_dmq_mk = (np.einsum('t,tc -> c', key_prob_unnorm, dmq_dA_mk, optimize=True)
-                              * self.gamma)
+        key_prob_dmq_mk = np.einsum('t,tc -> c', key_prob_unnorm, dmq_dA_mk, optimize=True)
         # Third term within the second term
-        key_prob_t_mq_dmk = key_prob_unnorm[lt] * self.gamma * mq_dmk_dA
+        key_prob_t_mq_dmk = key_prob_unnorm[lt] * mq_dmk_dA
 
-        second_term = mv_key_prob_dmq_mk + key_prob_t_mq_dmk
+        second_term = self.gamma * (key_prob_dmq_mk + key_prob_t_mq_dmk)
 
         second_term = np.einsum('a,c -> ac', mv_key_prob, second_term)
         second_term /= Z**2
 
         dA_dA = first_term - second_term
 
-
-        # Loopy implementation for testing
-        dA_dA_loopy = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
-        for a in range(self.num_feat_patterns):
-
-            numerator_term2_part1 = 0
-            for tau in range(effective_context_size):
-                numerator_term2_part1 += self.mv_window[tau, a] * key_prob_unnorm[tau]
-
-            for c in range(self.num_feat_patterns):
-                numerator_term1 = 0
-                numerator_term2_part2 = 0
-
-                for tau in range(effective_context_size):
-                    numerator_term1 += dm_alpha_se_dA["v"][a, c] * key_prob_unnorm[tau]
-
-                    dmq_dA_mk_loop = 0
-                    for b in range(self.num_feat_patterns):
-                        dmq_dA_mk_loop += dm_alpha_se_dA["v"][b, c] * self.mk_window[tau, b]
-                    numerator_term1 += self.mv_window[tau, a] * key_prob_unnorm[tau] * self.gamma * dmq_dA_mk_loop
-
-                    numerator_term2_part2  += key_prob_unnorm[tau] * self.gamma * dmq_dA_mk_loop
-
-                mq_dmk_dA_loop = 0
-                for b in range(self.num_feat_patterns):
-                    mq_dmk_dA_loop += self.mq_window[b] * dm_alpha_se_dA["v"][b, c]
-                numerator_term1 += self.mv_window[lt, a] * key_prob_unnorm[lt] * self.gamma * mq_dmk_dA_loop
-                numerator_term2_part2 += key_prob_unnorm[lt] * self.gamma * mq_dmk_dA_loop
-
-
-                term_1 = numerator_term1 / np.sum(key_prob_unnorm)
-                term_2 = numerator_term2_part1 * numerator_term2_part2 / np.sum(key_prob_unnorm)**2
-
-                dA_dA_loopy[a, c] = term_1 - term_2
-
         print(dA_dA)
-        print(dA_dA_loopy)
-        print(np.allclose(dA_dA, dA_dA_loopy))
+
+        return dA_dA
+
+        # # Loopy implementation for testing 2
+        # term_1_loopy_test = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        # term_2_loopy_test = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
+        #
+        # for a in range(self.num_feat_patterns):
+        #
+        #     numerator_term2_part1_test = 0
+        #     for tau in range(effective_context_size):
+        #         numerator_term2_part1_test += self.mv_window[tau, a] * key_prob_unnorm[tau]
+        #
+        #     for c in range(self.num_feat_patterns):
+        #         numerator_term1_test = 0
+        #         numerator_term2_part2_test = 0
+        #
+        #         for tau in range(effective_context_size):
+        #             numerator_term1_test += dm_alpha_se_dA["v"][a, c] * key_prob_unnorm[tau]
+        #
+        #             dmq_dA_mk_loop_test = 0
+        #             for b in range(self.num_feat_patterns):
+        #                 dmq_dA_mk_loop_test += dm_alpha_se_dA["q"][b, c] * self.mk_window[tau, b]
+        #             numerator_term1_test += self.mv_window[tau, a] * key_prob_unnorm[tau] * self.gamma * dmq_dA_mk_loop_test
+        #
+        #             numerator_term2_part2_test += key_prob_unnorm[tau] * self.gamma * dmq_dA_mk_loop_test
+        #
+        #         mq_dmk_dA_loop_test = 0
+        #         for b in range(self.num_feat_patterns):
+        #             mq_dmk_dA_loop_test += self.mq_window[b] * dm_alpha_se_dA["k"][b, c]
+        #         numerator_term1_test += self.mv_window[lt, a] * key_prob_unnorm[lt] * self.gamma * mq_dmk_dA_loop_test
+        #         numerator_term2_part2_test += key_prob_unnorm[lt] * self.gamma * mq_dmk_dA_loop_test
+        #
+        #         term_1_loopy_test[a, c] = numerator_term1_test
+        #         term_2_loopy_test[a, c] = numerator_term2_part1_test * numerator_term2_part2_test
+        #
+        # term_1_loopy_test /= Z
+        # term_2_loopy_test /= Z**2
+        # dA_dA_loopy_test = term_1_loopy_test - term_2_loopy_test
+        #
+        # print(np.allclose(dA_dA, dA_dA_loopy_test))
+        # print()
 
 
     def initialize_jacobian(self):
