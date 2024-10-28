@@ -567,8 +567,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         dA_dA = first_term - second_term
 
-        print(dA_dA)
-
         return dA_dA
 
         # # Loopy implementation for testing 2
@@ -679,6 +677,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return dm_dm
 
+    def dm_dp(self):
+        dm_dp  = {}
+        for feat in self.features_names:
+            dm_dp[feat] = (1 - self.se_per_contribution) * self.W_dict[feat][:, -self.pe_bit_size:] / self.pe_bit_size
+
+        return dm_dp
 
     def initialize_degenerate_jacobian(self):
         # Initialize jacobian, dims
@@ -694,6 +698,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         jacobian_size = (2 * self.num_feat_patterns * self.context_size + self.num_feat_patterns +
                              self.pe_bit_size * self.context_size)
         self.J = np.zeros((jacobian_size, jacobian_size))
+
+        dm_dp = self.dm_dp()
 
         # The derivatives of mean-fields of d>0 wrt d-1 are constant and equal to 1 for large simulations.
 
@@ -736,7 +742,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                     self.J[idx_i_0_diag:idx_i_1, idx_j_0:idx_j_1_diag] = I
 
             # Treat now the derivatives of mean-fields wrt positional encodings
-            dalpha_dp = (1 - self.se_per_contribution) * self.W_dict[feat_1][:, -self.pe_bit_size:] / self.pe_bit_size
+            dalpha_dp = dm_dp[feat_1]
             idx_i_1_mf_pe = idx_i_0 + self.num_feat_patterns
             idx_j_0_pe = self.J_mf_type_start_idxs[-2]
             idx_j_1_pe = idx_j_0_pe + self.pe_bit_size
@@ -980,7 +986,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Load attention values
         att = self.att_window
         # Encode the position
-        pos_vec = self.vocab.encode_pos(t % self.context_size)
+        pos_vec = self.PE.getter()
+
         # Positional Embedding contribution
         pe_contribution = {}
         for feat_name in self.features_names:
@@ -1034,6 +1041,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.save_stats(t, mo, m_alpha_se["o"], self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
+        self.PE.next_step()
+
 
     def return_context_window(self):
         return self.att_window, self.mv_window, self.mq_window, self.mk_window
@@ -1045,6 +1054,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # We have in self.att_window the last attention value
         # We initialize the model at the end of the previous execution
         ini_t = self.context_size
+        self.PE.initialize_state(0)
 
         # Initialize Jacobian if needed
         # TODO: check jacobian requirement
@@ -1053,15 +1063,19 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
             self.attention(t)
-            self.jacobian(t, self.att_window)
+            # self.jacobian(t, self.att_window)
 
     def simulate(self, x0, max_steps):
+
+        self.PE.initialize_state(0)
+
 
         # Initialize attention with the info from the initial token
         self.compute_means_from_data(x0, t=0)
         self.attention(t=0)
 
         # TODO: uncomment this and check if boundary conditions are met
+        self.initialize_jacobian()
         # self.jacobian(t)
 
         for t in range(1, max_steps):
