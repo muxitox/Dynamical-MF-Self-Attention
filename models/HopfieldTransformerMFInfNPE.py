@@ -66,6 +66,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, num_feat_patterns))
 
+        # Variable for accumulating the Lyapunov exponents
+        self.S = np.zeros(self.num_feat_patterns + self.pe_bit_size)
+        self.S_i = np.zeros((self.num_saved_steps, self.num_feat_patterns + self.pe_bit_size))
+
     def create_W_matrices(self, correlations_from_weights, num_segments_corrs):
         self.W = np.zeros((self.num_feat_patterns, self.embedding_size))
         self.W_SE = np.random.randint(2, size=(self.num_feat_patterns, self.se_bit_size)) * 2 - 1
@@ -502,7 +506,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         #     dm_alpha_se_loop[feat_name] = self.se_per_contribution * dm_alpha_se_loop[feat_name] / 2 ** (self.num_feat_patterns - 1)
 
 
-    def dA_dA(self, t, dm_alpha_se_dA):
+    def dA_dA_or_P(self, t, dm_alpha_se_dA_or_P):
 
         effective_context_size = min(self.context_size, t + 1)
 
@@ -525,10 +529,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # First term:
         # First term within the first term
-        dmv_dA_key_prob = np.einsum("ac,t -> tac", dm_alpha_se_dA["v"], key_prob_unnorm)
+        dmv_dA_key_prob = np.einsum("ac,t -> tac", dm_alpha_se_dA_or_P["v"], key_prob_unnorm)
 
         # Second term within the first term
-        dmq_dA_mk = np.einsum('bc,tb -> tc', dm_alpha_se_dA["q"],
+        dmq_dA_mk = np.einsum('bc,tb -> tc', dm_alpha_se_dA_or_P["q"],
                            self.mk_window[:effective_context_size], optimize=True)
 
         mv_key_prob = np.einsum('ta,t -> ta', self.mv_window[:effective_context_size],
@@ -539,7 +543,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Third term within the first term
         mq_dmk_dA = np.einsum('b,bc -> c', self.mq_window,
-                           dm_alpha_se_dA["k"], optimize=True)
+                              dm_alpha_se_dA_or_P["k"], optimize=True)
         # mv_key_prob_t of size a
         mv_key_prob_t = self.mv_window[lt] * key_prob_unnorm[lt]
         mv_key_prob_t_mq_dmk = (np.einsum('a,c -> ac', mv_key_prob_t, mq_dmk_dA, optimize=True)
@@ -611,15 +615,40 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
     def initialize_jacobian(self):
-        jacobian_size = (self.num_feat_patterns + self.num_feat_patterns +
-                             self.pe_bit_size)
+        jacobian_size = (self.num_feat_patterns + self.pe_bit_size)
         self.J = np.zeros((jacobian_size, jacobian_size))
 
     def jacobian(self, t, att):
         # Dictionary with the derivatives of m wrt A for "v" "q" and "k"
         dm_alpha_se_dA = self.dm_dA(att)
+        dm_dp = self.dm_dp()
 
-        self.dA_dA(t, dm_alpha_se_dA)
+        dA_dA = self.dA_dA_or_P(t, dm_alpha_se_dA)
+        dA_dP = self.dA_dA_or_P(t, dm_dp)
+
+        self.J[:self.num_feat_patterns, :self.num_feat_patterns] = dA_dA
+        self.J[:self.num_feat_patterns, self.num_feat_patterns:] = dA_dP
+        self.J[self.num_feat_patterns:, self.num_feat_patterns:] = self.PE.dp_dp
+
+    def compute_lyapunov(self, t, S_idx, dx):
+
+        self.jacobian(t, self.att_window)
+
+        # Compute perturbation
+        dx = np.matmul(self.J, dx)
+        # Decompose perturbation
+        Q, R = np.linalg.qr(dx)
+        d_exp = np.absolute(np.diag(R))
+        dS = np.log(d_exp)
+
+        self.S += dS
+        self.S_i[S_idx] = dS
+
+        # Q is orthogonal so we can use it for the next step
+        dx = Q
+
+        return dx
+
 
 
     def dm_dm(self, att, dAdm):
@@ -793,39 +822,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
                 self.J[idx_i_0:idx_i_1, idx_j_0:idx_j_1] = dmalpha_dmlambda_flatten
 
-
-        Q, R = np.linalg.qr(self.J)
-        detJ = np.linalg.det(self.J)
-
-        dets = np.zeros(35)
-        self.J *= 1
-        for valid_idxs in range(0, 35):
-            # valid_idxs = 17
-            JnoPE =  copy.deepcopy(self.J[:valid_idxs,:valid_idxs])
-            dets[valid_idxs] = np.linalg.det(JnoPE)
-
-        print("v", "v")
-        thisJ = copy.deepcopy(self.J[0:12, 0:12])
-        print(thisJ)
-        print(thisJ.shape)
-        print("det", np.linalg.det(thisJ))
-        # p, l, u = lu(thisJ)
-        # print(u)
-        print()
-
-        print("v_q0", "v_q0")
-        thisJ = copy.deepcopy(self.J[0:15, 0:15])
-        print(thisJ)
-        print(thisJ.shape)
-        print("det", np.linalg.det(thisJ))
-        # p, l, u = lu(thisJ)
-        # print("u", u)
-
-        print(self.J[0]/self.J[14])
-
-        print("determinant", dets)
-
-        # print(R.diagonal())
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
@@ -1047,7 +1043,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
     def return_context_window(self):
         return self.att_window, self.mv_window, self.mq_window, self.mk_window
 
-    def simulate_mf_from_context(self, max_steps):
+    def simulate_mf_from_context(self, max_steps, compute_lyapunov=True):
         # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
         # self.context_size steps
 
@@ -1056,14 +1052,29 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         ini_t = self.context_size
         self.PE.initialize_state(0)
 
-        # Initialize Jacobian if needed
-        # TODO: check jacobian requirement
-        self.initialize_jacobian()
+        if compute_lyapunov:
+            # Initialize Jacobian if needed
+            # TODO: check jacobian requirement
+            self.initialize_jacobian()
+            dx = np.eye(self.num_feat_patterns + self.pe_bit_size)
+            lya_idx = 0
 
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
             self.attention(t)
-            # self.jacobian(t, self.att_window)
+
+            if compute_lyapunov and (t > self.min_saved_step):
+                dx = self.compute_lyapunov(t, lya_idx, dx)
+                lya_idx += 1
+
+        if compute_lyapunov:
+            self.S /= self.num_saved_steps
+
+        sorted_S = np.sort(self.S)
+        print("S", self.S)
+        print("Sorted", sorted_S)
+
+
 
     def simulate(self, x0, max_steps):
 
@@ -1082,4 +1093,4 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.compute_mf(t)
             self.attention(t)
 
-            self.jacobian(t, self.att_window)
+            self.compute_lyapunov(t)
