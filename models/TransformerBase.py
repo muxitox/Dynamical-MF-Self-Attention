@@ -16,7 +16,7 @@ class TransformerBase(ABC):
 
         self.pe_mode = pe_mode
 
-        self.PE = self.PositionalEncoding(positional_embedding_bitsize, vocab, K=20, type="tanh")
+        self.PE = self.PositionalEncoding(positional_embedding_bitsize, vocab, K=10, type="tanh")
 
         self.embedding_size = semantic_embedding_bitsize + positional_embedding_bitsize
 
@@ -186,7 +186,8 @@ class TransformerBase(ABC):
         def __init__(self, pe_bit_size, vocab, K=1, type="base"):
             # type can be "base" or "tanh"
             self.pe_bit_size = pe_bit_size
-            self.state = np.ones(pe_bit_size, dtype=np.longdouble) * -1
+            # self.state = np.ones(pe_bit_size, dtype=np.longdouble) * -1
+            self.state = np.ones(pe_bit_size) * -1
             self.K = K
             self.vocab = vocab
             self.type = type
@@ -199,7 +200,9 @@ class TransformerBase(ABC):
             return self.state
 
         def next_step(self, compute_der=True):
-            new_state = np.zeros(self.pe_bit_size, dtype=np.longdouble)
+            # new_state = np.zeros(self.pe_bit_size, dtype=np.longdouble)
+            new_state = np.zeros(self.pe_bit_size)
+
 
             new_state[-1] = - self.state[-1]
             if self.type == "tanh":

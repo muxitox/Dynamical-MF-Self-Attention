@@ -68,7 +68,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Variable for accumulating the Lyapunov exponents
         self.S = np.zeros(self.num_feat_patterns + self.pe_bit_size)
+        self.S_p = np.zeros(self.pe_bit_size)
         self.S_i = np.zeros((self.num_saved_steps, self.num_feat_patterns + self.pe_bit_size))
+        self.S_p_i = np.zeros((self.num_saved_steps, self.pe_bit_size))
 
     def create_W_matrices(self, correlations_from_weights, num_segments_corrs):
         self.W = np.zeros((self.num_feat_patterns, self.embedding_size))
@@ -630,7 +632,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.J[:self.num_feat_patterns, self.num_feat_patterns:] = dA_dP
         self.J[self.num_feat_patterns:, self.num_feat_patterns:] = self.PE.dp_dp
 
-    def compute_lyapunov(self, t, S_idx, dx):
+        self.J_p = self.PE.dp_dp
+
+    def compute_lyapunov(self, t, S_idx, dx, dx_p):
 
         self.jacobian(t, self.att_window)
 
@@ -641,13 +645,22 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         d_exp = np.absolute(np.diag(R))
         dS = np.log(d_exp)
 
+        dx_p = np.matmul(self.J_p, dx_p)
+        Q_p, R_p = np.linalg.qr(dx_p)
+        d_exp_P = np.absolute(np.diag(R_p))
+        dS_p = np.log(d_exp_P)
+        dx_p = Q_p
+
+        self.S_p += dS_p
+        self.S_p_i[S_idx] = dS_p
+
         self.S += dS
         self.S_i[S_idx] = dS
 
         # Q is orthogonal so we can use it for the next step
         dx = Q
 
-        return dx
+        return dx, dx_p
 
 
 
@@ -1057,6 +1070,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             # TODO: check jacobian requirement
             self.initialize_jacobian()
             dx = np.eye(self.num_feat_patterns + self.pe_bit_size)
+            dx_p = np.eye(self.pe_bit_size)
             lya_idx = 0
 
         for t in range(ini_t, max_steps):
@@ -1064,15 +1078,18 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.attention(t)
 
             if compute_lyapunov and (t > self.min_saved_step):
-                dx = self.compute_lyapunov(t, lya_idx, dx)
+                dx, dx_p = self.compute_lyapunov(t, lya_idx, dx, dx_p)
                 lya_idx += 1
 
         if compute_lyapunov:
             self.S /= self.num_saved_steps
+            self.S_p /= self.num_saved_steps
 
-        sorted_S = np.sort(self.S)
+        sorted_S = np.sort(self.S)[::-1]
         print("S", self.S)
-        print("Sorted", sorted_S)
+        print("Sorted desc", sorted_S)
+        print("S pos", self.S_p)
+        print()
 
 
 
