@@ -58,6 +58,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mq_window = np.zeros(self.num_feat_patterns)
         self.mk_window = np.zeros((self.context_size, self.num_feat_patterns))
         self.att_window = np.zeros(self.num_feat_patterns)
+        # att values at previous step
+        self.att_window_old = np.zeros(self.num_feat_patterns)
+
 
         # Create variables to save results
         self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
@@ -70,7 +73,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.S = np.zeros(self.num_feat_patterns + self.pe_bit_size)
         self.S_p = np.zeros(self.pe_bit_size)
         self.S_i = np.zeros((self.num_saved_steps, self.num_feat_patterns + self.pe_bit_size))
+        self.S_i_sum = np.zeros((self.num_saved_steps, self.num_feat_patterns + self.pe_bit_size))
         self.S_p_i = np.zeros((self.num_saved_steps, self.pe_bit_size))
+        self.S_p_i_sum = np.zeros((self.num_saved_steps, self.pe_bit_size))
+
 
     def create_W_matrices(self, correlations_from_weights, num_segments_corrs):
         self.W = np.zeros((self.num_feat_patterns, self.embedding_size))
@@ -280,6 +286,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mq_window = copy.deepcopy(mq_window)
         self.mk_window = copy.deepcopy(mk_window)
         self.att_window = copy.deepcopy(att_window)
+        self.att_window_old = np.zeros(self.num_feat_patterns)
+
 
     def reset_data(self):
 
@@ -291,6 +299,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # We don't need to order it every step normally. Order is only important for the Jacobian
         self.ordered_mk_window = np.zeros((self.context_size, self.num_feat_patterns))
         self.att_window = np.zeros(self.num_feat_patterns)
+        self.att_window_old = np.zeros(self.num_feat_patterns)
+
 
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
@@ -453,7 +463,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return dAdmv, dAdmq, dAdmk
 
-    def dm_dA(self, att):
+    def f_dm_dA(self, att_1):
         """
         Derivatives of the mean-fields wrt. attention
         :return:
@@ -463,7 +473,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
             sign_att_patterns = (self.beta_o * self.scaling_o *
                                  np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
-                                           att))
+                                           att_1))
 
             idx_not_zero = np.where(sign_att_patterns != 0)
             # If result is not 0, normalize by inf (avoids NaNs)
@@ -472,13 +482,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         else:  # Otherwise, handle it here, just compute tanh
             d_tanh_j_signs = 1 - np.tanh(self.beta_o * self.scaling_o * (1 / self.normalizing_constant_o) *
                                    np.einsum("jb,b->j", self.sign_matrix[:, :self.num_feat_patterns],
-                                             att))**2
+                                             att_1))**2
 
         d_tanh_j_signs_c = np.einsum("j,jc->jc", d_tanh_j_signs, self.sign_matrix[:, :self.num_feat_patterns])
 
         # Compute the semantic part of every mean field needed for the attention
         dm_alpha_se_dA = {}
         for feat_name in ["v", "q", "k"]:
+            # Index j is the different combinations of sigma patterns
             dm_alpha_se_dA[feat_name] = (np.einsum("ja,jc->ac", self.corr_signed[feat_name],
                                                 self.beta_o * self.scaling_o * d_tanh_j_signs_c))  # Size (num_features)
 
@@ -508,7 +519,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         #     dm_alpha_se_loop[feat_name] = self.se_per_contribution * dm_alpha_se_loop[feat_name] / 2 ** (self.num_feat_patterns - 1)
 
 
-    def dA_dA_or_P(self, t, dm_alpha_se_dA_or_P):
+    def f_dA_dA_or_P(self, t, dm_alpha_se_dA_or_P):
 
         effective_context_size = min(self.context_size, t + 1)
 
@@ -619,14 +630,15 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
     def initialize_jacobian(self):
         jacobian_size = (self.num_feat_patterns + self.pe_bit_size)
         self.J = np.zeros((jacobian_size, jacobian_size))
+        self.dm_dp = self.f_dm_dp()
 
-    def jacobian(self, t, att):
+
+    def jacobian(self, t, att_1):
         # Dictionary with the derivatives of m wrt A for "v" "q" and "k"
-        dm_alpha_se_dA = self.dm_dA(att)
-        dm_dp = self.dm_dp()
+        dm_alpha_se_dA = self.f_dm_dA(att_1)
 
-        dA_dA = self.dA_dA_or_P(t, dm_alpha_se_dA)
-        dA_dP = self.dA_dA_or_P(t, dm_dp)
+        dA_dA = self.f_dA_dA_or_P(t, dm_alpha_se_dA)
+        dA_dP = self.f_dA_dA_or_P(t, self.dm_dp)
 
         self.J[:self.num_feat_patterns, :self.num_feat_patterns] = dA_dA
         self.J[:self.num_feat_patterns, self.num_feat_patterns:] = dA_dP
@@ -634,9 +646,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         self.J_p = self.PE.dp_dp
 
-    def compute_lyapunov(self, t, S_idx, dx, dx_p):
+    def compute_lyapunov(self, t, dx, dx_p):
 
-        self.jacobian(t, self.att_window)
+        S_idx = t - self.min_saved_step
+
+        self.jacobian(t, self.att_window_old)
 
         # Compute perturbation
         dx = np.matmul(self.J, dx)
@@ -653,9 +667,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         self.S_p += dS_p
         self.S_p_i[S_idx] = dS_p
+        self.S_p_i_sum[S_idx] += dS_p
+
 
         self.S += dS
         self.S_i[S_idx] = dS
+        self.S_i_sum[S_idx] = copy.deepcopy(self.S)
+        print()
+
 
         # Q is orthogonal so we can use it for the next step
         dx = Q
@@ -664,7 +683,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
 
-    def dm_dm(self, att, dAdm):
+    def f_dm_dm(self, att, dAdm):
         if self.run_exact_inf:  # In infty, we are going to deal with the order of N in the output.
 
             sign_att_patterns = (self.beta_o * self.scaling_o *
@@ -719,7 +738,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         return dm_dm
 
-    def dm_dp(self):
+    def f_dm_dp(self):
         dm_dp  = {}
         for feat in self.features_names:
             dm_dp[feat] = (1 - self.se_per_contribution) * self.W_dict[feat][:, -self.pe_bit_size:] / self.pe_bit_size
@@ -741,7 +760,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                              self.pe_bit_size * self.context_size)
         self.J = np.zeros((jacobian_size, jacobian_size))
 
-        dm_dp = self.dm_dp()
+        dm_dp = self.f_dm_dp()
 
         # The derivatives of mean-fields of d>0 wrt d-1 are constant and equal to 1 for large simulations.
 
@@ -811,7 +830,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         dAdmv, dAdmq, dAdmk = self.attention_derivatives(t)
         # Create dict structure
         dAdm = {"v": dAdmv, "q": dAdmq, "k": dAdmk}
-        dm_dm = self.dm_dm(att, dAdm)
+        dm_dm = self.f_dm_dm(att, dAdm)
 
         derivative_feat_names = ["v", "q", "k"]
         first_loop = zip(list(range(3)), derivative_feat_names)
@@ -838,6 +857,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
+        self.att_window_old = copy.deepcopy(self.att_window)
         if self.run_exact_inf:
 
             if self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)":
@@ -1050,8 +1070,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.save_stats(t, mo, m_alpha_se["o"], self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
-        self.PE.next_step()
-
 
     def return_context_window(self):
         return self.att_window, self.mv_window, self.mq_window, self.mk_window
@@ -1062,41 +1080,91 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # We have in self.att_window the last attention value
         # We initialize the model at the end of the previous execution
+        # The context window has been reordered before saving so the last element is in the last position
         ini_t = self.context_size
         self.PE.initialize_state(0)
 
         if compute_lyapunov:
             # Initialize Jacobian if needed
-            # TODO: check jacobian requirement
             self.initialize_jacobian()
             dx = np.eye(self.num_feat_patterns + self.pe_bit_size)
             dx_p = np.eye(self.pe_bit_size)
-            lya_idx = 0
 
         for t in range(ini_t, max_steps):
             self.compute_mf(t)
             self.attention(t)
 
-            if compute_lyapunov and (t > self.min_saved_step):
-                dx, dx_p = self.compute_lyapunov(t, lya_idx, dx, dx_p)
-                lya_idx += 1
+            if compute_lyapunov and (t >= self.min_saved_step):
+                dx, dx_p = self.compute_lyapunov(t, dx, dx_p)
+
+            self.PE.next_step()
 
         if compute_lyapunov:
             self.S /= self.num_saved_steps
             self.S_p /= self.num_saved_steps
 
-        sorted_S = np.sort(self.S)[::-1]
-        print("S", self.S)
-        print("Sorted desc", sorted_S)
-        print("S pos", self.S_p)
-        print()
+            sorted_S = np.sort(self.S)[::-1]
+            print("S", self.S)
+            print("Sorted desc", sorted_S)
+            print("S pos", self.S_p)
+            print()
+
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.plot(self.S_i[:,0])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i[-250:,0])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i_sum[:, 0], )
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i_sum[-250:, 0])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i[:,1])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i_sum[:, 1])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i[:,2])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i_sum[:, 2])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i[:,3])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i_sum[:, 3])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i[:,4])
+            plt.tight_layout()
+            plt.show()
+            plt.figure()
+            plt.plot(self.S_i_sum[:, 4])
+            plt.tight_layout()
+            plt.show()
+            import pdb; pdb.set_trace()
 
 
 
-    def simulate(self, x0, max_steps):
+    def simulate(self, x0, max_steps, compute_lyapunov=True):
 
         self.PE.initialize_state(0)
-
 
         # Initialize attention with the info from the initial token
         self.compute_means_from_data(x0, t=0)
@@ -1104,10 +1172,20 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # TODO: uncomment this and check if boundary conditions are met
         self.initialize_jacobian()
-        # self.jacobian(t)
 
         for t in range(1, max_steps):
             self.compute_mf(t)
             self.attention(t)
 
-            self.compute_lyapunov(t)
+
+            if compute_lyapunov and (t >= self.min_saved_step):
+                dx, dx_p = self.compute_lyapunov(t, dx, dx_p)
+
+            self.PE.next_step()
+
+        if compute_lyapunov:
+            self.S /= self.num_saved_steps
+            self.S_p /= self.num_saved_steps
+
+            sorted_S = np.sort(self.S)[::-1]
+
