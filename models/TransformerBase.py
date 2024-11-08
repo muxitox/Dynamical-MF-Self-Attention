@@ -203,7 +203,6 @@ class TransformerBase(ABC):
             # new_state = np.zeros(self.pe_bit_size, dtype=np.longdouble)
             new_state = np.zeros(self.pe_bit_size)
 
-
             new_state[-1] = - self.state[-1]
             if self.type == "tanh":
                 new_state[-1] *= self.K
@@ -212,20 +211,21 @@ class TransformerBase(ABC):
                 new_state[i] = new_state[i+1] * self.state[i]
 
             # If in tanh mode, we can save computation by computing the derivative here
-            if self.type == "tanh" and compute_der:
-                dp_dp_0 = np.einsum("j,k->jk", new_state, 1/self.state)
+            if self.type == "tanh":
+                if compute_der:
+                    dp_dp_0 = np.einsum("j,k->jk", new_state, 1/self.state)
 
-                der_tanh = 1 - np.tanh(new_state)**2
-                dp_dp = np.einsum("jk,j->jk", dp_dp_0, der_tanh)
-                self.dp_dp = np.tril(dp_dp)
+                new_state = np.tanh(new_state)
+
+                if compute_der:
+                    der_tanh = 1 - new_state**2
+                    dp_dp = np.einsum("jk,j->jk", dp_dp_0, der_tanh)
+                    # Get the upper anti-diagonal to 0, so future time-steps do not influence current in the derivative
+                    self.dp_dp = np.flipud(np.triu(np.flipud(dp_dp)))
 
             # Save state
             self.state = copy.deepcopy(new_state)
 
-
-
-            if self.type == "tanh":
-                self.state = np.tanh(self.state)
 
     @abstractmethod
     def attention(self, t):
