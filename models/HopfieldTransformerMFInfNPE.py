@@ -662,6 +662,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         Q, R = np.linalg.qr(dx)
         d_exp = np.absolute(np.diag(R))
         dS = np.log(d_exp)
+        # Q is orthogonal so we can use it for the next step
+        dx = Q
 
         dx_p = np.matmul(self.J_p, dx_p)
         Q_p, R_p = np.linalg.qr(dx_p)
@@ -676,9 +678,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.S += dS
         self.S_i[S_idx] = dS
         self.S_i_sum[S_idx] = copy.deepcopy(self.S)
-
-        # Q is orthogonal so we can use it for the next step
-        dx = Q
 
         return dx, dx_p
 
