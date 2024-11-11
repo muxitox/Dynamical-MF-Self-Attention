@@ -634,6 +634,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
     def initialize_jacobian(self):
         jacobian_size = (self.num_feat_patterns + self.pe_bit_size)
         self.J = np.zeros((jacobian_size, jacobian_size))
+        # der_m_der_p does not change though time
         self.dm_dp = self.f_dm_dp()
 
 
