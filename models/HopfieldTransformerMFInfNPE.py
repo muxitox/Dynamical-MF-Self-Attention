@@ -60,6 +60,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.att_window = np.zeros(self.num_feat_patterns)
         # att values at previous step
         self.att_window_old = np.zeros(self.num_feat_patterns)
+        # Variable that puts together keys and queries and is already scaled with gamma
+        self.key_prob_unnorm = np.zeros(self.context_size)
 
 
         # Create variables to save results
@@ -286,7 +288,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mq_window = copy.deepcopy(mq_window)
         self.mk_window = copy.deepcopy(mk_window)
         self.att_window = copy.deepcopy(att_window)
-        self.att_window_old = np.zeros(self.num_feat_patterns)
+        self.att_window_old = copy.deepcopy(att_window)
 
 
     def reset_data(self):
@@ -445,11 +447,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def attention_derivatives(self, t):
         effective_context_size = min(self.context_size, t + 1)
-        # Put in common queries and keys
-        mqk = np.einsum('b,tb -> t', self.mq_window, self.ordered_mk_window[:effective_context_size],
-                        optimize=True)
-        # Scale
-        key_prob_unnorm = self.gamma * mqk
+
 
         if (not self.run_exact_inf and
                 (self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)")):
@@ -457,9 +455,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             raise Exception(f"Scaling is not well defined for the derivatives for "
                             f"normalize_weights_str_att={self.normalize_weights_str_att}")
 
-        dAdmv = self.der_att_dmv(key_prob_unnorm, effective_context_size)
-        dAdmq = self.der_att_dmq(key_prob_unnorm, effective_context_size)
-        dAdmk = self.der_att_dmk(key_prob_unnorm, effective_context_size)
+        dAdmv = self.der_att_dmv(self.key_prob_unnorm, effective_context_size)
+        dAdmq = self.der_att_dmq(self.key_prob_unnorm, effective_context_size)
+        dAdmk = self.der_att_dmk(self.key_prob_unnorm, effective_context_size)
 
         return dAdmv, dAdmq, dAdmk
 
@@ -523,17 +521,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         effective_context_size = min(self.context_size, t + 1)
 
-        # local t, where t values are found in the context window
-        # TODO: check context index
+        # self.key_prob_unnorm equals G in the latex notation
+
+        # local t, where t index is found within the context window
         lt = self.context_index
 
-        # Put in common queries and keys
-        mqk = np.einsum('b,tb -> t', self.mq_window, self.mk_window[:effective_context_size],
-                        optimize=True)
-        # Scale
-        # TODO: CHECK IF I CAN MAKE THIS A CLASS VARIABLE SO I DONT HAVE TO RE-COMPUTE IT
-        key_prob_unnorm = self.gamma * mqk
-        Z = np.sum(key_prob_unnorm)
+        Z = np.sum(self.key_prob_unnorm)
 
         if (not self.run_exact_inf and
                 (self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)")):
@@ -542,14 +535,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # First term:
         # First term within the first term
-        dmv_dA_key_prob = np.einsum("ac,t -> tac", dm_alpha_se_dA_or_P["v"], key_prob_unnorm)
+        dmv_dA_key_prob = np.einsum("ac,t -> tac", dm_alpha_se_dA_or_P["v"], self.key_prob_unnorm)
 
         # Second term within the first term
         dmq_dA_mk = np.einsum('bc,tb -> tc', dm_alpha_se_dA_or_P["q"],
                            self.mk_window[:effective_context_size], optimize=True)
 
         mv_key_prob = np.einsum('ta,t -> ta', self.mv_window[:effective_context_size],
-                                key_prob_unnorm, optimize=True)
+                                self.key_prob_unnorm, optimize=True)
 
         mv_key_prob_dmq_mk = (np.einsum('ta,tc -> tac', mv_key_prob, dmq_dA_mk, optimize=True)
                               * self.gamma)
@@ -558,7 +551,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         mq_dmk_dA = np.einsum('b,bc -> c', self.mq_window,
                               dm_alpha_se_dA_or_P["k"], optimize=True)
         # mv_key_prob_t of size a
-        mv_key_prob_t = self.mv_window[lt] * key_prob_unnorm[lt]
+        mv_key_prob_t = self.mv_window[lt] * self.key_prob_unnorm[lt]
         mv_key_prob_t_mq_dmk = (np.einsum('a,c -> ac', mv_key_prob_t, mq_dmk_dA, optimize=True)
                               * self.gamma)
 
@@ -571,11 +564,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Second term:
         # First term within the second term
-        mv_key_prob = np.einsum("ta,t -> a", self.mv_window, key_prob_unnorm)
+        mv_key_prob = np.einsum("ta,t -> a", self.mv_window, self.key_prob_unnorm)
         # Second term within the second term
-        key_prob_dmq_mk = np.einsum('t,tc -> c', key_prob_unnorm, dmq_dA_mk, optimize=True)
+        key_prob_dmq_mk = np.einsum('t,tc -> c', self.key_prob_unnorm, dmq_dA_mk, optimize=True)
         # Third term within the second term
-        key_prob_t_mq_dmk = key_prob_unnorm[lt] * mq_dmk_dA
+        key_prob_t_mq_dmk = self.key_prob_unnorm[lt] * mq_dmk_dA
 
         second_term = self.gamma * (key_prob_dmq_mk + key_prob_t_mq_dmk)
 
@@ -584,37 +577,46 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         dA_dA = first_term - second_term
 
-        return dA_dA
-
-        # # Loopy implementation for testing 2
-        # term_1_loopy_test = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
-        # term_2_loopy_test = np.zeros((self.num_feat_patterns, self.num_feat_patterns))
         #
+        # # Loopy implementation for testing
+        # c_size = dm_alpha_se_dA_or_P["q"].shape[1]
+        #
+        # term_1_loopy_test = np.zeros((self.num_feat_patterns, c_size))
+        # term_2_loopy_test = np.zeros((self.num_feat_patterns, c_size))
+        #
+        # # a is the variable we are deriving
         # for a in range(self.num_feat_patterns):
         #
+        #     # First term within the second term
         #     numerator_term2_part1_test = 0
         #     for tau in range(effective_context_size):
-        #         numerator_term2_part1_test += self.mv_window[tau, a] * key_prob_unnorm[tau]
+        #         numerator_term2_part1_test += self.mv_window[tau, a] * self.key_prob_unnorm[tau]
         #
-        #     for c in range(self.num_feat_patterns):
+        #     # c is the variable wrt we are deriving
+        #     for c in range(c_size):
         #         numerator_term1_test = 0
         #         numerator_term2_part2_test = 0
         #
         #         for tau in range(effective_context_size):
-        #             numerator_term1_test += dm_alpha_se_dA["v"][a, c] * key_prob_unnorm[tau]
+        #             # First term within the first term
+        #             numerator_term1_test += dm_alpha_se_dA_or_P["v"][a, c] * self.key_prob_unnorm[tau]
         #
+        #             # Part of the second term of both terms
         #             dmq_dA_mk_loop_test = 0
         #             for b in range(self.num_feat_patterns):
-        #                 dmq_dA_mk_loop_test += dm_alpha_se_dA["q"][b, c] * self.mk_window[tau, b]
-        #             numerator_term1_test += self.mv_window[tau, a] * key_prob_unnorm[tau] * self.gamma * dmq_dA_mk_loop_test
+        #                 dmq_dA_mk_loop_test += dm_alpha_se_dA_or_P["q"][b, c] * self.mk_window[tau, b]
         #
-        #             numerator_term2_part2_test += key_prob_unnorm[tau] * self.gamma * dmq_dA_mk_loop_test
+        #             second_term_both_terms = self.key_prob_unnorm[tau] * self.gamma * dmq_dA_mk_loop_test
+        #             numerator_term1_test += self.mv_window[tau, a] * second_term_both_terms
+        #             numerator_term2_part2_test += second_term_both_terms
         #
         #         mq_dmk_dA_loop_test = 0
         #         for b in range(self.num_feat_patterns):
-        #             mq_dmk_dA_loop_test += self.mq_window[b] * dm_alpha_se_dA["k"][b, c]
-        #         numerator_term1_test += self.mv_window[lt, a] * key_prob_unnorm[lt] * self.gamma * mq_dmk_dA_loop_test
-        #         numerator_term2_part2_test += key_prob_unnorm[lt] * self.gamma * mq_dmk_dA_loop_test
+        #             mq_dmk_dA_loop_test += self.mq_window[b] * dm_alpha_se_dA_or_P["k"][b, c]
+        #
+        #         third_term_both_terms =  self.key_prob_unnorm[lt] * self.gamma * mq_dmk_dA_loop_test
+        #         numerator_term1_test += self.mv_window[lt, a] * third_term_both_terms
+        #         numerator_term2_part2_test += third_term_both_terms
         #
         #         term_1_loopy_test[a, c] = numerator_term1_test
         #         term_2_loopy_test[a, c] = numerator_term2_part1_test * numerator_term2_part2_test
@@ -623,8 +625,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # term_2_loopy_test /= Z**2
         # dA_dA_loopy_test = term_1_loopy_test - term_2_loopy_test
         #
-        # print(np.allclose(dA_dA, dA_dA_loopy_test))
-        # print()
+        # if not np.allclose(dA_dA, dA_dA_loopy_test):
+        #     print("Review", t)
+
+        return dA_dA
 
 
     def initialize_jacobian(self):
@@ -669,12 +673,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.S_p_i[S_idx] = dS_p
         self.S_p_i_sum[S_idx] += dS_p
 
-
         self.S += dS
         self.S_i[S_idx] = dS
         self.S_i_sum[S_idx] = copy.deepcopy(self.S)
-        print()
-
 
         # Q is orthogonal so we can use it for the next step
         dx = Q
@@ -913,15 +914,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Scale
         if self.run_exact_inf:
-            key_prob_unnorm = self.gamma * mqk
+            self.key_prob_unnorm = self.gamma * mqk
         else:
-            key_prob_unnorm = self.beta_att * self.scaling_att * mqk
+            self.key_prob_unnorm = self.beta_att * self.scaling_att * mqk
 
-        # if t == 400:
-        #     pass
 
         # Compute softmax and average by mv
-        self.key_averaging(key_prob_unnorm, effective_context_size)
+        self.key_averaging(self.key_prob_unnorm, effective_context_size)
 
         # # Loopy implementation for testing
         #
@@ -1054,9 +1053,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mq_window = m_alpha_se["q"] + (1 - self.se_per_contribution) * pe_contribution["q"]
         self.mk_window[self.context_index] = m_alpha_se["k"] + (1 - self.se_per_contribution) * pe_contribution["k"]
 
-        # print("mq", t, self.mq_window)
-        # print("mk", t, self.mk_window)
-        # print("mv", t, self.mv_window)
+
 
         # Compute mean-field for o. Separate the behavior of the Semantic Embedding.
         if t >= self.min_saved_step:
@@ -1064,9 +1061,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                      / 2 ** (self.num_feat_patterns - 1))
             mo = (self.se_per_contribution * m_alpha_se["o"] + (1 - self.se_per_contribution) * pe_contribution["o"])
 
-            # print('mo', t, mo_se)
-            # if t >= 17:
-            #     pass
             self.save_stats(t, mo, m_alpha_se["o"], self.mv_window[self.context_index, :], self.mq_window,
                             self.mk_window[self.context_index, :])
 
@@ -1158,8 +1152,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             plt.plot(self.S_i_sum[:, 4])
             plt.tight_layout()
             plt.show()
-            import pdb; pdb.set_trace()
-
+            # import pdb; pdb.set_trace()
 
 
     def simulate(self, x0, max_steps, compute_lyapunov=True):
@@ -1170,7 +1163,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.compute_means_from_data(x0, t=0)
         self.attention(t=0)
 
-        # TODO: uncomment this and check if boundary conditions are met
         self.initialize_jacobian()
 
         for t in range(1, max_steps):
