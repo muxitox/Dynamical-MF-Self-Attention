@@ -1,8 +1,11 @@
 import copy
 import numpy as np
+from autograd import numpy as anp
 from models.TransformerBase import TransformerBase
 import scipy
 from scipy.linalg import lu
+from models.PositionalEncoding import PositionalEncoding
+from autograd import grad, jacobian
 
 
 class HopfieldTransformerMFInfNPE(TransformerBase):
@@ -11,7 +14,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                  max_sim_steps=512, min_saved_step=0, normalize_weights_str_att="N**2", normalize_weights_str_o="N",
                  reorder_weights=False, correlations_from_weights=True, num_segments_corrs=3, pe_mode=0,
                  semantic_embedding_bitsize=0, epsilon_pe=0.95, gaussian_scale_str=None,
-                 compute_inf_normalization=True, N_normalization=None, scaling_o=1, scaling_att=1):
+                 compute_inf_normalization=True, N_normalization=None, scaling_o=1, scaling_att=1, jacobian=True):
 
         if num_feat_patterns < 1 or num_feat_patterns > 3:
             raise Exception("The number of patterns is neither 1, 2 or 3")
@@ -57,9 +60,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))
         self.mq_window = np.zeros(self.num_feat_patterns)
         self.mk_window = np.zeros((self.context_size, self.num_feat_patterns))
-        self.att_window = np.zeros(self.num_feat_patterns)
+        self.att = np.zeros(self.num_feat_patterns)
         # att values at previous step
-        self.att_window_old = np.zeros(self.num_feat_patterns)
+        self.att_window = anp.zeros((self.context_size, self.num_feat_patterns))
         # Variable that puts together keys and queries and is already scaled with gamma
         self.key_prob_unnorm = np.zeros(self.context_size)
 
@@ -78,6 +81,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.S_i_sum = np.zeros((self.num_saved_steps, self.num_feat_patterns + self.pe_bit_size))
         self.S_p_i = np.zeros((self.num_saved_steps, self.pe_bit_size))
         self.S_p_i_sum = np.zeros((self.num_saved_steps, self.pe_bit_size))
+
+        self.compute_jacobian = jacobian
+        self.L = self.Lyapunov(self, positional_embedding_bitsize, vocab)
 
 
     def create_W_matrices(self, correlations_from_weights, num_segments_corrs):
@@ -270,6 +276,150 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.corr_signed["q"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_q)
         self.corr_signed["k"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_k)
 
+
+    class Lyapunov:
+        def __init__(self, HT, positional_embedding_bitsize, vocab):
+
+            self.HT = HT
+
+            self.PE = PositionalEncoding(positional_embedding_bitsize, vocab, self.HT.context_size, K=10, type="tanh")
+
+
+        @staticmethod
+        def softmax(key_prob_unnorm):
+            C = 10
+            max_x = max(key_prob_unnorm)
+            expp = anp.exp(key_prob_unnorm - max_x + C)
+            sum_exp = anp.sum(expp)
+            key_prob = expp / sum_exp
+
+            return key_prob
+
+        def key_averaging(self, key_prob_unnorm, mv_window):
+
+            effective_context_size = min(self.HT.context_size, self.HT.t + 1)
+
+            # Assume perfectly inf system with self.normalize_weights_str_att == "N**2*np.sqrt(M)"
+            key_prob = self.softmax(key_prob_unnorm)
+
+            # We'll deal with normalization in the mf_computation function, but since we are returning
+            # the average of mvs and not N*mv, we are already normalizing by a /N factor
+            att_t_0 = np.einsum("da,d->a", mv_window[:effective_context_size], key_prob)
+
+            return att_t_0
+
+
+        def attention(self, att_t_1_d, mv_window, mq, mk_window):
+
+            effective_context_size = min(self.HT.context_size, self.HT.t + 1)
+            # Put in common queries and keys
+            mqk = anp.einsum('b,tb -> t', mq, mk_window[:effective_context_size],
+                            optimize=True)
+
+            # For the scaling we assume that we are working with a perfectly inf system
+            # Scale
+            key_prob_unnorm = self.HT.gamma * mqk
+
+            # Compute softmax and average by mv
+            att_t_0 = self.key_averaging(key_prob_unnorm, mv_window)
+
+            att_t_d = np.roll(att_t_1_d, 1, axis=0)
+            att_t_d[0] = att_t_0
+
+            return att_t_d
+
+        def compute_mfs(self, att_t_d, p_t_d):
+
+            effective_context_size = min(self.HT.context_size, self.HT.t + 1)
+
+            # Positional Embedding contribution
+            pe_contribution = {}
+            for feat_name in self.HT.features_names:
+
+                p_loop = p_t_d
+                if feat_name == "q":
+                    p_loop = p_t_d[np.newaxis, 0]  # Add new dimension to keep the einsum expresion simple
+
+                pe_contribution[feat_name] = anp.einsum('bi,di ->db', self.HT.W_dict[feat_name][:, self.HT.se_bit_size:],
+                                                       p_loop, optimize=True) / self.HT.pe_bit_size
+
+            # We assume we are using the inf implementation
+            # In infty, we are going to deal with the order of N in the output.
+
+            sign_att_patterns = (self.HT.beta_o * self.HT.scaling_o *
+                                 anp.einsum("jb,db->dj", self.HT.sign_matrix[:, :self.HT.num_feat_patterns],
+                                           att_t_d[:effective_context_size]))
+
+            idx_not_zero = anp.where(sign_att_patterns != 0)
+            # If result is not 0, normalize by inf (avoids NaNs)
+            sign_att_patterns[idx_not_zero] *= self.HT.inf_normalization_o
+            tanh_j_signs = anp.tanh(sign_att_patterns)
+
+
+            # Compute the semantic part of every mean field needed for the attention
+            m_alpha_se = {}
+            for feat_name in ["v", "q", "k"]:
+                # corr_signed has shape (num_combinations_signs, num_features_a).
+                # For every feature a, you put together all the j combinations of signs
+
+                tanh_j_signs_loop = tanh_j_signs
+                if feat_name == "q":
+                    # With q we just work with the current time-step
+                    tanh_j_signs_loop = tanh_j_signs[np.newaxis, 0] # Add new dimension to keep the einsum expresion simple
+
+
+                m_alpha_se[feat_name] = (self.HT.se_per_contribution * anp.einsum("ja,dj->da",
+                                                                              self.HT.corr_signed[feat_name],
+                                                                              tanh_j_signs_loop)
+                                         / 2 ** (self.HT.num_feat_patterns - 1))
+
+            mv_window = m_alpha_se["v"] + (1 - self.HT.se_per_contribution) * pe_contribution["v"]
+            mq = m_alpha_se["q"][0] + (1 - self.HT.se_per_contribution) * pe_contribution["q"][0] # Remove new axis
+            mk_window = m_alpha_se["k"] + (1 - self.HT.se_per_contribution) * pe_contribution["k"]
+
+
+            return mv_window, mq, mk_window
+
+        def _step(self, input):
+
+            # Reshape input into one more easily manageable for computing
+            att_size = self.HT.context_size * self.HT.num_feat_patterns
+            att_t_1_d = input[:att_size]
+            att_t_1_d = anp.reshape(att_t_1_d, (self.HT.context_size, self.HT.num_feat_patterns))
+            p_t_1_d = input[att_size:]
+            p_t_1_d = anp.reshape(p_t_1_d, (self.HT.context_size, self.HT.pe_bit_size))
+
+            # Compute mf
+            mv_window, mq, mk_window = self.compute_mfs(att_t_1_d, p_t_1_d)
+
+            # Compute A
+            att_t_d = self.attention(att_t_1_d, mv_window, mq, mk_window)
+
+            # Compute p
+            p_t_d = self.PE.next_step_autograd(p_t_1_d)
+
+            self.lya_att = copy.deepcopy(att_t_d)
+
+            att_t_d = anp.reshape(att_t_d, att_size)
+            p_t_d = anp.reshape(p_t_d, self.HT.context_size * self.HT.pe_bit_size)
+
+            return np.concatenate((att_t_d, p_t_d))
+
+
+        def step(self, att_t_1_d, p_t_1_d):
+
+            Jacobian_Func = jacobian(self._step)
+
+            att_t_1_d_flat = anp.reshape(att_t_1_d, self.HT.context_size * self.HT.num_feat_patterns)
+            p_t_1_d_flat = anp.reshape(p_t_1_d, self.HT.context_size * self.HT.pe_bit_size)
+            input = np.concatenate((att_t_1_d_flat, p_t_1_d_flat))
+
+            # output = self._step(input)  # Output for testing
+            J = Jacobian_Func(input)
+            print()
+
+
+
     def set_beta_o(self, beta_o):
         self.beta_o = beta_o
 
@@ -287,8 +437,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mv_window = copy.deepcopy(mv_window)
         self.mq_window = copy.deepcopy(mq_window)
         self.mk_window = copy.deepcopy(mk_window)
-        self.att_window = copy.deepcopy(att_window)
-        self.att_window_old = copy.deepcopy(att_window)
+        self.att = copy.deepcopy(att_window)
+        self.att_window = np.zeros((self.context_size, self.num_feat_patterns))
+        self.att_window[0] = copy.deepcopy(att_window)
 
 
     def reset_data(self):
@@ -300,8 +451,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.mk_window = np.zeros((self.context_size, self.num_feat_patterns))
         # We don't need to order it every step normally. Order is only important for the Jacobian
         self.ordered_mk_window = np.zeros((self.context_size, self.num_feat_patterns))
-        self.att_window = np.zeros(self.num_feat_patterns)
-        self.att_window_old = np.zeros(self.num_feat_patterns)
+        self.att = np.zeros(self.num_feat_patterns)
+        self.att_window = np.zeros((self.context_size, self.num_feat_patterns))
 
 
         for name_i in self.statistics_names:
@@ -649,13 +800,15 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.J[:self.num_feat_patterns, self.num_feat_patterns:] = dA_dP
         self.J[self.num_feat_patterns:, self.num_feat_patterns:] = self.PE.dp_dp
 
+        print(np.linalg.det(self.J))
+
         self.J_p = self.PE.dp_dp
 
     def compute_lyapunov(self, t, dx, dx_p):
 
         S_idx = t - self.min_saved_step
 
-        self.jacobian(t, self.att_window_old)
+        self.jacobian(t, self.att_window)
 
         # Compute perturbation
         dx = np.matmul(self.J, dx)
@@ -858,7 +1011,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def key_averaging(self, key_prob_unnorm, effective_context_size):
 
-        self.att_window_old = copy.deepcopy(self.att_window)
         if self.run_exact_inf:
 
             if self.normalize_weights_str_att == "N**2" or self.normalize_weights_str_att == "N**2*np.sqrt(M)":
@@ -866,7 +1018,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
                 # We'll deal with normalization in the mf_computation function, but since we are returning
                 # the average of mvs and not N*mv, we are already normalizing by a /N factor
-                self.att_window = np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob)
+                self.att = np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob)
 
             elif self.normalize_weights_str_att != "N**2":
                 # In infty the softmax saturates and evolves into argmax
@@ -875,13 +1027,13 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 selected_mvs = self.mv_window[max_ids]
 
                 # The array created has 1 more empty dimension than we need, so we index by 0
-                self.att_window = np.mean(selected_mvs, axis=0)[0]
+                self.att = np.mean(selected_mvs, axis=0)[0]
                 # We'll deal with normalization in the mf_computation function, but since we are returning
                 # the average of mvs and not N*mv, we are already normalizing by a /N factor
         else:
             key_prob = self.softmax(self.N_normalization ** 2 * key_prob_unnorm / self.normalizing_constant_att)
-            self.att_window = (self.N_normalization *
-                               np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob))
+            self.att = (self.N_normalization *
+                        np.einsum("da,d->a", self.mv_window[:effective_context_size], key_prob))
 
     # def attention_unoptimized(self, t):
     #
@@ -922,6 +1074,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Compute softmax and average by mv
         self.key_averaging(self.key_prob_unnorm, effective_context_size)
 
+        if self.compute_jacobian:
+            # Maintain the attention window for the jacobian computation
+            self.att_window = np.roll(self.att_window, 1, axis=0)
+            self.att_window[0] = copy.deepcopy(self.att)
+
         # # Loopy implementation for testing
         #
         # att_t_loopy = np.zeros(self.num_feat_patterns)
@@ -929,13 +1086,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         #     for tau in range(0, t+1):
         #         att_t_loopy[b] += self.embedding_size * self.mv[tau, b] * key_prob[tau]
 
-        # print('att', t, self.att_window)
-        # print()
-        #
-        # if t == 400:
-        #     pass
         if t >= self.min_saved_step:  # Save if required
-            self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att_window)
+            self.mf_statistics["att"][t - self.min_saved_step] = copy.deepcopy(self.att)
 
     def save_stats(self, t, mo, mo_se, mv, mq, mk):
         index_t = t - self.min_saved_step
@@ -1012,7 +1164,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def compute_mf(self, t):
         # Load attention values
-        att = self.att_window
+        att = self.att
         # Encode the position
         pos_vec = self.PE.getter()
 
@@ -1066,7 +1218,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
     def return_context_window(self):
-        return self.att_window, self.mv_window, self.mq_window, self.mk_window
+        return self.att, self.mv_window, self.mq_window, self.mk_window
 
     def simulate_mf_from_context(self, max_steps, compute_lyapunov=True):
         # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
@@ -1085,13 +1237,22 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             dx_p = np.eye(self.pe_bit_size)
 
         for t in range(ini_t, max_steps):
+
+            self.t = t
+            self.L.step(self.att_window, self.PE.state_window)
+
+
             self.compute_mf(t)
             self.attention(t)
 
-            if compute_lyapunov and (t >= self.min_saved_step):
-                dx, dx_p = self.compute_lyapunov(t, dx, dx_p)
+            # if compute_lyapunov and (t >= self.min_saved_step):
+            #     dx, dx_p = self.compute_lyapunov(t, dx, dx_p)
 
             self.PE.next_step()
+
+            print("comparison")
+            print(np.allclose(self.att_window, self.L.lya_att))
+            print()
 
         if compute_lyapunov:
             self.S /= self.num_saved_steps
@@ -1166,14 +1327,16 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.initialize_jacobian()
 
         for t in range(1, max_steps):
+            self.t = t
             self.compute_mf(t)
             self.attention(t)
 
-
-            if compute_lyapunov and (t >= self.min_saved_step):
-                dx, dx_p = self.compute_lyapunov(t, dx, dx_p)
+            # if compute_lyapunov and (t >= self.min_saved_step):
+            #     dx, dx_p = self.compute_lyapunov(t, dx, dx_p)
 
             self.PE.next_step()
+
+
 
         if compute_lyapunov:
             self.S /= self.num_saved_steps
