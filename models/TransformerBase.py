@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import copy
-from PositionalEncoding import PositionalEncoding
+from models.PositionalEncoding import PositionalEncoding
 
 class TransformerBase(ABC):
 
@@ -16,8 +16,6 @@ class TransformerBase(ABC):
         self.vocab = vocab
 
         self.pe_mode = pe_mode
-
-        self.PE = PositionalEncoding(positional_embedding_bitsize, vocab, K=10, type="tanh")
 
         self.embedding_size = semantic_embedding_bitsize + positional_embedding_bitsize
 
@@ -35,6 +33,9 @@ class TransformerBase(ABC):
         M = num_feat_patterns
         self.normalize_weights_str_att = normalize_weights_str_att
         self.normalize_weights_str_o = normalize_weights_str_o
+
+        self.PE = PositionalEncoding(positional_embedding_bitsize, vocab, self.context_size, K=10, type="tanh")
+
 
 
         # Dynamically compute the normalize_weights_str strings
