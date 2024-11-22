@@ -24,22 +24,23 @@ class PositionalEncoding:
 
     def next_step_autograd(self, p_t_1_d):
 
-        prev_state = p_t_1_d[0, :]
+        prev_state = p_t_1_d[0]
 
-        # new_state = np.zeros(self.pe_bit_size, dtype=np.longdouble)
-        new_state = anp.zeros(self.pe_bit_size)
+        new_state = copy.deepcopy(p_t_1_d[0])
 
-        new_state[-1] = - prev_state[-1]
+        new_state[-1] = - new_state[-1]
         if self.type == "tanh":
             new_state[-1] *= self.K
 
         for i in range(self.pe_bit_size - 2, -1, -1):
-            new_state[i] = new_state[i + 1] * prev_state[i]
+            new_state[i] = new_state[i + 1] * self.state[i]
 
-        # If in tanh mode, we can save computation by computing the derivative here
+        # new_state2 =  (- anp.cumprod((prev_state[::-1])) )[::-1]
+
+
         if self.type == "tanh":
+            # new_state2 = anp.tanh(new_state2 * self.K)
             new_state = anp.tanh(new_state)
-
 
         p_t_d = anp.roll(p_t_1_d, 1, axis=0)
         p_t_d[0, :] = new_state
