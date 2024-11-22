@@ -304,7 +304,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
             # We'll deal with normalization in the mf_computation function, but since we are returning
             # the average of mvs and not N*mv, we are already normalizing by a /N factor
-            att_t_0 = np.einsum("da,d->a", mv_window[:effective_context_size], key_prob)
+            att_t_0 = anp.einsum("da,d->a", mv_window[:effective_context_size], key_prob)
 
             return att_t_0
 
@@ -323,8 +323,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             # Compute softmax and average by mv
             att_t_0 = self.key_averaging(key_prob_unnorm, mv_window)
 
-            att_t_d = np.roll(att_t_1_d, 1, axis=0)
-            att_t_d[0] = att_t_0
+            att_t_d = anp.vstack((att_t_0, att_t_1_d[:self.HT.context_size-1]))
+
+            # att_t_d2 = anp.roll(att_t_1_d, 1, axis=0)
+            # att_t_d2[0] = att_t_0
 
             return att_t_d
 
@@ -350,9 +352,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                                  anp.einsum("jb,db->dj", self.HT.sign_matrix[:, :self.HT.num_feat_patterns],
                                            att_t_d[:effective_context_size]))
 
-            idx_not_zero = anp.where(sign_att_patterns != 0)
+            # idx_not_zero = anp.where(sign_att_patterns != 0)
             # If result is not 0, normalize by inf (avoids NaNs)
-            sign_att_patterns[idx_not_zero] *= self.HT.inf_normalization_o
+            sign_att_patterns *= self.HT.inf_normalization_o
             tanh_j_signs = anp.tanh(sign_att_patterns)
 
 
@@ -398,12 +400,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             # Compute p
             p_t_d = self.PE.next_step_autograd(p_t_1_d)
 
-            self.lya_att = copy.deepcopy(att_t_d)
-
             att_t_d = anp.reshape(att_t_d, att_size)
             p_t_d = anp.reshape(p_t_d, self.HT.context_size * self.HT.pe_bit_size)
 
-            return np.concatenate((att_t_d, p_t_d))
+            return anp.concatenate((att_t_d, p_t_d))
 
 
         def step(self, att_t_1_d, p_t_1_d):
@@ -1251,7 +1251,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.PE.next_step()
 
             print("comparison")
-            print(np.allclose(self.att_window, self.L.lya_att))
+            # print(np.allclose(self.att_window, self.L.lya_att))
             print()
 
         if compute_lyapunov:
