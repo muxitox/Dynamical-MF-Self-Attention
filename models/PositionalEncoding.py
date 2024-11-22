@@ -24,29 +24,29 @@ class PositionalEncoding:
 
     def next_step_autograd(self, p_t_1_d):
 
-        prev_state = p_t_1_d[0]
-
-
-        new_state = - prev_state[-1]
-        if self.type == "tanh":
-            new_state *= self.K
-
-
-        new_state = anp.array([new_state])
-
-        for i in range(self.pe_bit_size - 2, -1, -1):
-            new_bit = new_state[i] * self.state[i]
-            new_state = np.hstack((new_state, new_bit))
-
-        # new_state2 =  (- anp.cumprod((prev_state[::-1])) )[::-1]
-
-
-        if self.type == "tanh":
-            # new_state2 = anp.tanh(new_state2 * self.K)
-            new_state = anp.tanh(new_state)
+        # prev_state = p_t_1_d[0]
+        #
+        #
+        # new_state = - prev_state[-1]
+        # if self.type == "tanh":
+        #     new_state *= self.K
+        #
+        #
+        # new_state = anp.array([new_state])
+        #
+        # for i in range(self.pe_bit_size - 2, -1, -1):
+        #     new_bit = new_state[i] * self.state[i]
+        #     new_state = np.hstack((new_state, new_bit))
+        #
+        # # new_state2 =  (- anp.cumprod((prev_state[::-1])) )[::-1]
+        #
+        #
+        # if self.type == "tanh":
+        #     # new_state2 = anp.tanh(new_state2 * self.K)
+        #     new_state = anp.tanh(new_state)
 
         p_t_d = anp.roll(p_t_1_d, 1, axis=0)
-        p_t_d[0, :] = new_state
+        # p_t_d[0, :] = new_state
 
         return p_t_d
 
