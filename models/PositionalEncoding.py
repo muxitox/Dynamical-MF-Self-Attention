@@ -26,14 +26,17 @@ class PositionalEncoding:
 
         prev_state = p_t_1_d[0]
 
-        new_state = copy.deepcopy(p_t_1_d[0])
 
-        new_state[-1] = - new_state[-1]
+        new_state = - prev_state[-1]
         if self.type == "tanh":
-            new_state[-1] *= self.K
+            new_state *= self.K
+
+
+        new_state = anp.array([new_state])
 
         for i in range(self.pe_bit_size - 2, -1, -1):
-            new_state[i] = new_state[i + 1] * self.state[i]
+            new_bit = new_state[i] * self.state[i]
+            new_state = np.hstack((new_state, new_bit))
 
         # new_state2 =  (- anp.cumprod((prev_state[::-1])) )[::-1]
 
