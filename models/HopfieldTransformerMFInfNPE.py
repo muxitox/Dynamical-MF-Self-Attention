@@ -1256,7 +1256,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for t in range(ini_t, max_steps):
 
             self.t = t
-            dx = self.L.lyapunov_step(self.att_window, self.PE.state_window, t, dx)
+            if compute_lyapunov and (t >= self.min_saved_step):
+                dx = self.L.lyapunov_step(self.att_window, self.PE.state_window, t, dx)
 
 
             self.compute_mf(t)
@@ -1272,7 +1273,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.S /= self.num_saved_steps
             self.S_p /= self.num_saved_steps
 
-            sorted_S = np.sort(self.S)[::-1]
+            sorted_S = np.sort(self.S[:self.num_feat_patterns * self.context_size])[::-1]
             print("S", self.S)
             print("Sorted desc", sorted_S)
             print("S pos", self.S_p)
@@ -1280,53 +1281,37 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
             import matplotlib.pyplot as plt
             plt.figure()
-            plt.plot(self.S_i[:,0])
+            plt.plot(self.S_i[:,0:4])
             plt.tight_layout()
-            plt.show()
             plt.figure()
-            plt.plot(self.S_i[-250:,0])
+            plt.plot(self.S_i[-250:,0:4])
             plt.tight_layout()
-            plt.show()
             plt.figure()
-            plt.plot(self.S_i_sum[:, 0], )
+            plt.plot(self.S_i_sum[:,4:8], )
             plt.tight_layout()
-            plt.show()
             plt.figure()
-            plt.plot(self.S_i_sum[-250:, 0])
+            plt.plot(self.S_i_sum[-250:, 4:8])
             plt.tight_layout()
-            plt.show()
             plt.figure()
-            plt.plot(self.S_i[:,1])
+            plt.plot(self.S_i[:,8:12])
             plt.tight_layout()
-            plt.show()
             plt.figure()
-            plt.plot(self.S_i_sum[:, 1])
+            plt.plot(self.S_i_sum[:, 8:12])
             plt.tight_layout()
-            plt.show()
             plt.figure()
-            plt.plot(self.S_i[:,2])
+            plt.plot(self.S_i[:,12:16])
             plt.tight_layout()
+            # plt.figure()
+            # plt.plot(self.S_i_sum[:, 12:16])
+            # plt.tight_layout()
+            # plt.figure()
+            # plt.plot(self.S_i[:,16:20])
+            # plt.tight_layout()
+            # plt.figure()
+            # plt.plot(self.S_i_sum[:, 16:20])
+            # plt.tight_layout()
             plt.show()
-            plt.figure()
-            plt.plot(self.S_i_sum[:, 2])
-            plt.tight_layout()
-            plt.show()
-            plt.figure()
-            plt.plot(self.S_i[:,3])
-            plt.tight_layout()
-            plt.show()
-            plt.figure()
-            plt.plot(self.S_i_sum[:, 3])
-            plt.tight_layout()
-            plt.show()
-            plt.figure()
-            plt.plot(self.S_i[:,4])
-            plt.tight_layout()
-            plt.show()
-            plt.figure()
-            plt.plot(self.S_i_sum[:, 4])
-            plt.tight_layout()
-            plt.show()
+
             # import pdb; pdb.set_trace()
 
 
