@@ -34,7 +34,7 @@ class TransformerBase(ABC):
         self.normalize_weights_str_att = normalize_weights_str_att
         self.normalize_weights_str_o = normalize_weights_str_o
 
-        self.PE = PositionalEncoding(positional_embedding_bitsize, vocab, self.context_size, K=10, type="tanh")
+        self.PE = PositionalEncoding(positional_embedding_bitsize, vocab, self.context_size, K=10, type="base")
 
 
 
