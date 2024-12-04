@@ -38,6 +38,7 @@ if __name__ == "__main__":
     seed = 1  # Seed for the correlations
     num_feat_patterns = 3                                   # Number of patterns
     beta_list = [1.255, 1.26405, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
+    beta_list = [ 1.266]    # Different values of beta to simulate
     scaling_o = cfg["scaling_o"]  # Not scaled
     beta_att = cfg["beta_att"]
     scaling_att = cfg["scaling_att"]                        # Beta_att * scaling_att make gamma from the paper
@@ -54,12 +55,13 @@ if __name__ == "__main__":
     normalize_weights_str_o = cfg["normalize_weights_str_o"]      # Normalization in the output
     compute_inf_normalization = cfg["compute_inf_normalization"]  # Deal with normalization constraint in infinity
 
-    save_not_plot = True                          # True -> Save; False -> Plot
+    save_not_plot = False                          # True -> Save; False -> Plot
     show_title = True                                             # Whether to show the title on top
 
     # Load checkpoint attention values
     chpt_path = ("chpt/beta_idx-4000_window_chpt_zoom.npz")
     mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt = load_context(chpt_path)
+
 
     for beta in beta_list:
 
@@ -118,7 +120,6 @@ if __name__ == "__main__":
         # Select format for image saving
         # image_format = ".jpeg"
         image_format = ".pdf"
-
 
         # Loop over the different stats if required
         for stat_name in stats_to_show:

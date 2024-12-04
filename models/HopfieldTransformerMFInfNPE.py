@@ -74,14 +74,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, num_feat_patterns))
 
-        # Variable for accumulating the Lyapunov exponents
-        lyapunov_size = self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size
-        self.S = np.zeros(lyapunov_size)
-        self.S_p = np.zeros(self.pe_bit_size)
-        self.S_i = np.zeros((self.num_saved_steps, lyapunov_size))
-        self.S_i_sum = np.zeros((self.num_saved_steps, lyapunov_size))
-        self.S_p_i = np.zeros((self.num_saved_steps, self.pe_bit_size))
-        self.S_p_i_sum = np.zeros((self.num_saved_steps, self.pe_bit_size))
 
         self.compute_jacobian = jacobian
         self.L = self.Lyapunov(self, positional_embedding_bitsize, vocab)
@@ -285,6 +277,11 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
             self.PE = PositionalEncoding(positional_embedding_bitsize, vocab, self.HT.context_size, K=10, type="tanh")
 
+            # Variable for accumulating the Lyapunov exponents
+            lyapunov_size = self.HT.num_feat_patterns * self.HT.context_size + self.HT.pe_bit_size * self.HT.context_size
+            self.S = np.zeros(lyapunov_size)
+            self.S_i = np.zeros((self.HT.num_saved_steps, lyapunov_size))
+            self.S_i_sum = np.zeros((self.HT.num_saved_steps, lyapunov_size))
 
         @staticmethod
         def softmax(key_prob_unnorm):
@@ -429,12 +426,44 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             # Q is orthogonal so we can use it for the next step
             dx = Q
 
-            self.HT.S += dS
-            self.HT.S_i[S_idx] = dS
-            self.HT.S_i_sum[S_idx] = copy.deepcopy(self.HT.S)
+            self.S += dS
+            self.S_i[S_idx] = dS
+            self.S_i_sum[S_idx] = copy.deepcopy(self.S)
 
             return dx
 
+        def lyapunov_end(self):
+
+            self.S /= self.HT.num_saved_steps
+
+            sorted_S = np.sort(self.S[:self.HT.num_feat_patterns * self.HT.context_size])[::-1]
+            print("S", self.S)
+            print("Sorted desc", sorted_S)
+            print()
+
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.plot(self.S_i_sum[:, 0:3])
+            plt.title("Feats 0-2")
+            plt.tight_layout()
+            plt.show()
+            plt.close()
+
+            plt.figure()
+            plt.plot(self.S_i_sum[-1000:, 0:3])
+            plt.title("Feats 0-2. Zoom last steps")
+            plt.tight_layout()
+            plt.show()
+            plt.close()
+
+            plt.figure()
+            plt.plot(self.S_i_sum[:, 3:12], )
+            plt.title("Feats 3-11")
+            plt.tight_layout()
+            plt.show()
+            plt.close()
+
+            import pdb; pdb.set_trace()
 
 
     def set_beta_o(self, beta_o):
@@ -1251,7 +1280,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             # Initialize Jacobian if needed
             self.initialize_jacobian()
             dx = np.eye(self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size)
-            dx_p = np.eye(self.pe_bit_size)
 
         for t in range(ini_t, max_steps):
 
@@ -1270,49 +1298,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
         if compute_lyapunov:
-            self.S /= self.num_saved_steps
-            self.S_p /= self.num_saved_steps
+            self.L.lyapunov_end()
 
-            sorted_S = np.sort(self.S[:self.num_feat_patterns * self.context_size])[::-1]
-            print("S", self.S)
-            print("Sorted desc", sorted_S)
-            print("S pos", self.S_p)
-            print()
-
-            import matplotlib.pyplot as plt
-            plt.figure()
-            plt.plot(self.S_i[:,0:4])
-            plt.tight_layout()
-            plt.figure()
-            plt.plot(self.S_i[-250:,0:4])
-            plt.tight_layout()
-            plt.figure()
-            plt.plot(self.S_i_sum[:,4:8], )
-            plt.tight_layout()
-            plt.figure()
-            plt.plot(self.S_i_sum[-250:, 4:8])
-            plt.tight_layout()
-            plt.figure()
-            plt.plot(self.S_i[:,8:12])
-            plt.tight_layout()
-            plt.figure()
-            plt.plot(self.S_i_sum[:, 8:12])
-            plt.tight_layout()
-            plt.figure()
-            plt.plot(self.S_i[:,12:16])
-            plt.tight_layout()
-            # plt.figure()
-            # plt.plot(self.S_i_sum[:, 12:16])
-            # plt.tight_layout()
-            # plt.figure()
-            # plt.plot(self.S_i[:,16:20])
-            # plt.tight_layout()
-            # plt.figure()
-            # plt.plot(self.S_i_sum[:, 16:20])
-            # plt.tight_layout()
-            plt.show()
-
-            # import pdb; pdb.set_trace()
 
 
     def simulate(self, x0, max_steps, compute_lyapunov=True):
@@ -1338,8 +1325,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
         if compute_lyapunov:
-            self.S /= self.num_saved_steps
-            self.S_p /= self.num_saved_steps
+            self.L.S /= self.num_saved_steps
 
             sorted_S = np.sort(self.S)[::-1]
 
