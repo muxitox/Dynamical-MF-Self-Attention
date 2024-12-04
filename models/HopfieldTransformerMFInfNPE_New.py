@@ -508,10 +508,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         p_t_1_d = input[att_size:]
         p_t_1_d = anp.reshape(p_t_1_d, (self.context_size, self.pe_bit_size))
 
-        # Compute mf
+        # Compute mf values from previous attention values
         mv_window, mq, mk_window = self.compute_mfs(att_t_1_d, p_t_1_d)
 
-        # Compute A
+        # Compute new attention values from previous attention values (shifted) and computed mean-fields
         att_t_d = self.attention(att_t_1_d, mv_window, mq, mk_window)
 
         # Compute p
