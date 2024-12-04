@@ -501,7 +501,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def _step(self, input):
 
-        # Reshape input into one more easily manageable for computing
+        # Reshape input shape into one more easily manageable for computing
         att_size = self.effective_context_size * self.num_feat_patterns
         att_t_1_d = input[:att_size]
         att_t_1_d = anp.reshape(att_t_1_d, (self.effective_context_size, self.num_feat_patterns))
