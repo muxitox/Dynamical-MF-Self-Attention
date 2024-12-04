@@ -10,11 +10,24 @@ class PositionalEncoding:
         self.state = np.ones(pe_bit_size) * -1
         self.state_window = anp.zeros((context_size, self.pe_bit_size))
         self.state_window[0] = copy.deepcopy(self.state)
+        self.context_size = context_size
 
         self.K = K
         self.vocab = vocab
         self.type = type
         self.dp_dp = np.zeros((pe_bit_size, pe_bit_size))
+
+    def initialize_rotating_pe(self):
+
+        pe_window = np.zeros((self.context_size, self.pe_bit_size))
+
+        for i in range(self.context_size):
+            pe_window[i] = self.vocab.encode_pos(i)
+
+        pe_window = pe_window[::-1]
+        pe_window = np.roll(pe_window, 1, axis=0)
+
+        return pe_window
 
     def initialize_state(self, t):
         self.state = self.vocab.encode_pos(t)
