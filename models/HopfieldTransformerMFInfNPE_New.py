@@ -686,8 +686,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 # Otherwise compute gradients and perturbations
                 dx = self.lyapunov_step(self.next_input, dx)
 
-            print(self.next_input)
-
         if compute_lyapunov:
             self.lyapunov_end()
 
