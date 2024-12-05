@@ -329,14 +329,33 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
 
+    def save_att_stats(self, att):
+        # Save stats in an array if the threshold is surpassed
+        if self.t >= self.min_saved_step:
+            index_t = self.t - self.min_saved_step
+            if isinstance(att, np.ndarray):
+                self.mf_statistics["att"][index_t] = copy.deepcopy(att)
+            else:
+                self.mf_statistics["att"][index_t] = copy.deepcopy(att._value)
 
-    def save_stats(self, t, mo, mo_se, mv, mq, mk):
-        index_t = t - self.min_saved_step
-        self.mf_statistics["mo"][index_t] = copy.deepcopy(mo)
-        self.mf_statistics["mo_se"][index_t] = copy.deepcopy(mo_se)
-        self.mf_statistics["mv"][index_t] = copy.deepcopy(mv)
-        self.mf_statistics["mq"][index_t] = copy.deepcopy(mq)
-        self.mf_statistics["mk"][index_t] = copy.deepcopy(mk)
+
+    def save_mf_stats(self, mo, mo_se, mv, mq, mk):
+        # Save stats in an array if the threshold is surpassed
+        if self.t >= self.min_saved_step:
+
+            index_t = self.t - self.min_saved_step
+            if isinstance(mv, np.ndarray):
+                self.mf_statistics["mo"][index_t] = copy.deepcopy(mo)
+                self.mf_statistics["mo_se"][index_t] = copy.deepcopy(mo_se)
+                self.mf_statistics["mv"][index_t] = copy.deepcopy(mv)
+                self.mf_statistics["mq"][index_t] = copy.deepcopy(mq)
+                self.mf_statistics["mk"][index_t] = copy.deepcopy(mk)
+            else:
+                self.mf_statistics["mo"][index_t] = copy.deepcopy(mo._value)
+                self.mf_statistics["mo_se"][index_t] = copy.deepcopy(mo_se._value)
+                self.mf_statistics["mv"][index_t] = copy.deepcopy(mv._value)
+                self.mf_statistics["mq"][index_t] = copy.deepcopy(mq._value)
+                self.mf_statistics["mk"][index_t] = copy.deepcopy(mk._value)
 
     def compute_means_from_data(self, x0, t, ponder_pe=True):
         # In the first version of the paper ponder_pe=False for the bif diagrams
@@ -365,7 +384,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 mo = (self.se_per_contribution * mo_se +
                       (1 - self.se_per_contribution) * x0[-self.pe_bit_size:] @ self.W_dict["o"][:, -self.pe_bit_size:].T / self.pe_bit_size)
 
-                self.save_stats(t, mo, mo_se, mv, mq, mk)
+                self.save_mf_stats(mo, mo_se, mv, mq, mk)
 
         else:
             mv = x0 @ self.W_dict["v"].T / self.embedding_size
@@ -376,7 +395,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
                 mo = x0 @ self.W_dict["o"].T / self.embedding_size
                 mo_se = x0[:self.se_bit_size] @ self.W_dict["o"][:, :self.se_bit_size].T / self.se_bit_size
 
-                self.save_stats(t, mo, mo_se, mv, mq, mk)
+                self.save_mf_stats(mo, mo_se, mv, mq, mk)
 
         return mv, mq, mk
 
@@ -449,6 +468,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Append new attention values to old ones
         att_t_d = anp.vstack((att_t_0, att_t_1_d[-(self.context_size-1):]))
 
+        # Save att if required
+        self.save_att_stats(att_t_0)
+
         return att_t_d
 
     def compute_mfs(self, att_t_d, p_t_d):
@@ -458,7 +480,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for feat_name in self.features_names:
 
             effective_p = p_t_d[:self.effective_context_size]
-            if feat_name == "q":
+            if feat_name == "q" or feat_name == "o":
                 effective_p = p_t_d[np.newaxis, 0]  # Add new dimension to keep the einsum expresion simple
 
             pe_contribution[feat_name] = ((1 - self.se_per_contribution) *
@@ -479,23 +501,29 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Compute the semantic part of every mean field needed for the attention
         m_alpha_se = {}
-        for feat_name in ["v", "q", "k"]:
+        for feat_name in self.features_names:
             # corr_signed has shape (num_combinations_signs, num_features_a).
             # For every feature a, you put together all the j combinations of signs
 
             tanh_j_signs_loop = tanh_j_signs
-            if feat_name == "q":
-                # With q we just work with the current time-step
-                tanh_j_signs_loop = tanh_j_signs[np.newaxis, 0]  # Add new dimension to keep the einsum expresion simple
+            if feat_name == "q" or feat_name == "o":
+                # With "o" or "q" we just work with the current time-step.
+                # "o" is not needed for computation, just to save stats to plot the trajectory.
+                # Add a new empty dimension to keep the einsum expression simple
+                tanh_j_signs_loop = tanh_j_signs[np.newaxis, 0]
 
             m_alpha_se[feat_name] = (self.se_per_contribution * anp.einsum("ja,dj->da",
                                                                               self.corr_signed[feat_name],
                                                                               tanh_j_signs_loop)
                                      / 2 ** (self.num_feat_patterns - 1))
 
+        mo_se = m_alpha_se["o"]  # Feature not used in the Jacobian computation
+        mo = mo_se + pe_contribution["o"]  # Feature not used in the Jacobian computation
         mv_window = m_alpha_se["v"] + pe_contribution["v"]
         mq = m_alpha_se["q"] + pe_contribution["q"]
         mk_window = m_alpha_se["k"] + pe_contribution["k"]
+
+        self.save_mf_stats(mo, mo_se, mv_window[0], mq, mk_window[0])
 
         return mv_window, mq, mk_window
 
@@ -522,19 +550,26 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         att_t_d = anp.reshape(att_t_d, att_size)
         p_t_d = anp.reshape(p_t_d, self.context_size * self.pe_bit_size)
 
-        print(att_t_d.shape, p_t_d.shape)
+        output = anp.concatenate((att_t_d, p_t_d))
 
-        return anp.concatenate((att_t_d, p_t_d))
+        # We return the output so autograd can compute the gradient, but to save computation time and avoid
+        # repeating executions we also create this variable here.
+        if isinstance(output, np.ndarray):
+            self.next_input = copy.deepcopy(output)
+        else:
+            self.next_input = copy.deepcopy(output._value)
+
+        return output
 
 
-    def lyapunov_step(self, input, t, dx):
+    def lyapunov_step(self, input, dx):
 
         Jacobian_Func = jacobian(self._step)
 
         # output = self._step(input)  # Output for testing
         J = Jacobian_Func(input)
 
-        S_idx = t - self.min_saved_step
+        S_idx = self.t - self.min_saved_step
 
         # Compute perturbation
         dx = np.matmul(J, dx)
@@ -611,7 +646,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
         if compute_lyapunov:
-            self.L.lyapunov_end()
+            self.lyapunov_end()
 
 
 
@@ -619,6 +654,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         self.PE.initialize_state(0)
 
+        self.t = 0
         # Initialize attention with the info from the initial token
         mv, mq, mk = self.create_mf_window_from_means(x0)
         # Create empty array for appending attention values
@@ -628,32 +664,30 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Initialize rotating PE
         p_t_d = self.PE.initialize_rotating_pe()
 
+        # Flatten input for the jacobian
         att_t_1_d_flat = anp.reshape(att_t_d,  self.num_feat_patterns)
         p_t_1_d_flat = anp.reshape(p_t_d, self.context_size * self.pe_bit_size)
-        input = np.concatenate((att_t_1_d_flat, p_t_1_d_flat))
-
+        self.next_input = np.concatenate((att_t_1_d_flat, p_t_1_d_flat))
 
         if compute_lyapunov:
             dx = np.eye(self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size)
 
         for t in range(1, max_steps):
             self.t = t
-
             self.effective_context_size = min(self.context_size, self.t)
 
-            # if compute_lyapunov and (t >= self.min_saved_step):
-            #     dx, dx_p = self.compute_lyapunov(t, dx, dx_p)
+            if not compute_lyapunov or (compute_lyapunov and (t < self.min_saved_step)):
+                # If we don't want the gradients, just compute the output
+                # _step() returns an output, but we also save it as self.next_input to save computation when
+                # computing the gradients later
+                self._step(self.next_input)
 
-            # output is the input for the next time-step
-            input = self._step(input)
+            if compute_lyapunov and (t >= self.min_saved_step):
+                # Otherwise compute gradients and perturbations
+                dx = self.lyapunov_step(self.next_input, dx)
 
-            print()
-            # self.compute_mf(t)
-            # self.attention(t)
-
-
+            print(self.next_input)
 
         if compute_lyapunov:
-            self.L.S /= self.num_saved_steps
-            sorted_S = np.sort(self.S)[::-1]
+            self.lyapunov_end()
 
