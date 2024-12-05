@@ -466,7 +466,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         att_t_0 = anp.einsum("da,d->a", mv_window, key_prob)
 
         # Append new attention values to old ones
-        att_t_d = anp.vstack((att_t_0, att_t_1_d[-(self.context_size-1):]))
+        att_t_d = anp.vstack((att_t_0, att_t_1_d[:self.context_size-1]))
 
         # Save att if required
         self.save_att_stats(att_t_0)
@@ -650,7 +650,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
 
 
-    def simulate(self, x0, max_steps, compute_lyapunov=True):
+    def simulate(self, x0, max_steps, compute_lyapunov=False):
 
         self.PE.initialize_state(0)
 
