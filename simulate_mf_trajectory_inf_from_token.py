@@ -92,7 +92,7 @@ if __name__ == "__main__":
         HT.simulate(ini_token, max_steps=max_sim_steps)
         end = timeit.timeit()
         print("Done.")
-        print("Execution time = ", end - start, " seconds")
+        print("Execution time = ", (end - start)/60, " seconds")
 
         # Plotting
         print("Plotting statistics...")
