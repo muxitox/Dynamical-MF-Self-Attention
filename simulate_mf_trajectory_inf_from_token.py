@@ -1,5 +1,5 @@
 import numpy as np
-from models.HopfieldTransformerMFInfNPE_New import HopfieldTransformerMFInfNPE
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os
@@ -128,8 +128,9 @@ if __name__ == "__main__":
         for stat_name in stats_to_show:
             show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
             plot_windows = [250, 350, 5000]  # Different plotting windows for the trajectories
+            plot_windows = [9]  # Different plotting windows for the trajectories
             for plot_window in plot_windows:
-                offset = 12800  # Offset the trajectory to visit different points
+                offset = 0  # Offset the trajectory to visit different points
                 # Define the steps to show
                 plot_range = [offset, offset + plot_window]  # Define the steps to plot
 
