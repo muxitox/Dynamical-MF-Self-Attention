@@ -129,7 +129,6 @@ if __name__ == "__main__":
         for stat_name in stats_to_show:
             show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
             plot_windows = [250, 350, 5000]  # Different plotting windows for the trajectories
-            plot_windows = [9]  # Different plotting windows for the trajectories
             for plot_window in plot_windows:
                 offset = 0  # Offset the trajectory to visit different points
                 # Define the steps to show
