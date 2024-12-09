@@ -1,6 +1,6 @@
 import numpy as np
 from models.Embedding import Embedding
-from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
+from models.HopfieldTransformerMFInfNPE_old import HopfieldTransformerMFInfNPE
 from models.HopfieldTransformerMFPE import HopfieldTransformerMFPE
 from plotting.plotting import plot_filtered_bifurcation_diagram_par_imshow
 import os

@@ -1,5 +1,5 @@
 import numpy as np
-from models.HopfieldTransformerMFInfNPE_New import HopfieldTransformerMFInfNPE
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os

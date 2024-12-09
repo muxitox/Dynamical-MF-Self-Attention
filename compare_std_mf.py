@@ -2,7 +2,7 @@ import copy
 
 import numpy as np
 from models.HopfieldTransformerPE import HopfieldTransformer
-from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
+from models.HopfieldTransformerMFInfNPE_old import HopfieldTransformerMFInfNPE
 
 from bifurcation_diagrams import define_ini_token
 from models.Embedding import Embedding
