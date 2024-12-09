@@ -530,7 +530,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Compute new attention values from previous attention values (shifted) and computed mean-fields
         att_t_d = self.attention(att_t_1_d, mv_window, mq, mk_window)
 
-        # Compute p
+        # Compute Positional Encoding update
         p_t_d = self.PE.next_step_autograd(p_t_1_d)
 
         # Flatten back so autograd can compute the Jacobian
