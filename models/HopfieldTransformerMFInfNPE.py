@@ -632,5 +632,5 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Initialize rotating PE
         p_t_d = self.PE.initialize_rotating_pe()
 
-        self.simulate_mf_from_context(att_t_d, p_t_d, max_steps, compute_lyapunov)
+        self.simulate(att_t_d, p_t_d, max_steps, compute_lyapunov)
 
