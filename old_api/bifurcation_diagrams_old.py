@@ -453,7 +453,7 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
 if __name__ == "__main__":
 
     # Load cfg
-    cfg_path = 'cfgs/bif_diagram_inf_0.yaml'
+    cfg_path = '../cfgs/bif_diagram_inf_0.yaml'
     with open(cfg_path, 'r') as file:
         cfg = yaml.safe_load(file)
 
