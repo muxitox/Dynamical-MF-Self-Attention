@@ -4,6 +4,7 @@ from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os
 import yaml
+import time
 
 def create_dir(filepath):
     plot_save_folder_path = os.path.dirname(filepath)
@@ -88,9 +89,12 @@ if __name__ == "__main__":
         print(f"Simulating MF Transformer for beta {beta}...")
 
         # Set context window to the checkpoint values
+        start = time.time()
         HT.set_context_window(mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt)
         HT.simulate_mf_from_context(max_steps=max_sim_steps)
+        end = time.time()
         print("Done.")
+        print("Execution time = ", (end - start) / 60, " minutes")
 
         # Plotting
         print("Plotting statistics...")
