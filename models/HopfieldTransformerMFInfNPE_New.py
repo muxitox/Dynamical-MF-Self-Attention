@@ -53,17 +53,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.create_W_matrices(correlations_from_weights, num_segments_corrs)
         self.define_correlations(correlations_from_weights)
 
-        # Create variable for the context window in the attention
-        self.mv_window = np.zeros((self.context_size, self.num_feat_patterns))
-        self.mq_window = np.zeros(self.num_feat_patterns)
-        self.mk_window = np.zeros((self.context_size, self.num_feat_patterns))
-        self.att = np.zeros(self.num_feat_patterns)
-        # att values at previous step
-        self.att_window = anp.zeros((self.context_size, self.num_feat_patterns))
-        # Variable that puts together keys and queries and is already scaled with gamma
-        self.key_prob_unnorm = np.zeros(self.context_size)
-
-
         # Create variables to save results
         self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
         # Create variables for saving the statistics of the mean-field model
@@ -71,10 +60,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, num_feat_patterns))
 
-
         self.compute_jacobian = jacobian
 
-        # Variables for accumulating the Lyapunov exponents
+        # Variables for accumulating the Lyapunov exponents and debugging
         lyapunov_size = self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size
         self.S = np.zeros(lyapunov_size)
         self.S_i = np.zeros((self.num_saved_steps, lyapunov_size))
@@ -618,61 +606,21 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         plt.close()
 
 
-    def simulate_mf_from_context(self, max_steps, compute_lyapunov=True):
-        # In order for this method to work properly, a simulate_mf() method has had to be run previously at least for
-        # self.context_size steps
+    def simulate_mf_from_context(self, context_att, context_pe, max_steps, compute_lyapunov=True):
+        # We simulate given a previously computed attention window and positional encoding
 
-        # We have in self.att_window the last attention value
-        # We initialize the model at the end of the previous execution
-        # The context window has been reordered before saving so the last element is in the last position
-        ini_t = self.context_size
-        self.PE.initialize_state(0)
-
-        if compute_lyapunov:
-            # Initialize Jacobian if needed
-            dx = np.eye(self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size)
-
-        for t in range(ini_t, max_steps):
-
-            self.t = t
-            if compute_lyapunov and (t >= self.min_saved_step):
-                dx = self.L.lyapunov_step(self.att_window, self.PE.state_window, t, dx)
-
-
-            self.compute_mf(t)
-            self.attention(t)
-
-            self.PE.next_step()
-
-
-        if compute_lyapunov:
-            self.lyapunov_end()
-
-
-
-    def simulate(self, x0, max_steps, compute_lyapunov=False):
-
-        self.PE.initialize_state(0)
-
-        self.t = 0
-        # Initialize attention with the info from the initial token
-        mv, mq, mk = self.create_mf_window_from_means(x0)
-        # Create empty array for appending attention values
-        att_t_d = np.array([]).reshape(0, self.num_feat_patterns)
-        # Create attention
-        att_t_d = self.attention(att_t_d, mv, mq, mk)
-        # Initialize rotating PE
-        p_t_d = self.PE.initialize_rotating_pe()
+        ini_t = context_att.shape[0]
+        self.t = ini_t
 
         # Flatten input for the jacobian
-        att_t_1_d_flat = anp.reshape(att_t_d,  self.num_feat_patterns)
-        p_t_1_d_flat = anp.reshape(p_t_d, self.context_size * self.pe_bit_size)
+        att_t_1_d_flat = anp.reshape(context_att, context_att.shape[0] * self.num_feat_patterns)
+        p_t_1_d_flat = anp.reshape(context_pe, self.context_size * self.pe_bit_size)
         self.next_input = np.concatenate((att_t_1_d_flat, p_t_1_d_flat))
 
         if compute_lyapunov:
             dx = np.eye(self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size)
 
-        for t in range(1, max_steps):
+        for t in range(ini_t, max_steps):
             self.t = t
             self.effective_context_size = min(self.context_size, self.t)
 
@@ -688,4 +636,56 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         if compute_lyapunov:
             self.lyapunov_end()
+
+    def simulate(self, x0, max_steps, compute_lyapunov=False):
+
+        self.t = 0
+        # Initialize attention with the info from the initial token
+        mv, mq, mk = self.create_mf_window_from_means(x0)
+        # Create empty array for appending attention values
+        att_t_d = np.array([]).reshape(0, self.num_feat_patterns)
+        # Create attention
+        att_t_d = self.attention(att_t_d, mv, mq, mk)
+        # Initialize rotating PE
+        p_t_d = self.PE.initialize_rotating_pe()
+
+        self.simulate_mf_from_context(att_t_d, p_t_d, max_steps, compute_lyapunov)
+
+
+    # def simulate(self, x0, max_steps, compute_lyapunov=False):
+    #
+    #     self.t = 0
+    #     # Initialize attention with the info from the initial token
+    #     mv, mq, mk = self.create_mf_window_from_means(x0)
+    #     # Create empty array for appending attention values
+    #     att_t_d = np.array([]).reshape(0, self.num_feat_patterns)
+    #     # Create attention
+    #     att_t_d = self.attention(att_t_d, mv, mq, mk)
+    #     # Initialize rotating PE
+    #     p_t_d = self.PE.initialize_rotating_pe()
+    #
+    #     # Flatten input for the jacobian
+    #     att_t_1_d_flat = anp.reshape(att_t_d,  self.num_feat_patterns)
+    #     p_t_1_d_flat = anp.reshape(p_t_d, self.context_size * self.pe_bit_size)
+    #     self.next_input = np.concatenate((att_t_1_d_flat, p_t_1_d_flat))
+    #
+    #     if compute_lyapunov:
+    #         dx = np.eye(self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size)
+    #
+    #     for t in range(1, max_steps):
+    #         self.t = t
+    #         self.effective_context_size = min(self.context_size, self.t)
+    #
+    #         if not compute_lyapunov or (compute_lyapunov and (t < self.min_saved_step)):
+    #             # If we don't want the gradients, just compute the output
+    #             # _step() returns an output, but we also save it as self.next_input to save computation when
+    #             # computing the gradients later
+    #             self._step(self.next_input)
+    #
+    #         if compute_lyapunov and (t >= self.min_saved_step):
+    #             # Otherwise compute gradients and perturbations
+    #             dx = self.lyapunov_step(self.next_input, dx)
+    #
+    #     if compute_lyapunov:
+    #         self.lyapunov_end()
 

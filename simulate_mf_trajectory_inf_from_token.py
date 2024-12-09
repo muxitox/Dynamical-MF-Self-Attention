@@ -1,10 +1,10 @@
 import numpy as np
-from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
+from models.HopfieldTransformerMFInfNPE_New import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
 import os
 import yaml
-import timeit
+import time
 
 def create_dir(filepath):
     plot_save_folder_path = os.path.dirname(filepath)
@@ -88,11 +88,12 @@ if __name__ == "__main__":
         print(f"Simulating MF Transformer for beta {beta}...")
         # Choose as initial token one of the encoded features
         ini_token = HT.Wv_SE[0]
-        start = timeit.timeit()
-        HT.simulate(ini_token, max_steps=max_sim_steps)
-        end = timeit.timeit()
+        start = time.time()
+        compute_lyapunov = True
+        HT.simulate(ini_token, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
+        end = time.time()
         print("Done.")
-        print("Execution time = ", (end - start)/60, " seconds")
+        print("Execution time = ", (end - start)/60, " minutes")
 
         # Plotting
         print("Plotting statistics...")
