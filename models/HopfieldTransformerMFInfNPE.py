@@ -589,7 +589,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         plt.close()
 
 
-    def simulate_mf_from_context(self, context_att, context_pe, max_steps, compute_lyapunov=True):
+    def simulate(self, context_att, context_pe, max_steps, compute_lyapunov=True):
         # We simulate given a previously computed attention window and positional encoding
 
         ini_t = context_att.shape[0]
@@ -620,7 +620,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         if compute_lyapunov:
             self.lyapunov_end()
 
-    def simulate(self, x0, max_steps, compute_lyapunov=False):
+    def simulate_from_token(self, x0, max_steps, compute_lyapunov=False):
 
         self.t = 0
         # Initialize attention with the info from the initial token

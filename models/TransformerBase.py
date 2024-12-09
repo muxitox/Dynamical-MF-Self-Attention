@@ -190,5 +190,9 @@ class TransformerBase(ABC):
         pass
 
     @abstractmethod
-    def simulate(self, x0, max_steps):
+    def simulate_from_token(self, x0, max_steps):
+        pass
+
+    @abstractmethod
+    def simulate(self, att, max_steps):
         pass
