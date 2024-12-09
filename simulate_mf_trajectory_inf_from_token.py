@@ -86,7 +86,7 @@ if __name__ == "__main__":
         ini_token = HT.Wv_SE[0]
         start = time.time()
         compute_lyapunov = True
-        HT.simulate_mf_from_token(ini_token, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
+        HT.simulate_from_token(ini_token, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
         end = time.time()
         print("Done.")
         print("Execution time = ", (end - start)/60, " minutes")
