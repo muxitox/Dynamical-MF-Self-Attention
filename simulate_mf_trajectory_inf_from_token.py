@@ -59,10 +59,6 @@ if __name__ == "__main__":
     save_not_plot = False                          # True -> Save; False -> Plot
     show_title = True                                             # Whether to show the title on top
 
-    # Load checkpoint attention values
-    chpt_path = ("chpt/beta_idx-4000_window_chpt_zoom.npz")
-    mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt = load_context(chpt_path)
-
     for beta in beta_list:
 
         # Create seed for reproducibility
