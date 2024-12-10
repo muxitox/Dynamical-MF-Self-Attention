@@ -66,7 +66,7 @@ class PositionalEncoding:
         if isinstance(p_t_d, np.ndarray):
             self.p_t_d = p_t_d
         else:
-            self.p_t_d = p_t_d._values
+            self.p_t_d = p_t_d._value
 
         return p_t_d
 
