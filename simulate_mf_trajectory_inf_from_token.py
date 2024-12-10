@@ -1,7 +1,8 @@
 import numpy as np
 from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
-from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
+from plotting.plotting import (plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation,
+                               plot_lyapunov_grapphs)
 import os
 import yaml
 import time
@@ -12,6 +13,24 @@ def create_dir(filepath):
     # Create folder if it does not exist and we are saving the image
     if not os.path.exists(plot_save_folder_path):
         os.makedirs(plot_save_folder_path)
+
+def save_context(context_window, folder_path_chpt, seed):
+    """
+    Saves the mean-field values associated to the context window
+    """
+    att_window, mo_window, mv_window, mq_window, mk_window, pe_window = context_window
+
+    chpt_path = folder_path_chpt + f"/seed-{str(seed)}" + "-transient_steps-" + str(
+                        num_transient_steps) + ".npz"
+
+    np.savez_compressed(chpt_path,
+                        att_window=att_window,
+                        mo_window=mo_window,
+                        mv_window=mv_window,
+                        mq_window=mq_window,
+                        mk_window=mk_window,
+                        pe_window=pe_window)
+
 
 def load_context(chpt_path):
 
@@ -39,7 +58,7 @@ if __name__ == "__main__":
     seed = 1  # Seed for the correlations
     num_feat_patterns = 3                                   # Number of patterns
     beta_list = [1.255, 1.26405, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
-    beta_list = [1.266]    # Different values of beta to simulate
+    beta_list = [3]    # Different values of beta to simulate
     scaling_o = cfg["scaling_o"]  # Not scaled
     beta_att = cfg["beta_att"]
     scaling_att = cfg["scaling_att"]                        # Beta_att * scaling_att make gamma from the paper
@@ -56,7 +75,9 @@ if __name__ == "__main__":
     normalize_weights_str_o = cfg["normalize_weights_str_o"]      # Normalization in the output
     compute_inf_normalization = cfg["compute_inf_normalization"]  # Deal with normalization constraint in infinity
 
+    compute_lyapunov = True                        # True if you want to compute the Lyapunov exponents
     save_not_plot = False                          # True -> Save; False -> Plot
+    save_context_cond = True                       # If true, save context so it can be later loaded to start another execution
     show_title = True                                             # Whether to show the title on top
 
     for beta in beta_list:
@@ -85,11 +106,12 @@ if __name__ == "__main__":
         # Choose as initial token one of the encoded features
         ini_token = HT.Wv_SE[0]
         start = time.time()
-        compute_lyapunov = True
         HT.simulate_from_token(ini_token, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
         end = time.time()
         print("Done.")
         print("Execution time = ", (end - start)/60, " minutes")
+
+
 
         # Plotting
         print("Plotting statistics...")
@@ -103,11 +125,16 @@ if __name__ == "__main__":
                                           "-normalize_weights_o-" + normalize_weights_str_o)
 
         save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
-        folder_path = f"results_betas/beta{beta}"
+        folder_path = f"results_betas_ft/beta{beta}"
+
 
         # Create dir if it does not exist
-        if save_not_plot:
+        if save_not_plot or save_context_cond:
             create_dir(folder_path)
+
+        if save_context_cond:
+            cw = HT.get_context_window()
+            save_context(cw, folder_path, seed)
 
         if show_title:
             title = fr"$\beta$ = {round(beta, 5)}"
@@ -205,3 +232,12 @@ if __name__ == "__main__":
                             stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
                             tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot,
                             title=title, larger_dots=larger_dots)
+
+        if compute_lyapunov:
+            print("Sorted Lyapunov exponents in descencing order", HT.sorted_S)
+            plot_save_path_lya = (
+                    folder_path + f"/lyapunov-{str(seed)}" + "-transient_steps-" + str(
+                num_transient_steps) + image_format)
+            # Plot lyapunov related statistics
+            plot_lyapunov_grapphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size,
+                                  save_not_plot=save_not_plot, save_path=plot_save_path_lya)

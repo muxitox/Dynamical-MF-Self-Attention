@@ -982,3 +982,29 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
     else:
         plt.show()
     plt.close()
+
+def plot_lyapunov_grapphs(S_i_sum, M, pe_bit_size, context_size, save_not_plot=False, save_path=None, lowres=False):
+
+    dpi = None
+    if lowres:
+        dpi = 15
+
+    ncols = 3
+    # Create figure
+    fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 8), constrained_layout=True, dpi=dpi)
+
+    ax[0].plot(S_i_sum[:, :M])
+    ax[0].set_title("Main feats")
+
+    ax[1].plot(S_i_sum[-1000:, :M])
+    ax[1].title("Main feats. End zoom.")
+
+    ax[2].plot(S_i_sum[:, M:-(pe_bit_size * context_size)], )
+    ax[2].title("Remianing feats")
+
+
+    if save_not_plot:
+        fig.savefig(save_path, bbox_inches='tight')
+    else:
+        plt.tight_layout()
+        plt.show()

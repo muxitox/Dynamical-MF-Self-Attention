@@ -283,22 +283,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
     def get_context_window(self):
         index_t = self.t - self.min_saved_step
 
-        att = copy.deepcopy(self.mf_statistics["att"][index_t-self.context_size:index_t])
-        mo = copy.deepcopy(self.mf_statistics["mo"][index_t-self.context_size:index_t])
-        mv = copy.deepcopy(self.mf_statistics["mv"][index_t-self.context_size:index_t])
-        mq = copy.deepcopy(self.mf_statistics["mq"][index_t-self.context_size:index_t])
-        mk = copy.deepcopy(self.mf_statistics["mk"][index_t-self.context_size:index_t])
+        att = copy.deepcopy(self.mf_statistics["att"][index_t-self.context_size:index_t][::-1])
+        mo = copy.deepcopy(self.mf_statistics["mo"][index_t-self.context_size:index_t][::-1])
+        mv = copy.deepcopy(self.mf_statistics["mv"][index_t-self.context_size:index_t][::-1])
+        mq = copy.deepcopy(self.mf_statistics["mq"][index_t-self.context_size:index_t][::-1])
+        mk = copy.deepcopy(self.mf_statistics["mk"][index_t-self.context_size:index_t][::-1])
+        pe = copy.deepcopy(self.PE.p_t_d)
 
-        return att, mo, mv, mq, mk
-
-    def reset_data_return_prev_context(self):
-
-        att, mo, mv, mq, mk = self.get_context_window()
-
-        for name_i in self.statistics_names:
-            self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
-
-        return att, mo, mv, mq, mk
+        return att, mo, mv, mq, mk, pe
 
     def save_att_stats(self, att):
         # Save stats in an array if the time threshold is surpassed
@@ -559,34 +551,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def lyapunov_end(self):
 
+        # Average by trajectory length
         self.S /= self.num_saved_steps
-
-        sorted_S = np.sort(self.S[:self.num_feat_patterns * self.context_size])[::-1]
-        print("S", self.S)
-        print("Sorted desc", sorted_S)
-        print()
-
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.plot(self.S_i_sum[:, 0:3])
-        plt.title("Feats 0-2")
-        plt.tight_layout()
-        plt.show()
-        plt.close()
-
-        plt.figure()
-        plt.plot(self.S_i_sum[-1000:, 0:3])
-        plt.title("Feats 0-2. Zoom last steps")
-        plt.tight_layout()
-        plt.show()
-        plt.close()
-
-        plt.figure()
-        plt.plot(self.S_i_sum[:, 3:12], )
-        plt.title("Feats 3-11")
-        plt.tight_layout()
-        plt.show()
-        plt.close()
+        # Reorder in descending order, filter out components associated to Positional Encoding rotations (last components)
+        self.sorted_S = np.sort(self.S[:self.num_feat_patterns * self.context_size])[::-1]
 
 
     def simulate(self, context_att, context_pe, max_steps, compute_lyapunov=True):
