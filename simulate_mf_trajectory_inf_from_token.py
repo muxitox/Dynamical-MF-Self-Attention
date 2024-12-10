@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
         print(f"Simulating MF Transformer for beta {beta}...")
         # Choose as initial token one of the encoded features
-        ini_token = HT.Wv_SE[0]
+        ini_token = HT.Wo_SE[0]
         start = time.time()
         HT.simulate_from_token(ini_token, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
         end = time.time()
