@@ -2,7 +2,7 @@ import numpy as np
 from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import (plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation,
-                               plot_lyapunov_grapphs)
+                               plot_lyapunov_graphs)
 import os
 import yaml
 import time
@@ -237,6 +237,6 @@ if __name__ == "__main__":
                     folder_path + f"/lyapunov-{str(seed)}" + "-transient_steps-" + str(
                 num_transient_steps) + image_format_lya)
             # Plot lyapunov related statistics
-            plot_lyapunov_grapphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size,
-                                  save_not_plot=save_not_plot, save_path=plot_save_path_lya)
+            plot_lyapunov_graphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size,
+                                 save_not_plot=save_not_plot, save_path=plot_save_path_lya)
 
