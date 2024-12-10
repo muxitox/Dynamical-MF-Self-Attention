@@ -58,7 +58,7 @@ if __name__ == "__main__":
     seed = 1  # Seed for the correlations
     num_feat_patterns = 3                                   # Number of patterns
     beta_list = [1.255, 1.26405, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
-    beta_list = [3]    # Different values of beta to simulate
+    beta_list = [3.0]    # Different values of beta to simulate
     scaling_o = cfg["scaling_o"]  # Not scaled
     beta_att = cfg["beta_att"]
     scaling_att = cfg["scaling_att"]                        # Beta_att * scaling_att make gamma from the paper
@@ -111,8 +111,6 @@ if __name__ == "__main__":
         print("Done.")
         print("Execution time = ", (end - start)/60, " minutes")
 
-
-
         # Plotting
         print("Plotting statistics...")
         num_plotting_steps = max_sim_steps
@@ -125,8 +123,7 @@ if __name__ == "__main__":
                                           "-normalize_weights_o-" + normalize_weights_str_o)
 
         save_non_transient_str = f"-num_transient_steps-{num_transient_steps}"
-        folder_path = f"results_betas_ft/beta{beta}"
-
+        folder_path = f"results_betas_ft/beta{beta}/"
 
         # Create dir if it does not exist
         if save_not_plot or save_context_cond:
@@ -233,11 +230,13 @@ if __name__ == "__main__":
                             tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot,
                             title=title, larger_dots=larger_dots)
 
+        image_format_lya = ".jpg"
         if compute_lyapunov:
             print("Sorted Lyapunov exponents in descencing order", HT.sorted_S)
             plot_save_path_lya = (
                     folder_path + f"/lyapunov-{str(seed)}" + "-transient_steps-" + str(
-                num_transient_steps) + image_format)
+                num_transient_steps) + image_format_lya)
             # Plot lyapunov related statistics
             plot_lyapunov_grapphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size,
                                   save_not_plot=save_not_plot, save_path=plot_save_path_lya)
+

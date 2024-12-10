@@ -281,7 +281,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, self.num_feat_patterns))
 
     def get_context_window(self):
-        index_t = self.t - self.min_saved_step
+        index_t = self.t - self.min_saved_step + 1
 
         att = copy.deepcopy(self.mf_statistics["att"][index_t-self.context_size:index_t][::-1])
         mo = copy.deepcopy(self.mf_statistics["mo"][index_t-self.context_size:index_t][::-1])

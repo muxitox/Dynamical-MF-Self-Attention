@@ -997,14 +997,13 @@ def plot_lyapunov_grapphs(S_i_sum, M, pe_bit_size, context_size, save_not_plot=F
     ax[0].set_title("Main feats")
 
     ax[1].plot(S_i_sum[-1000:, :M])
-    ax[1].title("Main feats. End zoom.")
+    ax[1].set_title("Main feats. End zoom.")
 
     ax[2].plot(S_i_sum[:, M:-(pe_bit_size * context_size)], )
-    ax[2].title("Remianing feats")
+    ax[2].set_title("Remaining feats")
 
 
     if save_not_plot:
         fig.savefig(save_path, bbox_inches='tight')
     else:
-        plt.tight_layout()
         plt.show()
