@@ -58,8 +58,15 @@ class PositionalEncoding:
         #     # new_state2 = anp.tanh(new_state2 * self.K)
         #     new_state = anp.tanh(new_state)
 
+        # PE implemented just as shifting periodically the initial PE list
         p_t_d = anp.roll(p_t_1_d, 1, axis=0)
         # p_t_d[0, :] = new_state
+
+        # save copy
+        if isinstance(p_t_d, np.ndarray):
+            self.p_t_d = p_t_d
+        else:
+            self.p_t_d = p_t_d._values
 
         return p_t_d
 
