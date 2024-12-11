@@ -12,7 +12,7 @@ import yaml
 
 
 def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                              load_from_context_mode, cfg):
+                              cfg):
     """
     Given the experiment parameters, creates a path to save it.
     The code is a bit intrincate for back-compatibility with older experiments.
@@ -63,9 +63,9 @@ def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, cont
     if cfg["compute_inf_normalization"]:
         compute_inf_normalization_str = "-inf_norm"
 
-    load_from_context_mode_str = ""
-    if load_from_context_mode != 0:
-        load_from_context_mode_str = "-load_from_context_mode-1"
+    load_chpt_str = ""
+    if cfg["load_chpt"]:
+        load_chpt_str = "-load_from_chpt-"
 
     # Save/plot results for each ini_token, W config, and num_feat_patterns
     folder_path = (f"{results_folder}/infN-correlations_from_weights-" + str(cfg["correlations_from_weights"])
@@ -76,13 +76,22 @@ def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, cont
                    str(int(cfg["reorder_weights"])) + "-num_segments_corrs-" + str(cfg["num_segments_corrs"])
                    + "-pe_mode-" + str(cfg["pe_mode"]) + gaussian_scale_name_str + "/max_sim_steps-"
                    + str(cfg["max_sim_steps"]) + save_non_transient_str + "-context_size-" + str(context_size)
-                   + beta_string + load_from_context_mode_str)
+                   + beta_string + load_chpt_str)
+
+    # Set up some more variables for saving purposes
+    ini_token_mode_str = ""
+    if not cfg["load_chpt"]:
+        ini_token_from_w = cfg["ini_token_from_w"]
+        if cfg["ini_token_from_w"] != 0:
+            ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
+    folder_path = (folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx)
+                   + ini_token_mode_str + "/")
 
     return folder_path
 
 
 def create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                            load_from_context_mode, cfg):
+                            cfg):
     """
     Given the experiment parameters, creates a path to save it.
     The code is a bit intrincate for back-compatibility with older experiments.
@@ -119,9 +128,9 @@ def create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, contex
     if cfg["compute_inf_normalization"]:
         compute_inf_normalization_str = "-inf_norm"
 
-    load_from_context_mode_str = ""
-    if load_from_context_mode != 0:
-        load_from_context_mode_str = "-load_from_context_mode-1"
+    load_chpt_str = ""
+    if cfg["load_chpt"]:
+        load_chpt_str = "-load_from_chpt-"
 
     if cfg["beta_att"] == cfg["beta_o"]:
         beta_string = "-beta-" + str(cfg["beta_att"])
@@ -137,19 +146,28 @@ def create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, contex
                    str(int(cfg["reorder_weights"])) + "-num_segments_corrs-" + str(cfg["num_segments_corrs"])
                    + "-pe_mode-" + str(cfg["pe_mode"]) + gaussian_scale_name_str + "/max_sim_steps-"
                    + str(cfg["max_sim_steps"]) + save_non_transient_str + "-context_size-" + str(context_size)
-                   + epsilon_pe_string + load_from_context_mode_str)
+                   + epsilon_pe_string + load_chpt_str)
+
+    # Set up some more variables for saving purposes
+    ini_token_mode_str = ""
+    if not cfg["load_chpt"]:
+        ini_token_from_w = cfg["ini_token_from_w"]
+        if cfg["ini_token_from_w"] != 0:
+            ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
+    folder_path = (folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx)
+                       + ini_token_mode_str + "/")
 
     return folder_path
 
 
 def create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                    load_from_context_mode, cfg):
+                    cfg, seed, ini_token_idx):
     if cfg["bifurcation_mode"] == "pe":
         pathname = create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, context_size,
-                                           worker_values_list, load_from_context_mode, cfg)
+                                           worker_values_list, cfg, seed, ini_token_idx)
     else:
         pathname = create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, context_size,
-                                             worker_values_list, load_from_context_mode, cfg)
+                                             worker_values_list, cfg, seed, ini_token_idx)
 
     return pathname
 
@@ -212,7 +230,8 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
         min_saved_step = cfg["num_transient_steps"]
 
     # Create root folder to later save and aggregate the results
-    folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list, load_from_context_mode, cfg)
+    folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
+                                  load_from_context_mode, cfg, seed, ini_token_idx)
 
     folder_path_chpt = folder_path + "/chpt"
     folder_path = folder_path + "/stats"
@@ -267,35 +286,25 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
     # Reset data structures
     HT.reset_data()
 
-    # Define the initial token. x0 is only used if load_from_context_mode!=2
-    x0 = define_ini_token(cfg["ini_token_from_w"], HT, ini_token_idx, ini_tokens_list)
-    ini_token_from_w = cfg["ini_token_from_w"]
-    if ini_token_from_w != 0:  # Otherwise it's already set
-        x0[-positional_embedding_size:] = -1  # Initialize position to -1
-
-    if load_from_context_mode == 0 or load_from_context_mode == 1:
-        # Simulate for max_sim_steps steps from x0
-        HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"])
-        if load_from_context_mode == 1:
-            # Save context reordered for a fresh start
-            cw = HT.get_context_window()
-            save_context(cw, folder_path_chpt, worker_id)
-    elif load_from_context_mode == 2:
+    if cfg["load_chpt"]:
         # Load checkpoint from last beta
-        att_window, pe_window = load_context(folder_path_chpt, len(worker_values_list) - 1)
+        att_window, pe_window = load_context(cfg["chpt_path"])
         # Simulate from context
         HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"])
+    else:
+        # Define the initial token. x0 is only used if load_from_context_mode!=2
+        x0 = define_ini_token(cfg["ini_token_from_w"], HT, ini_token_idx, ini_tokens_list)
+        if cfg["ini_token_from_w"] != 0:  # Otherwise it's already set
+            x0[-positional_embedding_size:] = -1  # Initialize position to -1
+
+        # Simulate for max_sim_steps steps from x0
+        HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"])
 
     for stat_name in stats_to_save_plot:
         # Accumulate results in a var of beta_list length
         results_beta[stat_name] = np.copy(HT.mf_statistics[stat_name])
 
-    # Set up some more variables for saving purposes
-    ini_token_mode_str = ""
-    if ini_token_from_w != 0:
-        ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
-    stats_data_path = (folder_path + "/seed-" + str(seed) + "-ini_token_idx-" + str(ini_token_idx)
-                       + ini_token_mode_str + "-beta_idx-" + str(worker_id) + ".npz")
+    stats_data_path = (folder_path + "beta_idx-" + str(worker_id) + ".npz")
 
     # Save results
     print("Saving results in ", os.path.abspath(stats_data_path))
@@ -305,7 +314,8 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                         mv_results_beta=results_beta["mv"],
                         mq_results_beta=results_beta["mq"],
                         mk_results_beta=results_beta["mk"],
-                        att_results_beta=results_beta["att"])
+                        att_results_beta=results_beta["att"],
+                        lya=np.copy(HT.sorted_S))
 
     print(f"Saved stats num_feat_patterns {num_feat_patterns}, seed {seed}, ini_token_idx {ini_token_idx}")
 
@@ -330,13 +340,7 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
 
     # Create pathname
     folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                                  load_from_context_mode, cfg)
-
-    # Create some more variables for saving purposes
-    ini_token_mode_str = ""
-    ini_token_from_w = cfg["ini_token_from_w"]
-    if ini_token_from_w != 0:
-        ini_token_mode_str = f"-ini_token_from_w-{ini_token_from_w}"
+                                  cfg, seed, ini_token_idx)
 
     correlations_from_weights = cfg["correlations_from_weights"]
     filtering_range = cfg["filtering_range"]
@@ -369,16 +373,16 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
                 title = None
 
             # Save path
-            filtered_save_path = (folder_path + f"/{stat_name}/seed-" + str(seed) + "-ini_token_idx-" +
-                                  str(ini_token_idx) + "-transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
+            filtered_save_path = (folder_path + f"/{stat_name}/" +
+                                  "-transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
                                   "-filter_rg-" + str(filtering_range) + image_format)
 
             # Plotting and saving
             print("Creating and saving diagram")
             plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, num_feat_patterns,
                                                          filtered_save_path, num_transient_steps_plot_arg,
-                                                         stat_name, folder_path, seed, ini_token_idx,
-                                                         ini_token_mode_str, filtering_range=filtering_range,
+                                                         stat_name, folder_path,
+                                                         filtering_range=filtering_range,
                                                          show_max_num_patterns=show_max_num_patterns,
                                                          save_not_plot=cfg["save_not_plot"], title=title,
                                                          show_1_feat=show_1_feat[filter_idx])

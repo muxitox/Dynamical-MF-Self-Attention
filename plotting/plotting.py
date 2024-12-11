@@ -175,7 +175,7 @@ def filter_y_values_by_0_plane(results_y_list, feat, filter_idx, filtering_range
 
 def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
                                           save_path, num_transient_steps, feat_name,
-                                          folder_path, seed, ini_token_idx, ini_token_mode_str,
+                                          folder_path,
                                           filtering_range=0.05,
                                           show_max_num_patterns=None, save_not_plot=True, title=None,
                                           is_beta=True, min_bidx=0, show_1_feat=None,
@@ -219,8 +219,7 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
 
         for idx in range(len(x_list)):
             b_idx = min_bidx + idx
-            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+            stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
                                + ".npz")
 
             # Load data
@@ -277,7 +276,7 @@ def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
     plt.close()
 
 
-def compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name):
+def compute_max_min(x_list, folder_path, min_bidx, feat_name):
     """
     Computes the max and min values for all the betas
     """
@@ -285,8 +284,7 @@ def compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str
     min_y = np.inf
     for idx in range(len(x_list)):
         b_idx = min_bidx + idx
-        stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                           + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+        stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
                            + ".npz")
 
         # Load data
@@ -301,8 +299,7 @@ def compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str
 
     return min_y, max_y
 
-def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
-                        num_transient_steps, feat, y_resolution, max_y):
+def create_imshow_array(x_list, folder_path, min_bidx, feat_name, num_transient_steps, feat, y_resolution, max_y):
 
     # Creates array for imshow
 
@@ -310,8 +307,7 @@ def create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode
 
     for idx in range(len(x_list)):
         b_idx = min_bidx + idx
-        stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                           + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+        stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
                            + ".npz")
 
         # Load data
@@ -348,15 +344,14 @@ def get_filtered_values_by_beta_seq(results_y_list, feature_to_filter_idx, filte
 
     return unique_filtered_len, unique_len
 
-def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx, feat_name,
+def get_filtered_values_by_beta(idx, folder_path, min_bidx, feat_name,
                         num_transient_steps, feat, y_resolution, filter_idx, filtering_range, max_y):
     """
     Function to compute the intersection with the 0 plane.
     """
 
     b_idx = min_bidx + idx
-    stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                       + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(b_idx)
+    stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
                        + ".npz")
 
     # Load data
@@ -379,7 +374,7 @@ def get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token
 
 def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_patterns,
                                                  save_path, num_transient_steps, feat_name,
-                                                 folder_path, seed, ini_token_idx, ini_token_mode_str,
+                                                 folder_path,
                                                  filtering_range=0.05,
                                                  show_max_num_patterns=None, save_not_plot=True, title=None,
                                                  is_beta=True, min_bidx=0, show_1_feat=None,
@@ -393,9 +388,6 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
     :param num_transient_steps: Number of transient steps
     :param feat_name: Feat. name. For plotting purposes.
     :param folder_path: Folder path in which we saved the results.
-    :param seed: (For loading purposes. Plotted in some cases for internal decisions)
-    :param ini_token_idx: (Plotted in some cases for internal decisions)
-    :param ini_token_mode_str: (Plotted in some cases for internal decisions)
     :param filtering_range: Error band for the 0 plane filter
     :param show_max_num_patterns: Max number of patterns we want to plot
     :param save_not_plot: True save. False plot.
@@ -448,8 +440,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
 
 
         # Compute min max range to define the im_array properly
-        min_y, max_y = compute_max_min(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
-                                       feat_name)
+        min_y, max_y = compute_max_min(x_list, folder_path, min_bidx, feat_name)
 
         max_y = max(abs(min_y), abs(max_y))
 
@@ -457,7 +448,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         y_resolution_plot = 5001
 
         # 1 - First plot all the quantized values for all betas
-        im_array = create_imshow_array(x_list, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
+        im_array = create_imshow_array(x_list, folder_path, min_bidx,
                                        feat_name, num_transient_steps, feat, y_resolution_im, max_y)
 
         local_ax.imshow(im_array, cmap=cmap, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y],
@@ -470,7 +461,7 @@ def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_pa
         filtered_values_feat_list = {}
         for idx in range(len(x_list)):
             values_feat_filtered_quantized, values_feat_quantized, unique_len = \
-                (get_filtered_values_by_beta(idx, folder_path, seed, ini_token_idx, ini_token_mode_str, min_bidx,
+                (get_filtered_values_by_beta(idx, folder_path, min_bidx,
                                              feat_name, num_transient_steps, feat, y_resolution_plot, filter_idx,
                                              filtering_range, max_y))
 
