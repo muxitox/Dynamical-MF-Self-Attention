@@ -68,15 +68,16 @@ def save_context(context_window, folder_path_chpt, beta_idx):
                         mk_window=mk_window,
                         pe_window=pe_window)
 
-def load_context(folder_path_chpt, beta_idx):
+def load_context(chpt_path):
     """
     Load the mean-field values associated to the context window of a previous experiment.
-    :param beta_idx index of the beta from which to load the context window
+    :param chpt_path path from which to load the checkpoint
     """
-    chpt_path = folder_path_chpt + f"/beta_idx-{beta_idx}_window_chpt.npz"
+    # We just need the attention and positional encodings
 
     cw = np.load(chpt_path)
 
-    # We just need the attention and positional encodings
-
     return cw['att_window'], cw['pe_window']
+
+
+

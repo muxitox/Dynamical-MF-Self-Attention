@@ -6,7 +6,7 @@ from plotting.plotting import plot_filtered_bifurcation_diagram_par_imshow
 import os
 import time
 import copy
-from utils import create_dir, create_dir_from_filepath, save_context, load_context
+from utils import create_dir, create_dir_from_filepath, load_context
 from plotting.plotting import plot_save_plane
 import yaml
 
@@ -19,16 +19,16 @@ def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, cont
     """
 
     if cfg["bifurcation_mode"] == "betas":
-        results_folder = "results_parallel"
+        results_folder = "results_parallel_v3"
         beta_string = ("/min_beta-" + str(worker_values_list[0]) + "-max_beta-" + str(worker_values_list[-1]) +
                        "-num_betas-" + str(len(worker_values_list)))
     elif cfg["bifurcation_mode"] == "out":
-        results_folder = "results_out_parallel"
+        results_folder = "results_out_parallel_v3"
         beta_string = (
                     "/beta_att-" + str(cfg["beta_att"]) + "-min_beta_o-" + str(worker_values_list[0]) + "-max_beta_o-" +
                     str(worker_values_list[-1]) + "-num_betas-" + str(len(worker_values_list)))
     elif cfg["bifurcation_mode"] == "att":
-        results_folder = "results_att_parallel"
+        results_folder = "results_att_parallel_v3"
         beta_string = (
                     "/beta_o-" + str(cfg["beta_o"]) + "-min_beta_att-" + str(worker_values_list[0]) + "-max_beta_att-" +
                     str(worker_values_list[-1]) + "-num_betas-" + str(len(worker_values_list)))
@@ -138,7 +138,7 @@ def create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, contex
         beta_string = "-beta_o-" + str(cfg["beta_o"]) + "-beta_att-" + str(cfg["beta_att"])
 
     # Save/plot results for each ini_token, W config, and num_feat_patterns
-    folder_path = ("results_pe_parallel/infN-correlations_from_weights-" + str(cfg["correlations_from_weights"])
+    folder_path = ("results_pe_parallel_v3/infN-correlations_from_weights-" + str(cfg["correlations_from_weights"])
                    + "-se_size-" + str(cfg["semantic_embedding_size"]) + "-pe_size-"
                    + str(positional_embedding_size) + beta_string
                    + "/num_feat_patterns-" + str(num_feat_patterns) + normalize_weights_name_str + scaling_str +
@@ -206,11 +206,9 @@ def initialize_bifurcation_variable(HT, worker_values_list, worker_id, mode):
 
 
 def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
-           worker_id, cfg, stats_to_save_plot, load_from_context_mode=0):
+           worker_id, cfg, stats_to_save_plot):
     """
 
-    :param load_from_context_mode: 0 -> don't load from context, 1 -> don't load from context but save your final context
-                                   2-> load context from other experiment
     :return:
     """
 
@@ -231,14 +229,12 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
 
     # Create root folder to later save and aggregate the results
     folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                                  load_from_context_mode, cfg, seed, ini_token_idx)
+                                  cfg, seed, ini_token_idx)
 
-    folder_path_chpt = folder_path + "/chpt"
-    folder_path = folder_path + "/stats"
-
+    folder_path = folder_path + "/stats/"
     create_dir(folder_path)
-    if load_from_context_mode == 1:
-        create_dir(folder_path_chpt)
+
+    compute_lyapunov = cfg["compute_lyapunov"]
 
     # Define the seed that will create the weights/correlations
     np.random.seed(seed)
@@ -260,7 +256,8 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                                          compute_inf_normalization=cfg["compute_inf_normalization"],
                                          N_normalization=9999,
                                          scaling_o=cfg["scaling_o"],
-                                         scaling_att=cfg["scaling_att"])
+                                         scaling_att=cfg["scaling_att"],
+                                         compute_lyapunov=compute_lyapunov)
     else:
         HT = HopfieldTransformerMFPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
                                      embedding_size=cfg["semantic_embedding_size"] + positional_embedding_size,
@@ -274,9 +271,13 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                                      weights_from_segments=cfg["weights_from_segments"])
 
     # Initialize structure for saving the results for each beta
+    # Fields are left with empty list if not requested
     results_beta = {}
     for stat_name in HT.statistics_names:
         results_beta[stat_name] = []
+    results_beta["sorted_S"] = []
+    results_beta["S_i_sum"] = []
+
 
     # Set either both betas, one of them or epsilon from the positional encoding
     initialize_bifurcation_variable(HT, worker_values_list, worker_id, cfg["bifurcation_mode"])
@@ -306,6 +307,10 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
 
     stats_data_path = (folder_path + "beta_idx-" + str(worker_id) + ".npz")
 
+    if compute_lyapunov:
+        results_beta["sorted_S"] = HT.sorted_S
+        results_beta["S_i_sum"] = HT.S_i_sum
+
     # Save results
     print("Saving results in ", os.path.abspath(stats_data_path))
     np.savez_compressed(stats_data_path,
@@ -315,13 +320,15 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                         mq_results_beta=results_beta["mq"],
                         mk_results_beta=results_beta["mk"],
                         att_results_beta=results_beta["att"],
-                        lya=np.copy(HT.sorted_S))
+                        sorted_S=results_beta["sorted_S"],
+                        S_i_sum=results_beta["S_i_sum"],
+                        )
 
-    print(f"Saved stats num_feat_patterns {num_feat_patterns}, seed {seed}, ini_token_idx {ini_token_idx}")
+    print(f"Saved stats num_feat_patterns {num_feat_patterns}, seed {seed}")
 
 
 def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list, cfg,
-            stats_to_save_plot, load_from_context_mode=0, min_max_beta_to_show=None, show_title=False):
+            stats_to_save_plot, min_max_beta_to_show=None, show_title=False):
     # Set up some parameters for loading the experiments statistics
     if min_max_beta_to_show is None:
         min_beta_idx = 0
@@ -395,8 +402,7 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
             print(f"Plotting lowres planes for beta {idx + 1}/{len(filtered_beta_list)} ")
 
             beta_idx = min_beta_idx + idx
-            stats_data_path = (folder_path + "/stats" + "/seed-" + str(seed) + "-ini_token_idx-"
-                               + str(ini_token_idx) + ini_token_mode_str + "-beta_idx-" + str(beta_idx)
+            stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(beta_idx)
                                + ".npz")
 
             # Load data
@@ -406,9 +412,8 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
             stats_to_plot = [["mo_se"], ["mo_se"]]
             feat_idx = [[0], [1]]
 
-            plot_save_path_plane = (folder_path + f"/indiv_traj_lowres/seed-{str(seed)}/planes"
-                                    + f"/plane-beta-{worker_values_list[beta_idx]}-ini_token_idx-" +
-                                    str(ini_token_idx) + "-transient_steps-" +
+            plot_save_path_plane = (folder_path + f"/indiv_lowres_traj/planes/"
+                                    + f"/plane-beta-{worker_values_list[beta_idx]}" + "-transient_steps-" +
                                     str(cfg["num_transient_steps"]) + image_format)
 
             if cfg["save_not_plot"]:
@@ -454,20 +459,10 @@ if __name__ == "__main__":
 
     start = time.time()
 
-    # Compute the bifurcation diagrams
-    if not load_from_last_chpt:
-        for worker_id in range(num_bifurcation_values):
-            runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
-                   worker_id, cfg, stats_to_save_plot)
-    else:
-        # First compute the last beta
+    # Then compute the rest of the betas, setting the initial context to the last beta one
+    for worker_id in range(num_bifurcation_values):
         runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
-               num_bifurcation_values - 1, cfg, stats_to_save_plot, load_from_context_mode=1)
-
-        # Then compute the rest of the betas, setting the initial context to the last beta one
-        for worker_id in range(num_bifurcation_values - 1):
-            runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
-                   worker_id, cfg, stats_to_save_plot, load_from_context_mode=2)
+               worker_id, cfg, stats_to_save_plot)
 
     end = time.time()
     elapsed_time = end - start
@@ -475,9 +470,5 @@ if __name__ == "__main__":
     print("elapsed time in hours", elapsed_time / 3600)
 
     # Once computed, load checkpoints and plot them
-    if load_from_last_chpt:
-        load_from_context_mode = 1
-    else:
-        load_from_context_mode = 0
     plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list, cfg,
-            stats_to_save_plot, load_from_context_mode=load_from_context_mode, show_title=show_title)
+            stats_to_save_plot, show_title=show_title)
