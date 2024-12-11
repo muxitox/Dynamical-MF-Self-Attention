@@ -8,13 +8,16 @@ from autograd import jacobian
 class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size,
-                 max_sim_steps=512, min_saved_step=0, normalize_weights_str_att="N**2", normalize_weights_str_o="N",
+                 max_sim_steps=512, min_saved_step=0, normalize_weights_str_att="N**2*np.sqrt(M)", normalize_weights_str_o="N",
                  reorder_weights=False, correlations_from_weights=True, num_segments_corrs=3, pe_mode=0,
                  semantic_embedding_bitsize=0, epsilon_pe=0.95, gaussian_scale_str=None,
                  compute_inf_normalization=True, N_normalization=None, scaling_o=1, scaling_att=1, jacobian=True):
 
         if num_feat_patterns < 1 or num_feat_patterns > 3:
             raise Exception("The number of patterns is neither 1, 2 or 3")
+
+        if normalize_weights_str_att != "N**2*np.sqrt(M)" or normalize_weights_str_o != "N":
+            raise Exception("Only N**2*np.sqrt(M) and N normalizaitons are implemented for the attention and output layers.")
 
         self.N_normalization = N_normalization
         if N_normalization is None:
