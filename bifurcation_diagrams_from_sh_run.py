@@ -41,8 +41,7 @@ if __name__ == "__main__":
     seed = args.seed
     num_feat_patterns = args.num_feat_patterns
     ini_token_idx = args.ini_token_idx
-    worker_id = args.worker_id - 1  # Subtract for indexing
-    load_from_context_mode = args.load_from_context_mode
+    worker_id = args.worker_id
     show_title = True
 
     if context_size > 2 ** positional_embedding_size:
@@ -55,7 +54,7 @@ if __name__ == "__main__":
     start = time.time()
 
     runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
-           worker_id, cfg, stats_to_save_plot, load_from_context_mode=load_from_context_mode)
+           worker_id, cfg, stats_to_save_plot)
 
     end = time.time()
     elapsed_time = end - start

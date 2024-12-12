@@ -17,11 +17,10 @@ NUM_FEAT_PATTERNS=$2
 POSITIONAL_EMBEDDING_SIZE=$3
 NUM_BIFURCATION_VALUES=$4
 INI_TOKEN_IDX=$5
-LOAD_FROM_CONTEXT_MODE=$6
-CFG_PATH=$7
-WORKER_ID=$8
+CFG_PATH=$6
+WORKER_ID=$7
 
-if [ -z "$WORKER_ID" ]; # Check if variable is not defined
+if [ -z "$WORKER_ID" ]; # Check if variable is not defined, if not, define it from console args
 then
 WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
@@ -34,7 +33,6 @@ ARGS=" \
 --ini_token_idx=$INI_TOKEN_IDX \
 --cfg_path=$CFG_PATH \
 --worker_id=$WORKER_ID \
---load_from_context_mode=$LOAD_FROM_CONTEXT_MODE
 "
 echo $ARGS
 python bifurcation_diagrams_from_sh_run.py $ARGS

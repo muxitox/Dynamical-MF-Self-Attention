@@ -12,16 +12,9 @@ for SEED in "${SEED_LIST[@]}"; do
         for POSITIONAL_EMBEDDING_SIZE in "${POSITIONAL_EMBEDDING_SIZE_LIST[@]}"; do
           for INI_TOKEN_IDX in "${INI_TOKEN_IDX_LIST[@]}"; do
 
-                WORKER_ID=$NUM_BIFURCATION_VALUES
-                LOAD_FROM_CONTEXT_MODE=1
-                echo $SEED $NUM_FEAT_PATTERNS $POSITIONAL_EMBEDDING_SIZE $INI_TOKEN_IDX
-                sbatch --wait bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS $POSITIONAL_EMBEDDING_SIZE \
-                $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $LOAD_FROM_CONTEXT_MODE $CFG_PATH $WORKER_ID
-
-                LOAD_FROM_CONTEXT_MODE=2
                 echo Num betas parallel $NUM_BIFURCATION_VALUES
-                sbatch --array=1-$NUM_BIFURCATION_VALUES bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $LOAD_FROM_CONTEXT_MODE $CFG_PATH
+                sbatch --array=0-$NUM_BIFURCATION_VALUES bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH
           done
         done
     done
