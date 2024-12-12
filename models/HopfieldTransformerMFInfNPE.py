@@ -66,10 +66,10 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.compute_jacobian = jacobian
 
         # Variables for accumulating the Lyapunov exponents and debugging
-        lyapunov_size = self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size
-        self.S = np.zeros(lyapunov_size)
-        self.S_i = np.zeros((self.num_saved_steps, lyapunov_size))
-        self.S_i_sum = np.zeros((self.num_saved_steps, lyapunov_size))
+        self.lyapunov_size = self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size
+        self.S = np.zeros(self.lyapunov_size)
+        self.S_i = np.zeros((self.num_saved_steps, self.lyapunov_size))
+        self.S_i_sum = np.zeros((self.num_saved_steps, self.lyapunov_size))
 
 
     def create_W_matrices(self, correlations_from_weights, num_segments_corrs):
@@ -278,6 +278,9 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.epsilon_pe = epsilon_pe
 
     def reset_data(self):
+        self.S = np.zeros(self.lyapunov_size)
+        self.S_i = np.zeros((self.num_saved_steps, self.lyapunov_size))
+        self.S_i_sum = np.zeros((self.num_saved_steps, self.lyapunov_size))
 
         self.effective_context_size = 0
         for name_i in self.statistics_names:
