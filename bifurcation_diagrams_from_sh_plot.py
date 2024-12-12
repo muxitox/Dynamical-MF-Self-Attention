@@ -46,7 +46,7 @@ if __name__ == "__main__":
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise ("You cannot discard more timesteps than you are simulating.")
 
-    stats_to_save_plot = ["mo_se"]
+    stats_to_save_plot = ["mo_se", "att"]
 
     start = time.time()
 

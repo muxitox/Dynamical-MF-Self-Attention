@@ -205,7 +205,7 @@ def initialize_bifurcation_variable(HT, worker_values_list, worker_id, mode):
         raise Exception("mode not recognized (not one of [\"betas\", \"out\", \"att\", \"pe\"])")
 
 
-def plot_lowres_planes(worker_values_list, beta_idx, folder_path, image_format = ".jpeg"):
+def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_format = ".jpeg"):
     # For internal use mostly, to decide the final plots. Creates low resolution images of the planes.
     stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(beta_idx)
                        + ".npz")
@@ -365,7 +365,7 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
 
     plot_lowres= True
     if plot_lowres:
-        plot_lowres_planes(worker_values_list, worker_id, folder_path)
+        plot_lowres_planes(worker_values_list, worker_id, cfg, folder_path)
 
         if cfg["compute_lyapunov"]:
             plot_lowres_lyapunov(HT.S_i_sum, worker_values_list, worker_id, cfg, num_feat_patterns,
