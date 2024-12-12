@@ -14,14 +14,14 @@ def create_dir(filepath):
     if not os.path.exists(plot_save_folder_path):
         os.makedirs(plot_save_folder_path)
 
-def save_context(context_window, folder_path_chpt, seed):
+def save_context(context_window, folder_path_chpt, seed, num_transient_steps, max_sim_steps):
     """
     Saves the mean-field values associated to the context window
     """
     att_window, mo_window, mv_window, mq_window, mk_window, pe_window = context_window
 
     chpt_path = folder_path_chpt + f"/seed-{str(seed)}" + "-transient_steps-" + str(
-                        num_transient_steps) + ".npz"
+                        num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps) + ".npz"
 
     np.savez_compressed(chpt_path,
                         att_window=att_window,
@@ -32,11 +32,6 @@ def save_context(context_window, folder_path_chpt, seed):
                         pe_window=pe_window)
 
 
-def load_context(chpt_path):
-
-    cw = np.load(chpt_path)
-
-    return cw['mv_window'], cw['mq_window'], cw['mk_window'], cw['att_window']
 
 if __name__ == "__main__":
 
@@ -76,7 +71,7 @@ if __name__ == "__main__":
     compute_inf_normalization = cfg["compute_inf_normalization"]  # Deal with normalization constraint in infinity
 
     compute_lyapunov = True                        # True if you want to compute the Lyapunov exponents
-    save_not_plot = False                          # True -> Save; False -> Plot
+    save_not_plot = True                          # True -> Save; False -> Plot
     save_context_cond = True                       # If true, save context so it can be later loaded to start another execution
     show_title = True                                             # Whether to show the title on top
 
@@ -131,7 +126,7 @@ if __name__ == "__main__":
 
         if save_context_cond:
             cw = HT.get_context_window()
-            save_context(cw, folder_path, seed)
+            save_context(cw, folder_path, seed, num_transient_steps, max_sim_steps)
 
         if show_title:
             title = fr"$\beta$ = {round(beta, 5)}"
@@ -160,7 +155,7 @@ if __name__ == "__main__":
                 rg = range(plot_range[0], plot_range[1])
                 # Define path to save
                 plot_save_path_traj = (folder_path + f"/traj-seed-{str(seed)}-{stat_name}" + "-transient_steps-" +
-                                       str(num_transient_steps) +
+                                       str(num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps)  +
                                        "-plot_window-" + str(plot_window) + image_format)
                 create_dir(plot_save_path_traj)
 
@@ -173,7 +168,7 @@ if __name__ == "__main__":
 
             # FFT Path
             plot_save_path_fft = (folder_path + f"/fft-seed-{str(seed)}-{stat_name}" + "-transient_steps-" +
-                                  str(num_transient_steps) + image_format)
+                                  str(num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps)  + image_format)
 
             # Adjust axis for the FFT if required
             adjust_y_axis = 1.0
@@ -196,7 +191,7 @@ if __name__ == "__main__":
 
             # Same for the AutoCorrelation Function
             plot_save_path_ACF = (folder_path + f"/acf-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(
-                        num_transient_steps) + image_format)
+                        num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps) + image_format)
 
             plot_save_autocorrelation(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
                                       show_max_num_patterns=num_feat_patterns, save_not_plot=save_not_plot,
@@ -214,7 +209,8 @@ if __name__ == "__main__":
 
             # Define path for saving the plane
             plot_save_path_plane = (
-                    folder_path + f"/plane-seed-{str(seed)}" + "-transient_steps-" + str(num_transient_steps) + image_format)
+                    folder_path + f"/plane-seed-{str(seed)}" + "-transient_steps-" + str(num_transient_steps) +
+                    "-max_sim_steps-" + str(max_sim_steps)  + image_format)
 
             # Set larger dots for the periodic trajectory
             larger_dots = False
@@ -230,12 +226,16 @@ if __name__ == "__main__":
                             tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot,
                             title=title, larger_dots=larger_dots)
 
-        image_format_lya = ".jpg"
+        lowres_lya = False
+        image_format_lya = image_format
+        if lowres_lya:
+            image_format_lya = ".jpg"
+
         if compute_lyapunov:
             print("Sorted Lyapunov exponents in descencing order", HT.sorted_S)
             plot_save_path_lya = (
                     folder_path + f"/lyapunov-{str(seed)}" + "-transient_steps-" + str(
-                num_transient_steps) + image_format_lya)
+                num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps) + image_format_lya)
             # Plot lyapunov related statistics
             plot_lyapunov_graphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size,
                                  save_not_plot=save_not_plot, save_path=plot_save_path_lya)

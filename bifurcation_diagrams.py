@@ -7,7 +7,7 @@ import os
 import time
 import copy
 from utils import create_dir, create_dir_from_filepath, load_context
-from plotting.plotting import plot_save_plane
+from plotting.plotting import plot_save_plane, plot_lyapunov_graphs
 import yaml
 
 
@@ -205,6 +205,46 @@ def initialize_bifurcation_variable(HT, worker_values_list, worker_id, mode):
         raise Exception("mode not recognized (not one of [\"betas\", \"out\", \"att\", \"pe\"])")
 
 
+def plot_lowres_planes(worker_values_list, beta_idx, folder_path, image_format = ".jpeg"):
+    # For internal use mostly, to decide the final plots. Creates low resolution images of the planes.
+    stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(beta_idx)
+                       + ".npz")
+
+    # Load data
+    data = np.load(stats_data_path)
+    mo_se_results = data[f"mo_se_results_beta"]
+    # 3 feats
+    stats_to_plot = [["mo_se"], ["mo_se"]]
+    feat_idx = [[0], [1]]
+
+    plot_save_path_plane = (folder_path + f"/indiv_lowres_traj/planes/"
+                            + f"/plane-beta-{worker_values_list[beta_idx]}" + "-transient_steps-" +
+                            str(cfg["num_transient_steps"]) + image_format)
+
+    if cfg["save_not_plot"]:
+        create_dir_from_filepath(plot_save_path_plane)
+
+    stat_results_beta_list_0 = [mo_se_results]
+    stat_results_beta_list_1 = [mo_se_results]
+
+    plot_save_plane(stat_results_beta_list_0,
+                    stat_results_beta_list_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx,
+                    tag_names=stats_to_plot, save_path=plot_save_path_plane,
+                    save_not_plot=True, lowres=True)
+
+
+def plot_lowres_lyapunov(S_i_sum, worker_values_list, beta_idx, cfg, num_feat_patterns, pe_bit_size, context_size,
+                         folder_path, image_format=".jpeg"):
+
+
+    plot_save_path_lya = (folder_path + f"/indiv_lowres_traj/lyapunov/"
+                            + f"/lyapunovtrace-beta-{worker_values_list[beta_idx]}" + "-transient_steps-" +
+                            str(cfg["num_transient_steps"]) + image_format)
+
+    # Plot lyapunov related statistics
+    plot_lyapunov_graphs(S_i_sum, num_feat_patterns, pe_bit_size, context_size, worker_values_list[beta_idx],
+                         save_not_plot=True, save_path=plot_save_path_lya)
+
 def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
            worker_id, cfg, stats_to_save_plot):
     """
@@ -309,7 +349,6 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
 
     if compute_lyapunov:
         results_beta["sorted_S"] = HT.sorted_S
-        results_beta["S_i_sum"] = HT.S_i_sum
 
     # Save results
     print("Saving results in ", os.path.abspath(stats_data_path))
@@ -321,8 +360,15 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                         mk_results_beta=results_beta["mk"],
                         att_results_beta=results_beta["att"],
                         sorted_S=results_beta["sorted_S"],
-                        S_i_sum=results_beta["S_i_sum"],
                         )
+
+    plot_lowres= True
+    if plot_lowres:
+        plot_lowres_planes(worker_values_list, worker_id, folder_path)
+
+        if cfg["compute_lyapunov"]:
+            plot_lowres_lyapunov(HT.S_i_sum, worker_values_list, worker_id, cfg, num_feat_patterns,
+                                 positional_embedding_size, context_size, folder_path)
 
     print(f"Saved stats num_feat_patterns {num_feat_patterns}, seed {seed}")
 
@@ -394,38 +440,6 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
                                                          save_not_plot=cfg["save_not_plot"], title=title,
                                                          show_1_feat=show_1_feat[filter_idx])
 
-    # For internal use mostly, to decide the final plots. Creates low resolution images of the planes.
-    plot_lowres_planes = False
-    if plot_lowres_planes:
-        for idx in range(len(filtered_beta_list)):
-
-            print(f"Plotting lowres planes for beta {idx + 1}/{len(filtered_beta_list)} ")
-
-            beta_idx = min_beta_idx + idx
-            stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(beta_idx)
-                               + ".npz")
-
-            # Load data
-            data = np.load(stats_data_path)
-            mo_se_results = data[f"mo_se_results_beta"]
-            # 3 feats
-            stats_to_plot = [["mo_se"], ["mo_se"]]
-            feat_idx = [[0], [1]]
-
-            plot_save_path_plane = (folder_path + f"/indiv_lowres_traj/planes/"
-                                    + f"/plane-beta-{worker_values_list[beta_idx]}" + "-transient_steps-" +
-                                    str(cfg["num_transient_steps"]) + image_format)
-
-            if cfg["save_not_plot"]:
-                create_dir_from_filepath(plot_save_path_plane)
-
-            stat_results_beta_list_0 = [mo_se_results]
-            stat_results_beta_list_1 = [mo_se_results]
-
-            plot_save_plane(stat_results_beta_list_0,
-                            stat_results_beta_list_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx,
-                            tag_names=stats_to_plot, save_path=plot_save_path_plane,
-                            save_not_plot=cfg["save_not_plot"], lowres=True)
 
 
 if __name__ == "__main__":

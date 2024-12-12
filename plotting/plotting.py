@@ -974,7 +974,7 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
         plt.show()
     plt.close()
 
-def plot_lyapunov_graphs(S_i_sum, M, pe_bit_size, context_size, save_not_plot=False, save_path=None, lowres=False):
+def plot_lyapunov_graphs(S_i_sum, M, pe_bit_size, context_size, beta, save_not_plot=False, save_path=None, lowres=False):
 
     dpi = None
     if lowres:
@@ -993,6 +993,7 @@ def plot_lyapunov_graphs(S_i_sum, M, pe_bit_size, context_size, save_not_plot=Fa
     ax[2].plot(S_i_sum[:, M:-(pe_bit_size * context_size)], )
     ax[2].set_title("Remaining feats")
 
+    plt.title(rf'$\beta$={beta}')
 
     if save_not_plot:
         fig.savefig(save_path, bbox_inches='tight')
