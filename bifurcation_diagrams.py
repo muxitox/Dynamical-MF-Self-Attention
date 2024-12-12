@@ -427,7 +427,7 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
 
             # Save path
             filtered_save_path = (folder_path + f"/{stat_name}/" +
-                                  "-transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
+                                  "transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
                                   "-filter_rg-" + str(filtering_range) + image_format)
 
             # Plotting and saving
@@ -469,7 +469,7 @@ if __name__ == "__main__":
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise ("You cannot discard more timesteps than you are simulating.")
 
-    stats_to_save_plot = ["mo_se"]
+    stats_to_save_plot = ["mo_se", "att"]
 
     start = time.time()
 
