@@ -993,7 +993,7 @@ def plot_lyapunov_graphs(S_i_sum, M, pe_bit_size, context_size, beta, save_not_p
     ax[2].plot(S_i_sum[:, M:-(pe_bit_size * context_size)], )
     ax[2].set_title("Remaining feats")
 
-    plt.title(rf'$\beta$={beta}')
+    plt.suptitle(rf'$\beta$={beta}')
 
     if save_not_plot:
         fig.savefig(save_path, bbox_inches='tight')

@@ -12,7 +12,7 @@ import yaml
 
 
 def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                              cfg):
+                              cfg, seed, ini_token_idx):
     """
     Given the experiment parameters, creates a path to save it.
     The code is a bit intrincate for back-compatibility with older experiments.
@@ -91,7 +91,7 @@ def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, cont
 
 
 def create_pathname_inf_pes(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                            cfg):
+                            cfg, seed, ini_token_idx):
     """
     Given the experiment parameters, creates a path to save it.
     The code is a bit intrincate for back-compatibility with older experiments.
@@ -221,8 +221,7 @@ def plot_lowres_planes(worker_values_list, beta_idx, folder_path, image_format =
                             + f"/plane-beta-{worker_values_list[beta_idx]}" + "-transient_steps-" +
                             str(cfg["num_transient_steps"]) + image_format)
 
-    if cfg["save_not_plot"]:
-        create_dir_from_filepath(plot_save_path_plane)
+    create_dir_from_filepath(plot_save_path_plane)
 
     stat_results_beta_list_0 = [mo_se_results]
     stat_results_beta_list_1 = [mo_se_results]
@@ -241,9 +240,12 @@ def plot_lowres_lyapunov(S_i_sum, worker_values_list, beta_idx, cfg, num_feat_pa
                             + f"/lyapunovtrace-beta-{worker_values_list[beta_idx]}" + "-transient_steps-" +
                             str(cfg["num_transient_steps"]) + image_format)
 
+    create_dir_from_filepath(plot_save_path_lya)
+
+
     # Plot lyapunov related statistics
     plot_lyapunov_graphs(S_i_sum, num_feat_patterns, pe_bit_size, context_size, worker_values_list[beta_idx],
-                         save_not_plot=True, save_path=plot_save_path_lya)
+                         save_not_plot=True, save_path=plot_save_path_lya, lowres=True)
 
 def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
            worker_id, cfg, stats_to_save_plot):
@@ -271,8 +273,8 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
     folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
                                   cfg, seed, ini_token_idx)
 
-    folder_path = folder_path + "/stats/"
-    create_dir(folder_path)
+    folder_path_stats = folder_path + "/stats/"
+    create_dir(folder_path_stats)
 
     compute_lyapunov = cfg["compute_lyapunov"]
 
@@ -296,8 +298,7 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                                          compute_inf_normalization=cfg["compute_inf_normalization"],
                                          N_normalization=9999,
                                          scaling_o=cfg["scaling_o"],
-                                         scaling_att=cfg["scaling_att"],
-                                         compute_lyapunov=compute_lyapunov)
+                                         scaling_att=cfg["scaling_att"])
     else:
         HT = HopfieldTransformerMFPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
                                      embedding_size=cfg["semantic_embedding_size"] + positional_embedding_size,
@@ -331,7 +332,7 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
         # Load checkpoint from last beta
         att_window, pe_window = load_context(cfg["chpt_path"])
         # Simulate from context
-        HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"])
+        HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"], compute_lyapunov=cfg["compute_lyapunov"])
     else:
         # Define the initial token. x0 is only used if load_from_context_mode!=2
         x0 = define_ini_token(cfg["ini_token_from_w"], HT, ini_token_idx, ini_tokens_list)
@@ -339,13 +340,13 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
             x0[-positional_embedding_size:] = -1  # Initialize position to -1
 
         # Simulate for max_sim_steps steps from x0
-        HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"])
+        HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"], compute_lyapunov=cfg["compute_lyapunov"])
 
     for stat_name in stats_to_save_plot:
         # Accumulate results in a var of beta_list length
         results_beta[stat_name] = np.copy(HT.mf_statistics[stat_name])
 
-    stats_data_path = (folder_path + "beta_idx-" + str(worker_id) + ".npz")
+    stats_data_path = (folder_path_stats + "beta_idx-" + str(worker_id) + ".npz")
 
     if compute_lyapunov:
         results_beta["sorted_S"] = HT.sorted_S
@@ -452,7 +453,7 @@ if __name__ == "__main__":
     positional_embedding_size = 2
     context_size = 2 ** positional_embedding_size
 
-    num_bifurcation_values = 4001  # Number of x values to examine in the bifurcation diagram
+    num_bifurcation_values = 10  # Number of x values to examine in the bifurcation diagram
 
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
                                      num_bifurcation_values)  # Betas or Epsilon values
