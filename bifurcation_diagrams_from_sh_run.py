@@ -41,7 +41,7 @@ if __name__ == "__main__":
     seed = args.seed
     num_feat_patterns = args.num_feat_patterns
     ini_token_idx = args.ini_token_idx
-    worker_id = args.worker_id
+    worker_id = args.worker_id - 1  # Subtract 1 for indexing
     show_title = True
 
     if context_size > 2 ** positional_embedding_size:

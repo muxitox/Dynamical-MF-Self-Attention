@@ -3,15 +3,15 @@
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
 #SBATCH --output ./log_parallel/exec.%j.out
 #SBATCH --error ./log_parallel/exec.%j.err
-#SBATCH -N 1 -c 2
+#SBATCH -N 1 -c 1
 #SBATCH -p short -t 00:30:00
-#SBATCH --mem=8G
+#SBATCH --mem=6G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=apoc@bcamath.org
 
 
-# If we are in Ubuntu (local dist), don't load modules and env
-if not lsb_release -ar 2>/dev/null | grep -q Ubuntu
+# If we are in CentOS (Hypatia HPC) load modules
+if lsb_release -ar 2>/dev/null | grep -q CentOS
 then
   module load Python/3.9.5-GCCcore-10.3.0
   source venv/bin/activate
