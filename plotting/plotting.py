@@ -1,5 +1,4 @@
-import os
-
+import platform
 import matplotlib.pyplot as plt
 from utils import feat_name_to_latex
 import numpy as np
@@ -18,13 +17,14 @@ for i_color in range(9):
 colors += [(1.0, 1.0, 1.0, 1.0)]  # White
 
 
-
-# LaTeX macros
-plt.rc('text', usetex=True)
-plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
-font = {'size': 34, 'family': 'serif', 'serif': ['latin modern roman']}
-plt.rc('font', **font)
-plt.rc('legend', **{'fontsize': 14})
+# Avoid loading latex in HPC (not installed there)
+if "Ubuntu" in platform.version():
+    # LaTeX macros
+    plt.rc('text', usetex=True)
+    plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
+    font = {'size': 34, 'family': 'serif', 'serif': ['latin modern roman']}
+    plt.rc('font', **font)
+    plt.rc('legend', **{'fontsize': 14})
 
 def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_path, num_transient_steps,
                              feat_name, show_max_num_patterns=None, save_not_plot=True, title=None, is_beta=True):
