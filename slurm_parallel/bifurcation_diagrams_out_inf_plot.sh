@@ -6,8 +6,6 @@
 #SBATCH -N 1 -c 1
 #SBATCH -p short -t 00:30:00
 #SBATCH --mem=6G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=apoc@bcamath.org
 
 
 # If we are in CentOS (Hypatia HPC) load modules
