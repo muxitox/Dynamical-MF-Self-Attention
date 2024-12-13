@@ -70,6 +70,7 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.S = np.zeros(self.lyapunov_size)
         self.S_i = np.zeros((self.num_saved_steps, self.lyapunov_size))
         self.S_i_sum = np.zeros((self.num_saved_steps, self.lyapunov_size))
+        self.S_inf_flag = np.zeros(self.lyapunov_size)
 
 
     def create_W_matrices(self, correlations_from_weights, num_segments_corrs):
@@ -547,6 +548,12 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         # Q is orthogonal so we can use it for the next step
         dx = Q
 
+        # Flag digits where log(0) has been computed
+        flag_1 = np.copy(d_exp)
+        flag_1[flag_1 > 0]  = 1
+        self.S_inf_flag = np.logical_or(np.logical_not(flag_1), self.S_inf_flag)
+
+
         self.S += dS
         self.S_i[S_idx] = dS
         self.S_i_sum[S_idx] = copy.deepcopy(self.S)
@@ -557,9 +564,6 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         # Average by trajectory length
         self.S /= self.num_saved_steps
-        # Reorder in descending order, filter out components associated to Positional Encoding rotations (last components)
-        self.sorted_S = np.sort(self.S[:self.num_feat_patterns * self.context_size])[::-1]
-
 
     def simulate(self, context_att, context_pe, max_steps, compute_lyapunov=True):
         # We simulate given a previously computed attention window and positional encoding

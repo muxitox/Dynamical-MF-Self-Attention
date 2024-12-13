@@ -53,7 +53,7 @@ if __name__ == "__main__":
     seed = 1  # Seed for the correlations
     num_feat_patterns = 3                                   # Number of patterns
     beta_list = [1.255, 1.26405, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
-    beta_list = [3.0]    # Different values of beta to simulate
+    beta_list = [1.255]    # Different values of beta to simulate
     scaling_o = cfg["scaling_o"]  # Not scaled
     beta_att = cfg["beta_att"]
     scaling_att = cfg["scaling_att"]                        # Beta_att * scaling_att make gamma from the paper
@@ -71,8 +71,8 @@ if __name__ == "__main__":
     compute_inf_normalization = cfg["compute_inf_normalization"]  # Deal with normalization constraint in infinity
 
     compute_lyapunov = True                        # True if you want to compute the Lyapunov exponents
-    save_not_plot = True                          # True -> Save; False -> Plot
-    save_context_cond = True                       # If true, save context so it can be later loaded to start another execution
+    save_not_plot = False                          # True -> Save; False -> Plot
+    save_context_cond = False                       # If true, save context so it can be later loaded to start another execution
     show_title = True                                             # Whether to show the title on top
 
     for beta in beta_list:
@@ -232,11 +232,18 @@ if __name__ == "__main__":
             image_format_lya = ".jpg"
 
         if compute_lyapunov:
-            print("Sorted Lyapunov exponents in descencing order", HT.sorted_S)
+            # Reorder in descending order, filter out components associated to Positional Encoding rotations (last components)
+            sorted_S = np.sort(HT.S[:HT.num_feat_patterns * HT.context_size])[::-1]
+
+            print("Sorted Lyapunov exponents in descencing order", sorted_S)
             plot_save_path_lya = (
                     folder_path + f"/lyapunov-{str(seed)}" + "-transient_steps-" + str(
                 num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps) + image_format_lya)
             # Plot lyapunov related statistics
-            plot_lyapunov_graphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size,
+
+            plot_lyapunov_graphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size, beta,
                                  save_not_plot=save_not_plot, save_path=plot_save_path_lya)
 
+
+        print("Inf flag")
+        print(HT.S_inf_flag)

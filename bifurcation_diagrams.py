@@ -316,8 +316,8 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
     results_beta = {}
     for stat_name in HT.statistics_names:
         results_beta[stat_name] = []
-    results_beta["sorted_S"] = []
-    results_beta["S_i_sum"] = []
+    results_beta["S"] = []
+    results_beta["S_inf_flag"] = []
 
 
     # Set either both betas, one of them or epsilon from the positional encoding
@@ -349,7 +349,9 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
     stats_data_path = (folder_path_stats + "beta_idx-" + str(worker_id) + ".npz")
 
     if compute_lyapunov:
-        results_beta["sorted_S"] = HT.sorted_S
+        results_beta["S"] = HT.S
+        results_beta["S_inf_flag"] = HT.S_inf_flag
+
 
     # Save results
     print("Saving results in ", os.path.abspath(stats_data_path))
