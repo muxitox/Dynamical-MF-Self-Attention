@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
-#SBATCH --output ./log_parallel3/exec.%j.out
-#SBATCH --error ./log_parallel3/exec.%j.err
-# ### SBATCH --output=/dev/null
+## # SBATCH --output ./log_parallel3/exec.%j.out
+## # SBATCH --error ./log_parallel3/exec.%j.err
+#SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
 #SBATCH -p medium -t 01:30:00
 #SBATCH --mem=4G
