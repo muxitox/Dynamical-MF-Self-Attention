@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
-#SBATCH --output ./log_parallel/exec.%j.out
-#SBATCH --error ./log_parallel/exec.%j.err
-#SBATCH -N 1 -c 1
+#SBATCH --output ./log_parallel3/exec.%j.out
+#SBATCH --error ./log_parallel3/exec.%j.err
+#SBATCH -N 1 -c 2
 #SBATCH -p short -t 00:30:00
-#SBATCH --mem=6G
+#SBATCH --mem=8G
 
 
 # If we are in CentOS (Hypatia HPC) load modules

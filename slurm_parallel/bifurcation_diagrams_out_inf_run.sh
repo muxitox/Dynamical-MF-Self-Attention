@@ -1,11 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
-#SBATCH --output ./log_parallel/exec.%j.out
-#SBATCH --error ./log_parallel/exec.%j.err
+#SBATCH --output ./log_parallel3/exec.%j.out
+#SBATCH --error ./log_parallel3/exec.%j.err
+# ### SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
-#SBATCH -p short -t 00:30:00
-#SBATCH --mem=6G
+#SBATCH -p medium -t 01:30:00
+#SBATCH --mem=4G
 
 
 # If we are in CentOS (Hypatia HPC) load modules
@@ -28,6 +29,8 @@ then
 WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
 
+mkdir log_parallel3/${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}.out
+
 ARGS=" \
 --seed=$SEED \
 --num_feat_patterns=$NUM_FEAT_PATTERNS \
@@ -38,5 +41,5 @@ ARGS=" \
 --worker_id=$WORKER_ID \
 "
 echo $ARGS
-python bifurcation_diagrams_from_sh_run.py $ARGS
+python bifurcation_diagrams_from_sh_run.py $ARGS > ${log_parallel3}
 #python ../bifurcation_diagrams_from_sh_run.py $ARGS

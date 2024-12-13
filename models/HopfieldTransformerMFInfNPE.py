@@ -533,10 +533,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
     def lyapunov_step(self, input, dx):
 
-        Jacobian_Func = jacobian(self._step)
-
         # output = self._step(input)  # Output for testing
-        J = Jacobian_Func(input)
+        J = self.Jacobian_Func(input)
 
         S_idx = self.t - self.min_saved_step
 
@@ -575,6 +573,8 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
         self.next_input = np.concatenate((att_t_1_d_flat, p_t_1_d_flat))
 
         if compute_lyapunov:
+            # Define here the Jacobian handler over the function _step()
+            self.Jacobian_Func = jacobian(self._step)
             dx = np.eye(self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size)
 
         for t in range(ini_t, max_steps):
