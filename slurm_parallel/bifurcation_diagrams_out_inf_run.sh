@@ -1,8 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
-## # SBATCH --output ./log_parallel3/exec.%j.out
-## # SBATCH --error ./log_parallel3/exec.%j.err
 #SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
 #SBATCH -p medium -t 01:30:00
@@ -29,7 +27,10 @@ then
 WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
 
-mkdir log_parallel3/${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}.out
+DIR=log_parallel3/${SLURM_ARRAY_JOB_ID}
+LOG_PATH=${DIR}/${SLURM_ARRAY_TASK_ID}
+
+mkdir -p $DIR
 
 ARGS=" \
 --seed=$SEED \
@@ -40,6 +41,6 @@ ARGS=" \
 --cfg_path=$CFG_PATH \
 --worker_id=$WORKER_ID \
 "
-echo $ARGS
-python bifurcation_diagrams_from_sh_run.py $ARGS > ${log_parallel3}
+echo $ARGS > $DIR/log.out
+python bifurcation_diagrams_from_sh_run.py $ARGS > ${LOG_PATH}.out 2> ${LOG_PATH}.err
 #python ../bifurcation_diagrams_from_sh_run.py $ARGS
