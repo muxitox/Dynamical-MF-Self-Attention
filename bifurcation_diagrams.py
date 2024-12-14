@@ -362,7 +362,8 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                         mq_results_beta=results_beta["mq"],
                         mk_results_beta=results_beta["mk"],
                         att_results_beta=results_beta["att"],
-                        sorted_S=results_beta["sorted_S"],
+                        S=results_beta["S"],
+                        S_inf_flag=results_beta["S_inf_flag"],
                         )
 
     plot_lowres= True
