@@ -1,11 +1,11 @@
 import copy
 import numpy as np
 from autograd import numpy as anp
-from models.TransformerBase import TransformerBase
+from models.SelfAttentionNNBase import SelfAttentionNNBase
 from autograd import jacobian
 
 
-class HopfieldTransformerMFInfNPE(TransformerBase):
+class HopfieldTransformerMFInfNPE(SelfAttentionNNBase):
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size,
                  max_sim_steps=512, min_saved_step=0, normalize_weights_str_att="N**2*np.sqrt(M)", normalize_weights_str_o="N",
@@ -25,14 +25,14 @@ class HopfieldTransformerMFInfNPE(TransformerBase):
 
         self.N_normalization += positional_embedding_bitsize
 
-        TransformerBase.__init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab,
-                                 context_size, self.N_normalization,
-                                 max_sim_steps=max_sim_steps, min_saved_step=min_saved_step,
-                                 normalize_weights_str_att=normalize_weights_str_att,
-                                 normalize_weights_str_o=normalize_weights_str_o,
-                                 reorder_weights=reorder_weights, pe_mode=pe_mode,
-                                 semantic_embedding_bitsize=semantic_embedding_bitsize,
-                                 scaling_o=scaling_o, scaling_att=scaling_att)
+        SelfAttentionNNBase.__init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab,
+                                     context_size, self.N_normalization,
+                                     max_sim_steps=max_sim_steps, min_saved_step=min_saved_step,
+                                     normalize_weights_str_att=normalize_weights_str_att,
+                                     normalize_weights_str_o=normalize_weights_str_o,
+                                     reorder_weights=reorder_weights, pe_mode=pe_mode,
+                                     semantic_embedding_bitsize=semantic_embedding_bitsize,
+                                     scaling_o=scaling_o, scaling_att=scaling_att)
 
         # `se_per_contribution` must be defined like this for reproducibility of the paper results
         # Otherwise results differ a little for changes in small decimals

@@ -1,7 +1,7 @@
 import numpy as np
 from models.Embedding import Embedding
-from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
-from models.HopfieldTransformerMFPE import HopfieldTransformerMFPE
+from models.HopfieldSelfAttentionNNMFInfNPE import HopfieldSelfAttentionNNMFInfNPE
+from models.HopfieldSelfAttentionNNMFPE import HopfieldSelfAttentionNNMFPE
 from plotting.plotting import plot_filtered_bifurcation_diagram_par_imshow
 import os
 import time
@@ -283,33 +283,33 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
 
     if cfg["inf_mode"]:
         # Initialize the Hopfield Transformer class. \beta will be set afterwards
-        HT = HopfieldTransformerMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
-                                         positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-                                         context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
+        HT = HopfieldSelfAttentionNNMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
+                                             positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
+                                             context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
+                                             min_saved_step=min_saved_step,
+                                             normalize_weights_str_att=cfg["normalize_weights_str_att"],
+                                             normalize_weights_str_o=cfg["normalize_weights_str_o"],
+                                             reorder_weights=cfg["reorder_weights"],
+                                             correlations_from_weights=cfg["correlations_from_weights"],
+                                             num_segments_corrs=cfg["num_segments_corrs"], pe_mode=cfg["pe_mode"],
+                                             semantic_embedding_bitsize=cfg["semantic_embedding_size"],
+                                             epsilon_pe=cfg["epsilon_pe"],
+                                             gaussian_scale_str=cfg["gaussian_scale"],
+                                             compute_inf_normalization=cfg["compute_inf_normalization"],
+                                             N_normalization=9999,
+                                             scaling_o=cfg["scaling_o"],
+                                             scaling_att=cfg["scaling_att"])
+    else:
+        HT = HopfieldSelfAttentionNNMFPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
+                                         embedding_size=cfg["semantic_embedding_size"] + positional_embedding_size,
+                                         vocab=vocab, context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
                                          min_saved_step=min_saved_step,
                                          normalize_weights_str_att=cfg["normalize_weights_str_att"],
                                          normalize_weights_str_o=cfg["normalize_weights_str_o"],
                                          reorder_weights=cfg["reorder_weights"],
-                                         correlations_from_weights=cfg["correlations_from_weights"],
-                                         num_segments_corrs=cfg["num_segments_corrs"], pe_mode=cfg["pe_mode"],
-                                         semantic_embedding_bitsize=cfg["semantic_embedding_size"],
-                                         epsilon_pe=cfg["epsilon_pe"],
-                                         gaussian_scale_str=cfg["gaussian_scale"],
-                                         compute_inf_normalization=cfg["compute_inf_normalization"],
-                                         N_normalization=9999,
                                          scaling_o=cfg["scaling_o"],
-                                         scaling_att=cfg["scaling_att"])
-    else:
-        HT = HopfieldTransformerMFPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
-                                     embedding_size=cfg["semantic_embedding_size"] + positional_embedding_size,
-                                     vocab=vocab, context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
-                                     min_saved_step=min_saved_step,
-                                     normalize_weights_str_att=cfg["normalize_weights_str_att"],
-                                     normalize_weights_str_o=cfg["normalize_weights_str_o"],
-                                     reorder_weights=cfg["reorder_weights"],
-                                     scaling_o=cfg["scaling_o"],
-                                     scaling_att=cfg["scaling_att"],
-                                     weights_from_segments=cfg["weights_from_segments"])
+                                         scaling_att=cfg["scaling_att"],
+                                         weights_from_segments=cfg["weights_from_segments"])
 
     # Initialize structure for saving the results for each beta
     # Fields are left with empty list if not requested
