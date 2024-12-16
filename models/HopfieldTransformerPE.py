@@ -1,10 +1,10 @@
 import copy
 import numpy as np
 from scipy.special import softmax
-from models.TransformerBase import TransformerBase
+from models.SelfAttentionNNBase import SelfAttentionNNBase
 
 
-class HopfieldTransformer(TransformerBase):
+class HopfieldSelfAttentionNN(SelfAttentionNNBase):
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
                  min_saved_step=0,
@@ -38,14 +38,14 @@ class HopfieldTransformer(TransformerBase):
         self.context_index = 0
 
         N = embedding_size
-        TransformerBase.__init__(self, beta_o, beta_att, num_feat_patterns, vocab.pe_bit_size, vocab,
-                                 context_size, N,
-                                 max_sim_steps=max_sim_steps, min_saved_step=min_saved_step,
-                                 normalize_weights_str_att=normalize_weights_str_att,
-                                 normalize_weights_str_o=normalize_weights_str_o,
-                                 reorder_weights=reorder_weights, pe_mode=pe_mode,
-                                 semantic_embedding_bitsize=vocab.se_bit_size,
-                                 scaling_o=scaling_o, scaling_att=scaling_att)
+        SelfAttentionNNBase.__init__(self, beta_o, beta_att, num_feat_patterns, vocab.pe_bit_size, vocab,
+                                     context_size, N,
+                                     max_sim_steps=max_sim_steps, min_saved_step=min_saved_step,
+                                     normalize_weights_str_att=normalize_weights_str_att,
+                                     normalize_weights_str_o=normalize_weights_str_o,
+                                     reorder_weights=reorder_weights, pe_mode=pe_mode,
+                                     semantic_embedding_bitsize=vocab.se_bit_size,
+                                     scaling_o=scaling_o, scaling_att=scaling_att)
 
         self.total_normalization_o = self.define_total_normalization_o()
         self.total_normalization_att = self.define_total_normalization_att()

@@ -3,7 +3,7 @@ import numpy as np
 import copy
 from models.PositionalEncoding import PositionalEncoding
 
-class TransformerBase(ABC):
+class SelfAttentionNNBase(ABC):
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, positional_embedding_bitsize, vocab, context_size, N,
                  max_sim_steps=512, min_saved_step=0, normalize_weights_str_att="N**2", normalize_weights_str_o="N",

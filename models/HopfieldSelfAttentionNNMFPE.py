@@ -4,7 +4,7 @@ from scipy.special import softmax
 from models.SelfAttentionNNBase import SelfAttentionNNBase
 
 
-class HopfieldTransformerMFPE(SelfAttentionNNBase):
+class HopfieldSelfAttentionNNMFPE(SelfAttentionNNBase):
 
     def __init__(self, beta_o, beta_att, num_feat_patterns, embedding_size, vocab, context_size, max_sim_steps=512,
                  min_saved_step=0,
