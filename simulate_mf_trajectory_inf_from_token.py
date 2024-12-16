@@ -97,7 +97,7 @@ if __name__ == "__main__":
         # Reset/initialize the structures for saving data
         HT.reset_data()
 
-        print(f"Simulating MF Transformer for beta {beta}...")
+        print(f"Simulating MF Self-Attention NN for beta {beta}...")
         # Choose as initial token one of the encoded features
         ini_token = HT.Wo_SE[0]
         start = time.time()
