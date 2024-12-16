@@ -1,7 +1,9 @@
 import numpy as np
-from models.HopfieldTransformerMFInfNPE_old import HopfieldTransformerMFInfNPE
+from models.HopfieldTransformerMFInfNPE import HopfieldTransformerMFInfNPE
 from models.Embedding import Embedding
-from plotting.plotting import plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation
+from plotting.plotting import (plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation,
+                               plot_lyapunov_graphs)
+from utils import load_context
 import os
 import yaml
 import time
@@ -13,11 +15,6 @@ def create_dir(filepath):
     if not os.path.exists(plot_save_folder_path):
         os.makedirs(plot_save_folder_path)
 
-def load_context(chpt_path):
-
-    cw = np.load(chpt_path)
-
-    return cw['mv_window'], cw['mq_window'], cw['mk_window'], cw['att_window']
 
 if __name__ == "__main__":
 
@@ -39,7 +36,6 @@ if __name__ == "__main__":
     seed = 1  # Seed for the correlations
     num_feat_patterns = 3                                   # Number of patterns
     beta_list = [1.255, 1.26405, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
-    beta_list = [ 1.266]    # Different values of beta to simulate
     scaling_o = cfg["scaling_o"]  # Not scaled
     beta_att = cfg["beta_att"]
     scaling_att = cfg["scaling_att"]                        # Beta_att * scaling_att make gamma from the paper
@@ -56,13 +52,13 @@ if __name__ == "__main__":
     normalize_weights_str_o = cfg["normalize_weights_str_o"]      # Normalization in the output
     compute_inf_normalization = cfg["compute_inf_normalization"]  # Deal with normalization constraint in infinity
 
+    compute_lyapunov = True                        # True if you want to compute the Lyapunov exponents
     save_not_plot = False                          # True -> Save; False -> Plot
     show_title = True                                             # Whether to show the title on top
 
     # Load checkpoint attention values
-    chpt_path = ("chpt/beta_idx-4000_window_chpt_zoom.npz")
-    mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt = load_context(chpt_path)
-
+    chpt_path = ("results_betas_ft/beta3.0/seed-1-transient_steps-100000-max_sim_steps-175000.npz")
+    att_window, pe_window = load_context(cfg["chpt_path"])
 
     for beta in beta_list:
 
@@ -86,12 +82,11 @@ if __name__ == "__main__":
         # Reset/initialize the structures for saving data
         HT.reset_data()
 
-        print(f"Simulating MF Transformer for beta {beta}...")
+        print(f"Simulating MF Self-Attention NN for beta {beta}...")
 
         # Set context window to the checkpoint values
         start = time.time()
-        HT.set_context_window(mv_window_chpt, mq_window_chpt, mk_window_chpt, att_window_chpt)
-        HT.simulate_mf_from_context(max_steps=max_sim_steps)
+        HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"], compute_lyapunov=compute_lyapunov)
         end = time.time()
         print("Done.")
         print("Execution time = ", (end - start) / 60, " minutes")
@@ -130,7 +125,7 @@ if __name__ == "__main__":
             show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
             plot_windows = [250, 350, 5000]  # Different plotting windows for the trajectories
             for plot_window in plot_windows:
-                offset = 12800  # Offset the trajectory to visit different points
+                offset = 0  # Offset the trajectory to visit different points
                 # Define the steps to show
                 plot_range = [offset, offset + plot_window]  # Define the steps to plot
 
@@ -167,11 +162,12 @@ if __name__ == "__main__":
                           show_1_feat=show_1_feat, adjust_y_axis=adjust_y_axis)
 
             # Same for log FFT
-            plot_save_path_fft_log = (folder_path + f"/log-fft-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(num_transient_steps) + image_format)
+            if beta != 0.0:
+                plot_save_path_fft_log = (folder_path + f"/log-fft-seed-{str(seed)}-{stat_name}" + "-transient_steps-" + str(num_transient_steps) + image_format)
 
-            plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
-                          show_max_num_patterns=num_feat_patterns, save_not_plot=save_not_plot,
-                          save_path=plot_save_path_fft_log, title=title, show_1_feat=show_1_feat, log=True)
+                plot_save_fft(HT.mf_statistics[stat_name], stat_name, num_feat_patterns, saved_steps,
+                              show_max_num_patterns=num_feat_patterns, save_not_plot=save_not_plot,
+                              save_path=plot_save_path_fft_log, title=title, show_1_feat=show_1_feat, log=True)
 
 
             # Same for the AutoCorrelation Function
@@ -207,3 +203,24 @@ if __name__ == "__main__":
                         stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
                         tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot,
                         title=title, larger_dots=larger_dots)
+
+        lowres_lya = False
+        image_format_lya = image_format
+        if lowres_lya:
+            image_format_lya = ".jpg"
+
+        if compute_lyapunov:
+            # Reorder in descending order, filter out components associated to Positional Encoding rotations (last components)
+            sorted_S = np.sort(HT.S[:HT.num_feat_patterns * HT.context_size])[::-1]
+
+            print("Sorted Lyapunov exponents in descencing order", sorted_S)
+            plot_save_path_lya = (
+                    folder_path + f"/lyapunov-{str(seed)}" + "-transient_steps-" + str(
+                num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps) + image_format_lya)
+            # Plot lyapunov related statistics
+
+            plot_lyapunov_graphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size, beta,
+                                 save_not_plot=save_not_plot, save_path=plot_save_path_lya)
+
+        print("Inf flag")
+        print(HT.S_inf_flag)
