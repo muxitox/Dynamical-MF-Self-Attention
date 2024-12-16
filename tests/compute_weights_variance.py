@@ -1,6 +1,6 @@
 import numpy as np
-from models.HopfieldTransformerPE import Embedding, HopfieldTransformer
-
+from models.HopfieldTransformerPE import HopfieldSelfAttentionNN
+from models.Embedding import Embedding
 
 
 def compute_variances(num_feat_patterns_list, semantic_embedding_size, positional_embedding_size,
@@ -15,9 +15,9 @@ def compute_variances(num_feat_patterns_list, semantic_embedding_size, positiona
             np.random.seed(seed)
 
             # Initialize transformer weights and create variables for storing results
-            HT = HopfieldTransformer(0, 0, num_feat_patterns=num_feat_patterns,
-                                     embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps,
-                                     reorder_weights=reorder_weights)
+            HT = HopfieldSelfAttentionNN(0, 0, num_feat_patterns=num_feat_patterns,
+                                         embedding_size=embedding_size, vocab=vocab, max_sim_steps=max_sim_steps,
+                                         reorder_weights=reorder_weights)
 
             Jatt = np.zeros((embedding_size, embedding_size))
             Jo = np.zeros((embedding_size, embedding_size))
