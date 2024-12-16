@@ -7,7 +7,7 @@ import os
 import time
 import copy
 from utils import create_dir, create_dir_from_filepath, load_context
-from plotting.plotting import plot_save_plane, plot_lyapunov_graphs
+from plotting.plotting import plot_save_plane, plot_lyapunov_graphs, plot_lyapunov_hist
 import yaml
 
 
@@ -443,6 +443,11 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
                                                          show_max_num_patterns=show_max_num_patterns,
                                                          save_not_plot=cfg["save_not_plot"], title=title,
                                                          show_1_feat=show_1_feat[filter_idx])
+
+    lya_hist_save_path = (folder_path + f"/Lyapunov/Lyapunov_hist"+ image_format)
+    plot_lyapunov_hist(filtered_beta_list, num_feat_patterns, context_size, folder_path, lya_hist_save_path,
+                       save_not_plot=cfg["save_not_plot"], title=None,
+                       min_bidx=min_beta_idx)
 
 
 

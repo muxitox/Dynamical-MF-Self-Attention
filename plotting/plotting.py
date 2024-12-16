@@ -999,3 +999,58 @@ def plot_lyapunov_graphs(S_i_sum, M, pe_bit_size, context_size, beta, save_not_p
         fig.savefig(save_path, bbox_inches='tight')
     else:
         plt.show()
+
+
+def plot_lyapunov_hist(x_list, num_feat_patterns, context_size, folder_path, save_path, save_not_plot=True, title=None,
+                     min_bidx=0):
+    """
+    Plots a bifurcation diagram
+    :param x_list: x domain values. Usually betas.
+    :param num_feat_patterns: Number of patterns to plot
+    :param context_size: context_size of the model being plotted
+    :param save_path: Plot save path.
+    :param feat_name: Feat. name. For plotting purposes.
+    :param folder_path: Folder path in which we saved the results.
+    :param save_not_plot: True save. False plot.
+    :param title: Title of the figure.
+    :param min_bidx:
+    """
+
+
+    col_size = 5
+    row_size = 4
+    dpi = 250
+    # fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
+
+    lyapunov_size = num_feat_patterns * context_size
+
+    S_array = np.zeros(len(x_list), lyapunov_size)
+
+    for idx in range(len(x_list)):
+        b_idx = min_bidx + idx
+        stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx) + ".npz")
+        # Load data
+        data = np.load(stats_data_path)
+        # Load only variables not associated with the copying of Positional Encoding values
+        S = data["S"][:lyapunov_size]
+        S_inf_flag = data["S_inf_flag"][:lyapunov_size]
+
+        # Sort S values
+        sorted_S_idx = np.argsort(S[S_inf_flag])[::-1]
+        S = S[sorted_S_idx]
+        S_inf_flag = S_inf_flag[sorted_S_idx]
+
+        S[S_inf_flag==True] = np.NaN
+
+        if np.NaN in S:
+            print(x_list[b_idx], "Fallo exponentes")
+
+        if x_list[b_idx] == 0.0:
+            S_array[idx] = np.NaN
+        else:
+            S_array[idx] = np.copy(S)
+
+
+    for i in range(lyapunov_size):
+        plt.figure()
+        plt.hist(S_array[i], bins=100)
