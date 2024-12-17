@@ -3,7 +3,7 @@
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
 #SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
-#SBATCH -p medium -t 00:40:00
+#SBATCH -p medium -t 00:45:00
 #SBATCH --mem=4G
 
 

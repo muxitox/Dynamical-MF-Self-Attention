@@ -332,6 +332,9 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     # Reset data structures
     HT.reset_data()
 
+    # Measure only simulation time
+    start = time.time()
+
     if cfg["load_chpt"]:
         # Load checkpoint from last beta
         att_window, pe_window = load_context(cfg["chpt_path"])
@@ -345,6 +348,12 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
 
         # Simulate for max_sim_steps steps from x0
         HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"], compute_lyapunov=cfg["compute_lyapunov"])
+
+    end = time.time()
+    elapsed_time = end - start
+    print("Simulation: elapsed time in minutes", elapsed_time / 60)
+    print("Simulation: elapsed time in hours", elapsed_time / 3600)
+
 
     for stat_name in stats_to_save_plot:
         # Accumulate results in a var of beta_list length
@@ -368,6 +377,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
                         att_results_beta=results_beta["att"],
                         S=results_beta["S"],
                         S_inf_flag=results_beta["S_inf_flag"],
+                        simulation_time=elapsed_time
                         )
 
     plot_lowres= True
