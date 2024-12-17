@@ -14,7 +14,7 @@ for SEED in "${SEED_LIST[@]}"; do
           for INI_TOKEN_IDX in "${INI_TOKEN_IDX_LIST[@]}"; do
 
                 source bifurcation_diagrams_out_inf_plot.sh $SEED $NUM_FEAT_PATTERNS $POSITIONAL_EMBEDDING_SIZE \
-                $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH
+                $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH $EXP_DIR
           done
         done
     done

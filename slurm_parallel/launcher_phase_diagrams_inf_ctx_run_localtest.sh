@@ -14,7 +14,7 @@ for SEED in "${SEED_LIST[@]}"; do
         for POSITIONAL_EMBEDDING_SIZE in "${POSITIONAL_EMBEDDING_SIZE_LIST[@]}"; do
           for INI_TOKEN_IDX in "${INI_TOKEN_IDX_LIST[@]}"; do
 
-            for WORKER_ID in $(seq 0 $(($NUM_BIFURCATION_VALUES))); do
+            for WORKER_ID in $(seq 1 $(($NUM_BIFURCATION_VALUES + 1))); do
 
                 echo Num betas parallel $NUM_BIFURCATION_VALUES
                 source slurm_parallel/phase_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \

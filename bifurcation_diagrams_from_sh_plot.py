@@ -8,8 +8,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--seed", help="Specify the seed for the RNG", type=int)
 parser.add_argument("--num_feat_patterns", help="Specify the number of features/patterns", type=int)
 parser.add_argument("--positional_embedding_size", help="Specify the PE size", type=int)
-parser.add_argument("--worker_id", help="Specify what value of beta it's going to compute.",
-                    type=int)
 parser.add_argument("--num_bifurcation_values", help="Specify number x of values in the bifurcation diagram.",
                     type=int)
 parser.add_argument("--ini_token_idx", help="Specify the index of the initial token to choose from.",
@@ -44,7 +42,6 @@ if __name__ == "__main__":
     cfg["seed"] = args.seed
     cfg["num_feat_patterns"] = args.num_feat_patterns
     cfg["ini_token_idx"] = args.ini_token_idx
-    worker_id = args.worker_id - 1  # Subtract 1 for indexing
     show_title = True
 
     if cfg["context_size"] > 2 ** cfg["positional_embedding_size"]:

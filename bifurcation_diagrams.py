@@ -424,7 +424,7 @@ def plotter(worker_values_list, cfg, exp_dir,
             if show_title:
                 title = (
                     "CORRm=" + str(cfg["correlations_from_weights"]) + " CTX=" + str(cfg["context_size"])
-                    + " NUM_PAT=" + str(cfg["num_feat_patterns"]) + "SEED=" + cfg["seed"] +
+                    + " NUM_PAT=" + str(cfg["num_feat_patterns"]) + "SEED=" + str(cfg["seed"]) +
                     f" Filter={filtering_range}")
             else:
                 title = None
@@ -462,6 +462,7 @@ if __name__ == "__main__":
     now = datetime.datetime.now()
     date_str = now.strftime("%Y%m%d_%H%M%S")
     exp_dir = f"results_parallel_v3/{date_str}/"
+    print("Creating dir for saving the experiments in", exp_dir)
     create_dir(exp_dir)
 
     # Create the variables from the experiment that are not set up in the yaml cfg

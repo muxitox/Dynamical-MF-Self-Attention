@@ -1040,7 +1040,7 @@ def plot_lyapunov_hist(x_list, num_feat_patterns, context_size, folder_path, sav
         S_inf_flag = data["S_inf_flag"][:lyapunov_size]
 
         # Sort S values
-        sorted_S_idx = np.argsort(S[S_inf_flag])[::-1]
+        sorted_S_idx = np.argsort(S)[::-1]
         S = S[sorted_S_idx]
         S_inf_flag = S_inf_flag[sorted_S_idx]
 

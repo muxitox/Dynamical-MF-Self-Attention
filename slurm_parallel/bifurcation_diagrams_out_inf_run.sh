@@ -7,6 +7,8 @@
 #SBATCH --mem=4G
 
 
+STARTTIME=$(date +%s)
+
 # If we are in CentOS (Hypatia HPC) load modules
 if lsb_release -ar 2>/dev/null | grep -q CentOS
 then
@@ -40,8 +42,13 @@ ARGS=" \
 --num_bifurcation_values=$NUM_BIFURCATION_VALUES \
 --ini_token_idx=$INI_TOKEN_IDX \
 --cfg_path=$CFG_PATH \
+--exp_dir=$EXP_DIR \
 --worker_id=$WORKER_ID \
 "
 echo $ARGS > $DIR/log.out
 python bifurcation_diagrams_from_sh_run.py $ARGS > ${LOG_PATH}.out 2> ${LOG_PATH}.err
 #python ../bifurcation_diagrams_from_sh_run.py $ARGS
+
+ENDTIME=$(date +%s)
+
+echo "It took $((($ENDTIME - $STARTTIME)/60)) minutes to complete this task..." > $DIR/log.out
