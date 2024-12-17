@@ -36,7 +36,7 @@ then
 WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
 
-LOG_DIR=log/log_parallel_v3/${SLURM_ARRAY_JOB_ID}_${DATE}
+LOG_DIR=log/log_parallel_v3/${SLURM_ARRAY_JOB_ID}_date_${DATE}
 LOG_PATH=${LOG_DIR}/${SLURM_ARRAY_TASK_ID}
 
 mkdir -p $LOG_DIR
