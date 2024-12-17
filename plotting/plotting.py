@@ -1028,7 +1028,7 @@ def plot_lyapunov_hist(x_list, num_feat_patterns, context_size, folder_path, sav
 
     lyapunov_size = num_feat_patterns * context_size
 
-    S_array = np.zeros(len(x_list), lyapunov_size)
+    S_array = np.zeros((len(x_list), lyapunov_size))
 
     for idx in range(len(x_list)):
         b_idx = min_bidx + idx
