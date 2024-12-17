@@ -7,6 +7,11 @@ INI_TOKEN_IDX_LIST=(0)
 CFG_PATH="cfgs/bif_diagram_inf_0.yaml"
 NUM_BIFURCATION_VALUES=10
 
+EXP_DIR=results_parallel_v3/$(date +%Y%m%d_%H%M%S)
+
+mkdir $EXP_DIR
+
+
 for SEED in "${SEED_LIST[@]}"; do
     for NUM_FEAT_PATTERNS in "${NUM_FEAT_PATTERNS_LIST[@]}"; do
         for POSITIONAL_EMBEDDING_SIZE in "${POSITIONAL_EMBEDDING_SIZE_LIST[@]}"; do

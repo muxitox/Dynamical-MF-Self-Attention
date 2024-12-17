@@ -22,6 +22,7 @@ POSITIONAL_EMBEDDING_SIZE=$3
 NUM_BIFURCATION_VALUES=$4
 INI_TOKEN_IDX=$5
 CFG_PATH=$6
+EXP_DIR=$7
 
 
 ARGS=" \
@@ -31,6 +32,7 @@ ARGS=" \
 --num_bifurcation_values=$NUM_BIFURCATION_VALUES \
 --ini_token_idx=$INI_TOKEN_IDX \
 --cfg_path=$CFG_PATH \
+--exp_dir=$EXP_DIR \
 "
 echo $ARGS
 python bifurcation_diagrams_from_sh_plot.py $ARGS

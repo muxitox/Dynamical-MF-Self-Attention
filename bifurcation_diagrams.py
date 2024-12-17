@@ -9,6 +9,7 @@ import copy
 from utils import create_dir, create_dir_from_filepath, load_context
 from plotting.plotting import plot_save_plane, plot_lyapunov_graphs, plot_lyapunov_hist
 import yaml
+import datetime
 
 
 def create_pathname_inf_betas(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
@@ -232,7 +233,7 @@ def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_for
                     save_not_plot=True, lowres=True)
 
 
-def plot_lowres_lyapunov(S_i_sum, worker_values_list, beta_idx, cfg, num_feat_patterns, pe_bit_size, context_size,
+def plot_lowres_lyapunov(S_i_sum, worker_values_list, beta_idx, cfg,
                          folder_path, image_format=".jpeg"):
 
 
@@ -244,48 +245,51 @@ def plot_lowres_lyapunov(S_i_sum, worker_values_list, beta_idx, cfg, num_feat_pa
 
 
     # Plot lyapunov related statistics
-    plot_lyapunov_graphs(S_i_sum, num_feat_patterns, pe_bit_size, context_size, worker_values_list[beta_idx],
+    plot_lyapunov_graphs(S_i_sum, cfg, worker_values_list[beta_idx],
                          save_not_plot=True, save_path=plot_save_path_lya, lowres=True)
 
-def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
-           worker_id, cfg, stats_to_save_plot):
+def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     """
 
     :return:
     """
 
-    vocab = Embedding(cfg["semantic_embedding_size"], positional_embedding_size)
+    if worker_id == 0:
+        # If you are node 0, save the config
+        file = open(f"{exp_dir}/cfg.yaml", "w")
+        yaml.dump(cfg, file)
+        file.close()
+
+
+    vocab = Embedding(cfg["semantic_embedding_size"], cfg["positional_embedding_size"])
 
     # Seed equal to 0 for initial token set up
     np.random.seed(0)
     num_ini_tokens = 10  # Number of candidate initial tokens
 
     ini_tokens_list = np.random.randint(2, size=(
-        num_ini_tokens, cfg["semantic_embedding_size"] + positional_embedding_size)) * 2 - 1
+        num_ini_tokens, cfg["semantic_embedding_size"] + cfg["positional_embedding_size"])) * 2 - 1
     # Initialize positional embedding
-    ini_tokens_list[:, -positional_embedding_size:] = -1
+    ini_tokens_list[:, -cfg["positional_embedding_size"]:] = -1
 
     min_saved_step = 0
     if not cfg["save_non_transient"]:
         min_saved_step = cfg["num_transient_steps"]
 
-    # Create root folder to later save and aggregate the results
-    folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                                  cfg, seed, ini_token_idx)
-
-    folder_path_stats = folder_path + "/stats/"
+    # Create path for stats saving
+    folder_path_stats = exp_dir + "/stats/"
     create_dir(folder_path_stats)
 
     compute_lyapunov = cfg["compute_lyapunov"]
 
     # Define the seed that will create the weights/correlations
-    np.random.seed(seed)
+    np.random.seed(cfg["seed"])
 
     if cfg["inf_mode"]:
         # Initialize the Hopfield Transformer class. \beta will be set afterwards
-        HT = HopfieldSelfAttentionNNMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
-                                             positional_embedding_bitsize=positional_embedding_size, vocab=vocab,
-                                             context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
+        HT = HopfieldSelfAttentionNNMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=cfg["num_feat_patterns"],
+                                             positional_embedding_bitsize=cfg["positional_embedding_size"], vocab=vocab,
+                                             context_size=cfg["context_size"], max_sim_steps=cfg["max_sim_steps"],
                                              min_saved_step=min_saved_step,
                                              normalize_weights_str_att=cfg["normalize_weights_str_att"],
                                              normalize_weights_str_o=cfg["normalize_weights_str_o"],
@@ -300,9 +304,9 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
                                              scaling_o=cfg["scaling_o"],
                                              scaling_att=cfg["scaling_att"])
     else:
-        HT = HopfieldSelfAttentionNNMFPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=num_feat_patterns,
-                                         embedding_size=cfg["semantic_embedding_size"] + positional_embedding_size,
-                                         vocab=vocab, context_size=context_size, max_sim_steps=cfg["max_sim_steps"],
+        HT = HopfieldSelfAttentionNNMFPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=cfg["num_feat_patterns"],
+                                         embedding_size=cfg["semantic_embedding_size"] + cfg["positional_embedding_size"],
+                                         vocab=vocab, context_size=cfg["context_size"], max_sim_steps=cfg["max_sim_steps"],
                                          min_saved_step=min_saved_step,
                                          normalize_weights_str_att=cfg["normalize_weights_str_att"],
                                          normalize_weights_str_o=cfg["normalize_weights_str_o"],
@@ -323,7 +327,7 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
     # Set either both betas, one of them or epsilon from the positional encoding
     initialize_bifurcation_variable(HT, worker_values_list, worker_id, cfg["bifurcation_mode"])
 
-    print(f"Computing seed {seed} beta {worker_id + 1}/{len(worker_values_list)}", flush=True)
+    print(f"Computing seed ", cfg["seed"] ,"beta {worker_id + 1}/{len(worker_values_list)}", flush=True)
 
     # Reset data structures
     HT.reset_data()
@@ -335,9 +339,9 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
         HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"], compute_lyapunov=cfg["compute_lyapunov"])
     else:
         # Define the initial token. x0 is only used if load_from_context_mode!=2
-        x0 = define_ini_token(cfg["ini_token_from_w"], HT, ini_token_idx, ini_tokens_list)
+        x0 = define_ini_token(cfg["ini_token_from_w"], HT, cfg["ini_token_idx"], ini_tokens_list)
         if cfg["ini_token_from_w"] != 0:  # Otherwise it's already set
-            x0[-positional_embedding_size:] = -1  # Initialize position to -1
+            x0[-cfg["positional_embedding_size"]:] = -1  # Initialize position to -1
 
         # Simulate for max_sim_steps steps from x0
         HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"], compute_lyapunov=cfg["compute_lyapunov"])
@@ -368,16 +372,15 @@ def runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini
 
     plot_lowres= True
     if plot_lowres:
-        plot_lowres_planes(worker_values_list, worker_id, cfg, folder_path)
+        plot_lowres_planes(worker_values_list, worker_id, cfg, exp_dir)
 
         if cfg["compute_lyapunov"]:
-            plot_lowres_lyapunov(HT.S_i_sum, worker_values_list, worker_id, cfg, num_feat_patterns,
-                                 positional_embedding_size, context_size, folder_path)
+            plot_lowres_lyapunov(HT.S_i_sum, worker_values_list, worker_id, cfg, exp_dir)
 
-    print(f"Saved stats num_feat_patterns {num_feat_patterns}, seed {seed}")
+    print(f"Saved stats num_feat_patterns", cfg["num_feat_patterns"],  "seed ", cfg["seed"])
 
 
-def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list, cfg,
+def plotter(worker_values_list, cfg, exp_dir,
             stats_to_save_plot, min_max_beta_to_show=None, show_title=False):
     # Set up some parameters for loading the experiments statistics
     if min_max_beta_to_show is None:
@@ -395,10 +398,6 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
     # image_format = ".jpeg"
     image_format = ".pdf"
 
-    # Create pathname
-    folder_path = create_pathname(num_feat_patterns, positional_embedding_size, context_size, worker_values_list,
-                                  cfg, seed, ini_token_idx)
-
     correlations_from_weights = cfg["correlations_from_weights"]
     filtering_range = cfg["filtering_range"]
 
@@ -415,37 +414,38 @@ def plotter(num_feat_patterns, seed, positional_embedding_size, context_size, in
     for stat_name in stats_to_save_plot:
 
         # Create folder if it does not exist and we are saving the image
-        if cfg["save_not_plot"] and (not os.path.exists(folder_path + f"/{stat_name}/")):
-            os.makedirs(folder_path + f"/{stat_name}/")
+        if cfg["save_not_plot"] and (not os.path.exists(exp_dir + f"/{stat_name}/")):
+            os.makedirs(exp_dir + f"/{stat_name}/")
 
         # filter_idx defines what feature we are using for intersecting with 0.
-        for filter_idx in range(num_feat_patterns):
+        for filter_idx in range(cfg["num_feat_patterns"]):
 
             # Title for internal use
             if show_title:
                 title = (
-                    f"CORRm={correlations_from_weights} CTX={context_size} NUM_PAT={num_feat_patterns} "
-                    f"SEED={seed} Filter={filtering_range}")
+                    "CORRm=" + str(cfg["correlations_from_weights"]) + " CTX=" + str(cfg["context_size"])
+                    + " NUM_PAT=" + str(cfg["num_feat_patterns"]) + "SEED=" + cfg["seed"] +
+                    f" Filter={filtering_range}")
             else:
                 title = None
 
             # Save path
-            filtered_save_path = (folder_path + f"/{stat_name}/" +
+            filtered_save_path = (exp_dir + f"/{stat_name}/" +
                                   "transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
                                   "-filter_rg-" + str(filtering_range) + image_format)
 
             # Plotting and saving
             print("Creating and saving diagram")
-            plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, num_feat_patterns,
+            plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, cfg["num_feat_patterns"],
                                                          filtered_save_path, num_transient_steps_plot_arg,
-                                                         stat_name, folder_path,
+                                                         stat_name, exp_dir,
                                                          filtering_range=filtering_range,
                                                          show_max_num_patterns=show_max_num_patterns,
                                                          save_not_plot=cfg["save_not_plot"], title=title,
                                                          show_1_feat=show_1_feat[filter_idx])
 
-    lya_hist_save_path = (folder_path + f"/Lyapunov/Lyapunov_hist"+ image_format)
-    plot_lyapunov_hist(filtered_beta_list, num_feat_patterns, context_size, folder_path, lya_hist_save_path,
+    lya_hist_save_path = (exp_dir + f"/Lyapunov/Lyapunov_hist" + image_format)
+    plot_lyapunov_hist(filtered_beta_list, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_path,
                        save_not_plot=cfg["save_not_plot"], title=None,
                        min_bidx=min_beta_idx)
 
@@ -458,22 +458,29 @@ if __name__ == "__main__":
     with open(cfg_path, 'r') as file:
         cfg = yaml.safe_load(file)
 
-    positional_embedding_size = 2
-    context_size = 2 ** positional_embedding_size
+    # Create folder to save the results
+    now = datetime.datetime.now()
+    date_str = now.strftime("%Y%m%d_%H%M%S")
+    exp_dir = f"results_parallel_v3/{date_str}/"
+    create_dir(exp_dir)
 
+    # Create the variables from the experiment that are not set up in the yaml cfg
     num_bifurcation_values = 10  # Number of x values to examine in the bifurcation diagram
 
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
                                      num_bifurcation_values)  # Betas or Epsilon values
 
-    seed = 1  # List of seeds to review
-    num_feat_patterns = 3  # List of number of features for which to initialize the model
-    ini_token_idx = 0
-    load_from_last_chpt = True # Whether to first simulate the last beta and then simulate the rest from its final context.
+    # Add remaining config values to cfg
+    cfg["positional_embedding_size"] = 2
+    cfg["context_size"] = 2 ** cfg["positional_embedding_size"]
+
+    cfg["seed"] = 1  # List of seeds to review
+    cfg["num_feat_patterns"] = 3  # List of number of features for which to initialize the model
+    cfg["ini_token_idx"] = 0
 
     show_title = False  # Whether to plot a title with the characteristics of the experiment. For internal use mostly.
 
-    if context_size > 2 ** positional_embedding_size:
+    if cfg["context_size"] > 2 ** cfg["positional_embedding_size"]:
         raise ("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise ("You cannot discard more timesteps than you are simulating.")
@@ -484,8 +491,7 @@ if __name__ == "__main__":
 
     # Then compute the rest of the betas, setting the initial context to the last beta one
     for worker_id in range(num_bifurcation_values):
-        runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
-               worker_id, cfg, stats_to_save_plot)
+        runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot)
 
     end = time.time()
     elapsed_time = end - start
@@ -493,5 +499,4 @@ if __name__ == "__main__":
     print("elapsed time in hours", elapsed_time / 3600)
 
     # Once computed, load checkpoints and plot them
-    plotter(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list, cfg,
-            stats_to_save_plot, show_title=show_title)
+    plotter(worker_values_list, cfg, exp_dir, stats_to_save_plot, show_title=show_title)

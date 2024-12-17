@@ -974,7 +974,11 @@ def plot_save_autocorrelation(stat1, stat_name, num_feat_patterns, num_plotting_
         plt.show()
     plt.close()
 
-def plot_lyapunov_graphs(S_i_sum, M, pe_bit_size, context_size, beta, save_not_plot=False, save_path=None, lowres=False):
+def plot_lyapunov_graphs(S_i_sum, cfg, beta, save_not_plot=False, save_path=None, lowres=False):
+
+    M = cfg["num_feat_patterns"]
+    pe_bit_size = cfg["positional_embedding_size"]
+    context_size = cfg["context_size"]
 
     dpi = None
     if lowres:

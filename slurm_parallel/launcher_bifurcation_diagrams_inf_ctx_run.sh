@@ -6,6 +6,12 @@ POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
 CFG_PATH="cfgs/bif_diagram_inf_0.yaml"
 NUM_BIFURCATION_VALUES=10
+EXP_DIR=results_parallel_v3/$(date +%Y%m%d_%H%M%S)
+
+mkdir $EXP_DIR
+mkdir $EXP_DIR/stats/
+mkdir -p $EXP_DIR/indiv_lowres_traj/lyapunov/
+mkdir -p $EXP_DIR/indiv_lowres_traj/planes/
 
 for SEED in "${SEED_LIST[@]}"; do
     for NUM_FEAT_PATTERNS in "${NUM_FEAT_PATTERNS_LIST[@]}"; do

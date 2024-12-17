@@ -16,7 +16,9 @@ parser.add_argument("--ini_token_idx", help="Specify the index of the initial to
                     type=int)
 parser.add_argument("--load_from_context_mode", help="Specify how to deal with initialization",
                     type=int, default=0)
-parser.add_argument("--cfg_path", help="Specify path to the YAML config file",
+parser.add_argument("--cfg_path", help="Specify path to the input YAML config file",
+                    type=str)
+parser.add_argument("--exp_dir", help="Specify path to where the experiments will be saved",
                     type=str)
 
 
@@ -29,22 +31,26 @@ if __name__ == "__main__":
     with open(cfg_path, 'r') as file:
         cfg = yaml.safe_load(file)
 
-    # Instantiate vocabulary vars
-    positional_embedding_size = args.positional_embedding_size
-    context_size = 2 ** positional_embedding_size
+    # Load save path from arg vars
+    exp_dir = args.exp_dir
 
+    # Instantiate vocabulary vars
+    cfg["positional_embedding_size"] = args.positional_embedding_size
+    cfg["context_size"] = 2 ** cfg["positional_embedding_size"]
+
+    # Create x values for the bifurcation diagram
     num_bifurcation_values = args.num_bifurcation_values
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
                                      num_bifurcation_values)  # Betas or Epsilon values
 
     # Create variables for the Hopfield Transformer (HT)
-    seed = args.seed
-    num_feat_patterns = args.num_feat_patterns
-    ini_token_idx = args.ini_token_idx
+    cfg["seed"] = args.seed
+    cfg["num_feat_patterns"] = args.num_feat_patterns
+    cfg["ini_token_idx"] = args.ini_token_idx
     worker_id = args.worker_id - 1  # Subtract 1 for indexing
     show_title = True
 
-    if context_size > 2 ** positional_embedding_size:
+    if cfg["context_size"] > 2 ** cfg["positional_embedding_size"]:
         raise ("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise ("You cannot discard more timesteps than you are simulating.")
@@ -53,8 +59,7 @@ if __name__ == "__main__":
 
     start = time.time()
 
-    runner(num_feat_patterns, seed, positional_embedding_size, context_size, ini_token_idx, worker_values_list,
-           worker_id, cfg, stats_to_save_plot)
+    runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot)
 
     end = time.time()
     elapsed_time = end - start

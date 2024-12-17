@@ -3,7 +3,7 @@
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
 #SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
-#SBATCH -p medium -t 01:30:00
+#SBATCH -p medium -t 00:40:00
 #SBATCH --mem=4G
 
 
@@ -20,7 +20,8 @@ POSITIONAL_EMBEDDING_SIZE=$3
 NUM_BIFURCATION_VALUES=$4
 INI_TOKEN_IDX=$5
 CFG_PATH=$6
-WORKER_ID=$7
+EXP_DIR=$7
+WORKER_ID=$8
 
 if [ -z "$WORKER_ID" ]; # Check if variable is not defined, if not, define it from console args
 then
