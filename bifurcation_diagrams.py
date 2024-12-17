@@ -327,7 +327,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     # Set either both betas, one of them or epsilon from the positional encoding
     initialize_bifurcation_variable(HT, worker_values_list, worker_id, cfg["bifurcation_mode"])
 
-    print(f"Computing seed ", cfg["seed"] ,"beta {worker_id + 1}/{len(worker_values_list)}", flush=True)
+    print(f"Computing seed ", cfg["seed"] ,f"beta {worker_id + 1}/{len(worker_values_list)}", flush=True)
 
     # Reset data structures
     HT.reset_data()
