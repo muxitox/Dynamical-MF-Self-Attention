@@ -1,7 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
-#SBATCH --output=/dev/null
+#  SBATCH --output=/dev/null
+#SBATCH --output ./log/log_parallel_v3/exec.%j.out
+#SBATCH --error ./log/log_parallel_v3/exec.%j.err
 #SBATCH -N 1 -c 1
 #SBATCH -p medium -t 00:40:00
 #SBATCH --mem=4G
@@ -35,7 +37,7 @@ WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
 
 LOG_DIR=log/log_parallel_v3/${SLURM_ARRAY_JOB_ID}_${DATE}
-LOG_PATH=${DIR}/${SLURM_ARRAY_TASK_ID}
+LOG_PATH=${LOG_DIR}/${SLURM_ARRAY_TASK_ID}
 
 mkdir -p $LOG_DIR
 
