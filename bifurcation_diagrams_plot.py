@@ -17,6 +17,8 @@ if __name__ == "__main__":
         exp_dir = args.exp_dir
     else:
         exp_dir = "results_parallel_v3/old_20241217_170124"
+        # exp_dir = "results_parallel_v3/old_20241217_170128_zoom"
+
 
     cfg_path = exp_dir + "/cfg.yaml"
     # Load cfg

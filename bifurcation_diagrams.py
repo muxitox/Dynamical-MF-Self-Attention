@@ -340,7 +340,7 @@ if __name__ == "__main__":
     start = time.time()
 
     # Then compute the rest of the betas, setting the initial context to the last beta one
-    for worker_id in range(num_bifurcation_values):
+    for worker_id in range(cfg["num_bifurcation_values"]):
         runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot)
 
     end = time.time()
