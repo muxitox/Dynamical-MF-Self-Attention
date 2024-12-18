@@ -12,13 +12,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    cfg_path = args.exp_dir
+    # Load save path from arg vars
+    if args.exp_dir:
+        exp_dir = args.exp_dir
+    else:
+        exp_dir = "results_parallel_v3/old_20241217_170124"
+
+    cfg_path = exp_dir + "/cfg.yaml"
     # Load cfg
     with open(cfg_path, 'r') as file:
         cfg = yaml.safe_load(file)
-
-    # Load save path from arg vars
-    exp_dir = args.exp_dir
 
     # Create x values for the bifurcation diagram. 
     cfg["num_bifurcation_values"] = args.num_bifurcation_values # Save in cfg for replication purposes
