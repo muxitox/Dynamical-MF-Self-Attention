@@ -39,9 +39,9 @@ if __name__ == "__main__":
     cfg["context_size"] = 2 ** cfg["positional_embedding_size"]
 
     # Create x values for the bifurcation diagram
-    num_bifurcation_values = args.num_bifurcation_values
+    cfg["num_bifurcation_values"] = args.num_bifurcation_values  # Save in config for replication purposes
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
-                                     num_bifurcation_values)  # Betas or Epsilon values
+                                     cfg["num_bifurcation_values"])  # Betas or Epsilon values
 
     # Create variables for the Hopfield Transformer (HT)
     cfg["seed"] = args.seed

@@ -314,11 +314,11 @@ if __name__ == "__main__":
     print("Creating dir for saving the experiments in", exp_dir)
     create_dir(exp_dir)
 
-    # Create the variables from the experiment that are not set up in the yaml cfg
-    num_bifurcation_values = 10  # Number of x values to examine in the bifurcation diagram
+    # Create the variables from the experiment that are not set up in the yaml cfg.
+    cfg["num_bifurcation_values"] = 10  # Number of x values to examine in the bifurcation diagram
 
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
-                                     num_bifurcation_values)  # Betas or Epsilon values
+                                     cfg["num_bifurcation_values"])  # Betas or Epsilon values
 
     # Add remaining config values to cfg
     cfg["positional_embedding_size"] = 2
