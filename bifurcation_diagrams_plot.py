@@ -24,7 +24,6 @@ if __name__ == "__main__":
         cfg = yaml.safe_load(file)
 
     # Create x values for the bifurcation diagram. 
-    cfg["num_bifurcation_values"] = args.num_bifurcation_values # Save in cfg for replication purposes
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
                                      cfg["num_bifurcation_values"])  # Betas or Epsilon values
 
