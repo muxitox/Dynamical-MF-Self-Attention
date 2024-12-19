@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # Create variables for the Hopfield Transformer (HT)
     seed = 1  # Seed for the correlations
     num_feat_patterns = 3                                   # Number of patterns
-    beta_list = [1.255, 1.26405, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
+    beta_list = [1.255, 1.26451, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
     scaling_o = cfg["scaling_o"]  # Not scaled
     beta_att = cfg["beta_att"]
     scaling_att = cfg["scaling_att"]                        # Beta_att * scaling_att make gamma from the paper
