@@ -1005,8 +1005,8 @@ def plot_lyapunov_graphs(S_i_sum, cfg, beta, save_not_plot=False, save_path=None
         plt.show()
 
 
-def plot_lyapunov_hist(x_list, num_feat_patterns, context_size, folder_path, save_path, save_not_plot=True, title=None,
-                     min_bidx=0):
+def plot_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_path, save_not_plot=True, title=None,
+                  min_bidx=0):
     """
     Plots a bifurcation diagram
     :param x_list: x domain values. Usually betas.
@@ -1091,11 +1091,28 @@ def plot_lyapunov_hist(x_list, num_feat_patterns, context_size, folder_path, sav
     flat_ax = ax.flatten()
 
     for i in range(num_other_feats):
-        flat_ax[i].hist(S_array[:, i + num_feat_patterns], bins=200)
+        flat_ax[i].hist(S_array[1:, i + num_feat_patterns], bins=200)
 
     plt.tight_layout()
     plt.show()
     plt.close()
 
+    plt.figure(figsize=(8, 8))
+    plt.plot(S_array[1:, 0], S_array[1:, 1], '.', c="k", rasterized=True)
+    plt.xlabel(r"$S_1$")
+    plt.ylabel(r"$S_2$")
+    plt.xlim([min(S_array[1:, 0]), max(S_array[1:, 0])])
+    plt.ylim([min(S_array[1:, 1]), max(S_array[1:, 1])])
+    plt.tight_layout()
+    plt.show()
+    plt.close()
 
+    fig = plt.figure(figsize=(8, 8), constrained_layout=True)
+    local_ax = fig.add_subplot(1, 1, 1, projection='3d')
+    local_ax.scatter(S_array[1:, 0], S_array[1:, 1], x_list[1:])
+    local_ax.set_xlabel(r"$S_1$")
+    local_ax.set_ylabel(r"$S_2$")
+    local_ax.set_zlabel(r"$\beta$")
+    plt.show()
+    plt.close()
 
