@@ -7,7 +7,7 @@ import os
 import time
 import copy
 from utils import create_dir, create_dir_from_filepath, load_context
-from plotting.plotting import plot_save_plane, plot_lyapunov_graphs, plot_lyapunov_hist
+from plotting.plotting import plot_save_plane, plot_lyapunov_graphs, plot_lyapunov
 import yaml
 import datetime
 
@@ -260,43 +260,50 @@ def plotter(worker_values_list, cfg, exp_dir,
     show_1_feat = [1, 0, 0]
     # show_1_feat = [None, None, None]
     # Load each stat and plot/save it
-    for stat_name in stats_to_save_plot:
 
-        # Create folder if it does not exist and we are saving the image
-        if cfg["save_not_plot"] and (not os.path.exists(exp_dir + f"/{stat_name}/")):
-            os.makedirs(exp_dir + f"/{stat_name}/")
+    # Hardcoded, :(, select what you want to plot
+    # operations = ["bifurcation", "lyapunov"]
+    operations = ["lyapunov"]
+    if "bifurcation" in operations:
+        for stat_name in stats_to_save_plot:
 
-        # filter_idx defines what feature we are using for intersecting with 0.
-        for filter_idx in range(cfg["num_feat_patterns"]):
+            # Create folder if it does not exist and we are saving the image
+            if cfg["save_not_plot"] and (not os.path.exists(exp_dir + f"/{stat_name}/")):
+                os.makedirs(exp_dir + f"/{stat_name}/")
 
-            # Title for internal use
-            if show_title:
-                title = (
-                    "CORRm=" + str(cfg["correlations_from_weights"]) + " CTX=" + str(cfg["context_size"])
-                    + " NUM_PAT=" + str(cfg["num_feat_patterns"]) + "SEED=" + str(cfg["seed"]) +
-                    f" Filter={filtering_range}")
-            else:
-                title = None
+            # filter_idx defines what feature we are using for intersecting with 0.
+            for filter_idx in range(cfg["num_feat_patterns"]):
 
-            # Save path
-            filtered_save_path = (exp_dir + f"/{stat_name}/" +
-                                  "transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
-                                  "-filter_rg-" + str(filtering_range) + image_format)
+                # Title for internal use
+                if show_title:
+                    title = (
+                        "CORRm=" + str(cfg["correlations_from_weights"]) + " CTX=" + str(cfg["context_size"])
+                        + " NUM_PAT=" + str(cfg["num_feat_patterns"]) + "SEED=" + str(cfg["seed"]) +
+                        f" Filter={filtering_range}")
+                else:
+                    title = None
 
-            # Plotting and saving
-            print("Creating and saving diagram")
-            plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, cfg["num_feat_patterns"],
-                                                         filtered_save_path, num_transient_steps_plot_arg,
-                                                         stat_name, exp_dir,
-                                                         filtering_range=filtering_range,
-                                                         show_max_num_patterns=show_max_num_patterns,
-                                                         save_not_plot=cfg["save_not_plot"], title=title,
-                                                         show_1_feat=show_1_feat[filter_idx])
+                # Save path
+                filtered_save_path = (exp_dir + f"/{stat_name}/" +
+                                      "transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
+                                      "-filter_rg-" + str(filtering_range) + image_format)
 
-    lya_hist_save_path = (exp_dir + f"/Lyapunov/Lyapunov_hist" + image_format)
-    plot_lyapunov_hist(filtered_beta_list, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_path,
-                       save_not_plot=cfg["save_not_plot"], title=None,
-                       min_bidx=min_beta_idx)
+                # Plotting and saving
+                print("Creating and saving diagram")
+                plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, cfg["num_feat_patterns"],
+                                                             filtered_save_path, num_transient_steps_plot_arg,
+                                                             stat_name, exp_dir,
+                                                             filtering_range=filtering_range,
+                                                             show_max_num_patterns=show_max_num_patterns,
+                                                             save_not_plot=cfg["save_not_plot"], title=title,
+                                                             show_1_feat=show_1_feat[filter_idx])
+
+
+    if "lyapunov" in operations:
+        lya_hist_save_path = (exp_dir + f"/Lyapunov/Lyapunov_hist" + image_format)
+        plot_lyapunov(filtered_beta_list, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_path,
+                      save_not_plot=cfg["save_not_plot"], title=None,
+                      min_bidx=min_beta_idx)
 
 
 
