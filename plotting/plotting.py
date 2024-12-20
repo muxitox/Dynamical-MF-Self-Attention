@@ -1070,8 +1070,8 @@ def plot_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_pat
     plt.show()
     plt.close()
 
-    col_size = 10
-    row_size = 8
+    col_size = 8
+    row_size = 6
     dpi = 250
     # Then plot histogram of the 3 main features
     fig, ax = plt.subplots(num_feat_patterns, 1, figsize=(col_size, row_size), dpi=dpi, constrained_layout=True)
@@ -1087,7 +1087,7 @@ def plot_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_pat
     # Then plot the hist of the remaining features
     num_other_feats = num_valid_dims - num_feat_patterns
     row_size = 16
-    fig, ax = plt.subplots(num_other_feats, 1, figsize=(col_size, row_size), dpi=dpi, constrained_layout=True)
+    fig, ax = plt.subplots(num_other_feats, 1, figsize=(col_size, row_size), dpi=dpi)
     flat_ax = ax.flatten()
 
     for i in range(num_other_feats):
@@ -1099,11 +1099,16 @@ def plot_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_pat
 
     plt.figure(figsize=(8, 8))
     plt.plot(S_array[1:, 0], S_array[1:, 1], '.', c="k", rasterized=True)
+    plt.axhline(y=0, color='black', linestyle='--', alpha=0.3)
+    plt.axvline(x=0, color='black', linestyle='--', alpha=0.3)
     plt.xlabel(r"$S_1$")
     plt.ylabel(r"$S_2$")
-    plt.xlim([min(S_array[1:, 0]), max(S_array[1:, 0])])
-    plt.ylim([min(S_array[1:, 1]), max(S_array[1:, 1])])
+    # plt.xlim([min(S_array[1:, 0]), max(S_array[1:, 0])])
+    # plt.ylim([min(S_array[1:, 1]), max(S_array[1:, 1])])
     plt.tight_layout()
+    if save_not_plot:
+        plt.savefig(save_path + "/plane.png")
+
     plt.show()
     plt.close()
 

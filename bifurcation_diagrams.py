@@ -300,10 +300,13 @@ def plotter(worker_values_list, cfg, exp_dir,
 
 
     if "lyapunov" in operations:
-        lya_hist_save_path = (exp_dir + f"/Lyapunov/Lyapunov_hist" + image_format)
-        plot_lyapunov(filtered_beta_list, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_path,
-                      save_not_plot=cfg["save_not_plot"], title=None,
-                      min_bidx=min_beta_idx)
+        lya_hist_save_basepath = (exp_dir + f"/Lyapunov/")
+
+        if cfg["save_not_plot"] and (not os.path.exists(lya_hist_save_basepath)):
+            os.makedirs(lya_hist_save_basepath)
+
+        plot_lyapunov(filtered_beta_list, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_basepath,
+                      save_not_plot=cfg["save_not_plot"], title=None, min_bidx=min_beta_idx)
 
 
 
