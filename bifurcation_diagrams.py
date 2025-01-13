@@ -8,6 +8,7 @@ import time
 import copy
 from utils import create_dir, create_dir_from_filepath, load_context
 from plotting.plotting import plot_save_plane, plot_lyapunov_graphs, plot_bifurcation_lyapunov
+import matplotlib.pyplot as plt
 import yaml
 import datetime
 
@@ -213,10 +214,6 @@ def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_for
 
     # Load data
     data = np.load(stats_data_path)
-    mo_se_results = data[f"mo_se_results_beta"]
-    # 3 feats
-    stats_to_plot = [["mo_se"], ["mo_se"]]
-    feat_idx = [[0], [1]]
 
     plot_save_path_plane = (folder_path + f"/indiv_lowres_traj/planes/"
                             + f"/plane-beta-{worker_values_list[beta_idx]}" + "-transient_steps-" +
@@ -224,13 +221,30 @@ def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_for
 
     create_dir_from_filepath(plot_save_path_plane)
 
-    stat_results_beta_list_0 = [mo_se_results]
-    stat_results_beta_list_1 = [mo_se_results]
+    nrows = 2
+    ncols = 3
+    dpi = 17
+    fig, ax = plt.subplots(nrows, ncols, figsize=(8 * ncols, 8), constrained_layout=True, dpi=dpi)
 
-    plot_save_plane(stat_results_beta_list_0,
-                    stat_results_beta_list_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx,
-                    tag_names=stats_to_plot, save_path=plot_save_path_plane,
-                    save_not_plot=True, lowres=True)
+    # Define the statistics you want to plot against each other
+    # In this case the feature mo with only the semantic information
+    stats_to_plot = [["mo_se", "mo_se"], ["mo_se", "mo_se"], ["mo_se", "mo_se"],
+                     ["att", "att"], ["att", "att"], ["att", "att"]]
+    # Define the index of the features you want to compare against each other
+    feat_idx = [[0, 1], [0, 2], [1, 2], [0, 1], [0, 2], [1, 2]]
+
+    flat_ax = ax.flatten()
+
+    for plot_i in range(len(flat_ax)):
+        # Load needed statistics
+        stat_results_beta_0 = data[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][0]]
+        stat_results_beta_1 = data[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][1]]
+
+        plot_save_plane(stat_results_beta_0,
+                        stat_results_beta_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx[plot_i], ax,
+                        tag_names=stats_to_plot[plot_i])
+
+        fig.savefig(plot_save_path_plane, bbox_inches='tight')
 
 
 def plot_lowres_lyapunov(S_i_sum, worker_values_list, beta_idx, cfg,
