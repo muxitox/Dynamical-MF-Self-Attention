@@ -30,6 +30,8 @@ def feat_name_to_latex(feat_name):
         latex_str = "m^q"
     elif feat_name == "att":
         latex_str = "A"
+    else:
+        raise Exception(f"{feat_name} not supported")
 
     return latex_str
 

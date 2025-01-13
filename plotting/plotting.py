@@ -26,6 +26,14 @@ if "Ubuntu" in platform.version():
     plt.rc('font', **font)
     plt.rc('legend', **{'fontsize': 14})
 
+rowsize = 8
+colsize = 8
+
+def create_row_array(ncols, dpi):
+    fig, ax = plt.subplots(1, ncols, figsize=(8 * ncols, 8), constrained_layout=True, dpi=dpi)
+
+    return fig, ax
+
 def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_path, num_transient_steps,
                              feat_name, show_max_num_patterns=None, save_not_plot=True, title=None, is_beta=True):
 
@@ -692,65 +700,50 @@ def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps
         plt.show()
     plt.close()
 
-def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idx,
-                    save_not_plot=False, save_path=None, tag_names=[], title=None, lowres=False, larger_dots=False):
+def plot_save_plane(stats1, stats2, num_plotting_steps, feat_idxs, local_ax,
+                    tag_names=[], title=None, lowres=False, larger_dots=False):
 
+    """
+    :param local_ax: axes from a subplots function must be provided to plot the diagram onto.
+
+    """
     # Plot show_max_num_patterns subfigures if defined
 
     ncols = len(stats1)
     if ncols != len(stats2):
         raise Exception("The length of the input stats does not coincide")
 
-
-    # Set dpi and markersize depending on the set up
-    dpi = None
+    # Set markersize depending on the set up
     ms = 0.4
     if lowres:
-        dpi = 15
         ms = 0.7
     elif larger_dots:  # If not a lowres execution and larger_dots is set, print them bigger
         ms = 10
 
-    # Create figure
-    fig, ax = plt.subplots(1, ncols, figsize=(8*ncols, 8), constrained_layout=True, dpi=dpi)
 
     # Convert stat names to latex style
     latex_strs = []
-    for col_name in tag_names:
-        strs = []
-        for tag in col_name:
-            strs.append(feat_name_to_latex(tag))
-        latex_strs.append(strs)
+    for tag in tag_names:
+        latex_strs.append(feat_name_to_latex(tag))
 
-    for feat in range(0, ncols):
 
-        if ncols == 1:
-            local_ax = ax
-        else:
-            local_ax = ax[feat % ncols]
+    # Plot trajectories against each other
+    local_ax.plot(stats1[:num_plotting_steps],
+                  stats2[:num_plotting_steps], '.', c="k", ms=ms, rasterized=True)
 
-        # Plot trajectories against each other
-        local_ax.plot(stats1[feat][:num_plotting_steps, feat_idx[0][feat]],
-                      stats2[feat][:num_plotting_steps,feat_idx[1][feat]], '.', c="k", ms=ms, rasterized=True)
+    # x label
+    local_ax.set_xlabel(rf"${latex_strs[0]}_{{{feat_idxs[0]+1},t}}$")
 
-        # x label
-        local_ax.set_xlabel(rf"${latex_strs[0][feat]}_{{{feat_idx[0][feat]+1},t}}$")
-
-        # Rotate y label
-        kwargs = {}
-        kwargs["rotation"] = "horizontal"
-        kwargs["verticalalignment"] = "center"
-        labelpad = 25
-        local_ax.set_ylabel(rf"${latex_strs[1][feat]}_{{{feat_idx[1][feat]+1},t}}$", labelpad=labelpad, **kwargs)
+    # Rotate y label
+    kwargs = {}
+    kwargs["rotation"] = "horizontal"
+    kwargs["verticalalignment"] = "center"
+    labelpad = 25
+    local_ax.set_ylabel(rf"${latex_strs[1]}_{{{feat_idxs[1]+1},t}}$", labelpad=labelpad, **kwargs)
 
     if title is not None:
         local_ax.set_title(title)
 
-    if save_not_plot:
-        fig.savefig(save_path, bbox_inches='tight')
-    else:
-        plt.show()
-    plt.close()
 
 def plot_save_3Dplane(stats1, num_plotting_steps,
                     save_not_plot=False, save_path=None, tag_names=[], beta=None):
@@ -1005,19 +998,10 @@ def plot_lyapunov_graphs(S_i_sum, cfg, beta, save_not_plot=False, save_path=None
         plt.show()
 
 
-def plot_lyapunov_hist(x_list, num_feat_patterns, context_size, folder_path, save_path, save_not_plot=True, title=None,
+def plot_bifurcation_lyapunov_hist(x_list, num_feat_patterns, context_size, folder_path, save_path, save_not_plot=True, title=None,
                      min_bidx=0):
     """
-    Plots a bifurcation diagram
-    :param x_list: x domain values. Usually betas.
-    :param num_feat_patterns: Number of patterns to plot
-    :param context_size: context_size of the model being plotted
-    :param save_path: Plot save path.
-    :param feat_name: Feat. name. For plotting purposes.
-    :param folder_path: Folder path in which we saved the results.
-    :param save_not_plot: True save. False plot.
-    :param title: Title of the figure.
-    :param min_bidx:
+    Plots statistics related with the Lyapunov exponents of a bifurcation diagram
     """
 
 

@@ -1,8 +1,11 @@
+import pdb
+
 import numpy as np
 from models.HopfieldSelfAttentionNNMFInfNPE import HopfieldSelfAttentionNNMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import (plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation,
-                               plot_lyapunov_graphs)
+                               plot_lyapunov_graphs, create_row_array)
+import matplotlib.pyplot as plt
 from utils import load_context
 import os
 import yaml
@@ -19,22 +22,22 @@ def create_dir(filepath):
 if __name__ == "__main__":
 
     # Set the variables for the experiments
-    cfg_path = 'cfgs/bif_diagram_inf_0_zoom-in.yaml'
+    cfg_path = 'cfgs/bif_diagram_inf_0.yaml'
     # Load cfg
     with open(cfg_path, 'r') as file:
         cfg = yaml.safe_load(file)
 
     # Instantiate vocabulary
     tentative_semantic_embedding_size = cfg["semantic_embedding_size"]  # Variable to set the size of the matrices from which to compute the corrs
-    positional_embedding_size = 2  # Number of bits dedicated to the positional embedding
-    context_size = 2 ** positional_embedding_size  # Context size
+    cfg["positional_embedding_size"] = positional_embedding_size = 2  # Number of bits dedicated to the positional embedding
+    cfg["context_size"] = context_size = 2 ** positional_embedding_size  # Context size
     embedding_size = tentative_semantic_embedding_size + positional_embedding_size  # Total size of the "tentative" embedding
     vocab = Embedding(tentative_semantic_embedding_size, positional_embedding_size)  # Vocabulary helper class
     vocab.initialize_pos_encoder()  # Initiate some functionalities
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1  # Seed for the correlations
-    num_feat_patterns = 3                                   # Number of patterns
+    cfg["num_feat_patterns"] = num_feat_patterns = 3                                   # Number of patterns
     beta_list = [1.255, 1.26405, 1.266, 1.27, 1.28, 1.4]    # Different values of beta to simulate
     scaling_o = cfg["scaling_o"]  # Not scaled
     beta_att = cfg["beta_att"]
@@ -182,27 +185,41 @@ if __name__ == "__main__":
 
         # Define the statistics you want to plot against each other
         # In this case the feature mo with only the semantic information
-        stats_to_plot = [["mo_se"], ["mo_se"]]
+        stats_to_plot = [["mo_se", "mo_se"], ["att", "att"]]
         # Define the index of the features you want to compare against each other
-        feat_idx = [[0], [1]]
+        feat_idx = [[0, 1], [0, 2]]
 
-        # Define path for saving the plane
-        plot_save_path_plane = (
-                folder_path + f"/plane-seed-{str(seed)}" + "-transient_steps-" + str(num_transient_steps) + image_format)
+        for plot_i in range(len(stats_to_plot)):
 
-        # Set larger dots for the periodic trajectory
-        larger_dots = False
-        if beta == 1.27:
-            larger_dots = True
+            # Define path for saving the plane
+            plot_save_path_plane = (
+                    folder_path + f"/plane-seed-{str(seed)}" + "-transient_steps-" + str(num_transient_steps)
+                    + "-" + stats_to_plot[plot_i][0] + "_" + str(feat_idx[plot_i][0])
+                    + "-" + stats_to_plot[plot_i][1] + "_" + str(feat_idx[plot_i][1]) + image_format)
 
-        # Load statistics
-        stat_results_beta_list_0 = [HT.mf_statistics[stats_to_plot[feat_idx[0][0]][0]]]
-        stat_results_beta_list_1 = [HT.mf_statistics[stats_to_plot[feat_idx[1][0]][0]]]
-        # Plot plane
-        plot_save_plane(stat_results_beta_list_0,
-                        stat_results_beta_list_1, max_sim_steps - num_transient_steps, feat_idx,
-                        tag_names=stats_to_plot, save_path=plot_save_path_plane, save_not_plot=save_not_plot,
-                        title=title, larger_dots=larger_dots)
+            # Set larger dots for the periodic trajectory
+            larger_dots = False
+            dpi = None
+            if beta == 1.27:
+                larger_dots = True
+
+            # Create figure
+            ncols = 1
+            fig, ax = create_row_array(ncols, dpi)
+
+            # Load statistics
+            stat_results_beta_0 = HT.mf_statistics[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][0]]
+            stat_results_beta_1 = HT.mf_statistics[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][1]]
+            # Plot plane
+            plot_save_plane(stat_results_beta_0,
+                            stat_results_beta_1, max_sim_steps - num_transient_steps, feat_idx[plot_i], ax,
+                            tag_names=stats_to_plot[plot_i], title=title, larger_dots=larger_dots)
+
+            if save_not_plot:
+                fig.savefig(plot_save_path_plane, bbox_inches='tight')
+            else:
+                plt.show()
+            plt.close()
 
         lowres_lya = False
         image_format_lya = image_format
@@ -219,8 +236,8 @@ if __name__ == "__main__":
                 num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps) + image_format_lya)
             # Plot lyapunov related statistics
 
-            plot_lyapunov_graphs(HT.S_i_sum, HT.num_feat_patterns, HT.pe_bit_size, context_size, beta,
+            plot_lyapunov_graphs(HT.S_i_sum, cfg, beta,
                                  save_not_plot=save_not_plot, save_path=plot_save_path_lya)
 
-        print("Inf flag")
-        print(HT.S_inf_flag)
+            print("Inf flag")
+            print(HT.S_inf_flag)
