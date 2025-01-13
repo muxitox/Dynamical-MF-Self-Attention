@@ -7,7 +7,7 @@ import os
 import time
 import copy
 from utils import create_dir, create_dir_from_filepath, load_context
-from plotting.plotting import plot_save_plane, plot_lyapunov_graphs, plot_bifurcation_lyapunov_hist
+from plotting.plotting import plot_save_plane, plot_lyapunov_graphs, plot_bifurcation_lyapunov
 import yaml
 import datetime
 
@@ -332,6 +332,9 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     # Reset data structures
     HT.reset_data()
 
+    # Measure only simulation time
+    start = time.time()
+
     if cfg["load_chpt"]:
         # Load checkpoint from last beta
         att_window, pe_window = load_context(cfg["chpt_path"])
@@ -345,6 +348,12 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
 
         # Simulate for max_sim_steps steps from x0
         HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"], compute_lyapunov=cfg["compute_lyapunov"])
+
+    end = time.time()
+    elapsed_time = end - start
+    print("Simulation: elapsed time in minutes", elapsed_time / 60)
+    print("Simulation: elapsed time in hours", elapsed_time / 3600)
+
 
     for stat_name in stats_to_save_plot:
         # Accumulate results in a var of beta_list length
@@ -368,6 +377,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
                         att_results_beta=results_beta["att"],
                         S=results_beta["S"],
                         S_inf_flag=results_beta["S_inf_flag"],
+                        simulation_time=elapsed_time
                         )
 
     plot_lowres= True
@@ -411,43 +421,53 @@ def plotter(worker_values_list, cfg, exp_dir,
     show_1_feat = [1, 0, 0]
     # show_1_feat = [None, None, None]
     # Load each stat and plot/save it
-    for stat_name in stats_to_save_plot:
 
-        # Create folder if it does not exist and we are saving the image
-        if cfg["save_not_plot"] and (not os.path.exists(exp_dir + f"/{stat_name}/")):
-            os.makedirs(exp_dir + f"/{stat_name}/")
+    # Hardcoded, :(, select what you want to plot
+    # operations = ["bifurcation", "lyapunov"]
+    operations = ["lyapunov"]
+    if "bifurcation" in operations:
+        for stat_name in stats_to_save_plot:
 
-        # filter_idx defines what feature we are using for intersecting with 0.
-        for filter_idx in range(cfg["num_feat_patterns"]):
+            # Create folder if it does not exist and we are saving the image
+            if cfg["save_not_plot"] and (not os.path.exists(exp_dir + f"/{stat_name}/")):
+                os.makedirs(exp_dir + f"/{stat_name}/")
 
-            # Title for internal use
-            if show_title:
-                title = (
-                    "CORRm=" + str(cfg["correlations_from_weights"]) + " CTX=" + str(cfg["context_size"])
-                    + " NUM_PAT=" + str(cfg["num_feat_patterns"]) + "SEED=" + str(cfg["seed"]) +
-                    f" Filter={filtering_range}")
-            else:
-                title = None
+            # filter_idx defines what feature we are using for intersecting with 0.
+            for filter_idx in range(cfg["num_feat_patterns"]):
 
-            # Save path
-            filtered_save_path = (exp_dir + f"/{stat_name}/" +
-                                  "transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
-                                  "-filter_rg-" + str(filtering_range) + image_format)
+                # Title for internal use
+                if show_title:
+                    title = (
+                        "CORRm=" + str(cfg["correlations_from_weights"]) + " CTX=" + str(cfg["context_size"])
+                        + " NUM_PAT=" + str(cfg["num_feat_patterns"]) + "SEED=" + str(cfg["seed"]) +
+                        f" Filter={filtering_range}")
+                else:
+                    title = None
 
-            # Plotting and saving
-            print("Creating and saving diagram")
-            plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, cfg["num_feat_patterns"],
-                                                         filtered_save_path, num_transient_steps_plot_arg,
-                                                         stat_name, exp_dir,
-                                                         filtering_range=filtering_range,
-                                                         show_max_num_patterns=show_max_num_patterns,
-                                                         save_not_plot=cfg["save_not_plot"], title=title,
-                                                         show_1_feat=show_1_feat[filter_idx])
+                # Save path
+                filtered_save_path = (exp_dir + f"/{stat_name}/" +
+                                      "transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
+                                      "-filter_rg-" + str(filtering_range) + image_format)
 
-    lya_hist_save_path = (exp_dir + f"/Lyapunov/Lyapunov_hist" + image_format)
-    plot_bifurcation_lyapunov_hist(filtered_beta_list, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_path,
-                       save_not_plot=cfg["save_not_plot"], title=None,
-                       min_bidx=min_beta_idx)
+                # Plotting and saving
+                print("Creating and saving diagram")
+                plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, cfg["num_feat_patterns"],
+                                                             filtered_save_path, num_transient_steps_plot_arg,
+                                                             stat_name, exp_dir,
+                                                             filtering_range=filtering_range,
+                                                             show_max_num_patterns=show_max_num_patterns,
+                                                             save_not_plot=cfg["save_not_plot"], title=title,
+                                                             show_1_feat=show_1_feat[filter_idx])
+
+
+    if "lyapunov" in operations:
+        lya_hist_save_basepath = (exp_dir + f"/Lyapunov/")
+
+        if cfg["save_not_plot"] and (not os.path.exists(lya_hist_save_basepath)):
+            os.makedirs(lya_hist_save_basepath)
+
+        plot_bifurcation_lyapunov(filtered_beta_list, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_basepath,
+                      save_not_plot=cfg["save_not_plot"], title=None, min_bidx=min_beta_idx)
 
 
 
@@ -465,11 +485,11 @@ if __name__ == "__main__":
     print("Creating dir for saving the experiments in", exp_dir)
     create_dir(exp_dir)
 
-    # Create the variables from the experiment that are not set up in the yaml cfg
-    num_bifurcation_values = 10  # Number of x values to examine in the bifurcation diagram
+    # Create the variables from the experiment that are not set up in the yaml cfg.
+    cfg["num_bifurcation_values"] = 10  # Number of x values to examine in the bifurcation diagram
 
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
-                                     num_bifurcation_values)  # Betas or Epsilon values
+                                     cfg["num_bifurcation_values"])  # Betas or Epsilon values
 
     # Add remaining config values to cfg
     cfg["positional_embedding_size"] = 2
@@ -491,7 +511,7 @@ if __name__ == "__main__":
     start = time.time()
 
     # Then compute the rest of the betas, setting the initial context to the last beta one
-    for worker_id in range(num_bifurcation_values):
+    for worker_id in range(cfg["num_bifurcation_values"]):
         runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot)
 
     end = time.time()

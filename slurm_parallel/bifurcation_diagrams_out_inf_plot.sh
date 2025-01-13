@@ -24,7 +24,6 @@ INI_TOKEN_IDX=$5
 CFG_PATH=$6
 EXP_DIR=$7
 
-
 ARGS=" \
 --seed=$SEED \
 --num_feat_patterns=$NUM_FEAT_PATTERNS \

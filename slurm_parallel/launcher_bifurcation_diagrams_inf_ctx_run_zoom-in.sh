@@ -7,10 +7,19 @@ INI_TOKEN_IDX_LIST=(0)
 CFG_PATH="cfgs/bif_diagram_inf_0_zoom-in.yaml"
 NUM_BIFURCATION_VALUES=4001
 
-EXP_DIR=results_parallel_v3/$(date +%Y%m%d_%H%M%S)
+SUFFIX=""
+VAR1=$(basename "$PWD")
+if [ "$VAR1" = "slurm_parallel" ]; 
+then
+  SUFFIX="../"
+fi
 
-mkdir $EXP_DIR
-
+DATE=$(date +%Y%m%d_%H%M%S)/
+EXP_DIR_BASE=results_parallel_v3
+EXP_DIR=$EXP_DIR_BASE/$DATE/
+mkdir -p  ${SUFFIX}${EXP_DIR}/stats/
+mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/lyapunov/
+mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/planes/
 
 for SEED in "${SEED_LIST[@]}"; do
     for NUM_FEAT_PATTERNS in "${NUM_FEAT_PATTERNS_LIST[@]}"; do
@@ -19,7 +28,7 @@ for SEED in "${SEED_LIST[@]}"; do
 
                 echo Num betas parallel $NUM_BIFURCATION_VALUES
                 sbatch --array=1-$NUM_BIFURCATION_VALUES bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH $EXP_DIR
+                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH $EXP_DIR_BASE $DATE 
           done
         done
     done
