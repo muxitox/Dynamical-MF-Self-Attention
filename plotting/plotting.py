@@ -30,7 +30,7 @@ rowsize = 8
 colsize = 8
 
 def create_row_array(ncols, dpi):
-    fig, ax = plt.subplots(1, ncols, figsize=(8 * ncols, 8), constrained_layout=True, dpi=dpi)
+    fig, ax = plt.subplots(1, ncols, figsize=(colsize * ncols, rowsize), constrained_layout=True, dpi=dpi)
 
     return fig, ax
 
