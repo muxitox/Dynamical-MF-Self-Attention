@@ -84,8 +84,9 @@ def plot_bifurcation_diagram(feat_to_plot, x_list, num_transient_steps, feat_nam
 
     local_ax.imshow(im_array, cmap=cmap, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y],
                     rasterized=True, aspect="auto", alpha=1)
-    local_ax.set_aspect("auto")
 
+    if len(x_list) > 20: # Otherwise the diagram is too strech
+        local_ax.set_aspect("auto")
 
     # Set x label
     local_ax.set_xlabel(x_label)
