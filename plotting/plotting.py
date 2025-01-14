@@ -34,284 +34,12 @@ def create_row_array(ncols, dpi):
 
     return fig, ax
 
-def plot_bifurcation_diagram(results_y_list, x_list, num_feat_patterns, save_path, num_transient_steps,
-                             feat_name, show_max_num_patterns=None, save_not_plot=True, title=None, is_beta=True):
-
-    # Plot show_max_num_patterns subfigures if defined
-    if (show_max_num_patterns is not None):
-        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
-
-    nrows = (num_feat_patterns + 1) // 2
-
-    if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
-    elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
-    else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
-
-    latex_str = feat_name_to_latex(feat_name)
-    x_label = r'$\beta$'
-    if not is_beta:
-        x_label = r'$SE\%$'
-
-    for feat in range(0, num_feat_patterns):
-
-        row = feat // 2
-        if num_feat_patterns == 1:
-            local_ax = ax
-        elif num_feat_patterns == 2:
-            local_ax = ax[feat % 2]
-        elif num_feat_patterns == 3:
-            local_ax = ax[feat % 3]
-        else:
-            local_ax = ax[row, feat % 2]
-
-        for b_idx in range(0, len(x_list)):
-            unique_values_feat = results_y_list[b_idx][num_transient_steps:, feat]
-            beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
-
-            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='', marker='.', ms='0.05')
-
-
-        if feat_name != "att" and x_list[-1] > 3.5:
-            local_ax.set_ylim(-1, 1)
-
-
-        local_ax.set_xlim(x_list[0], x_list[-1])
-
-        if num_feat_patterns==3:
-            local_ax.set_xlabel(x_label)
-        elif feat > num_feat_patterns-3:
-            local_ax.set_xlabel(x_label)
-
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
-        # local_ax.legend(loc="upper center")
-
-    # fig.tight_layout(pad=0.1)
-    if title is not None:
-        fig.suptitle(title)
-
-    if save_not_plot:
-        fig.savefig(save_path)
-    else:
-        plt.show()
-    plt.close()
-
-def plot_filtered_bifurcation_diagram(results_y_list, filtering_variable, filter_idx, x_list, num_feat_patterns,
-                                      save_path, num_transient_steps, feat_name, filtering_range=0.05,
-                                      show_max_num_patterns=None, save_not_plot=True, title=None, is_beta=True):
-
-    # Plot show_max_num_patterns subfigures if defined
-    if (show_max_num_patterns is not None):
-        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
-
-    nrows = (num_feat_patterns + 1) // 2
-    row_size = 4
-
-    if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, row_size), constrained_layout=True)
-    elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, row_size), constrained_layout=True)
-    else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, row_size * nrows), constrained_layout=True)
-
-    latex_str = feat_name_to_latex(feat_name)
-    x_label = r'$\beta$'
-    if not is_beta:
-        x_label = r'$SE\%$'
-
-    for feat in range(0, num_feat_patterns):
-
-        row = feat // 2
-        if num_feat_patterns == 1:
-            local_ax = ax
-        elif num_feat_patterns == 2:
-            local_ax = ax[feat % 2]
-        elif num_feat_patterns == 3:
-            local_ax = ax[feat % 3]
-        else:
-            local_ax = ax[row, feat % 2]
-
-        for b_idx in range(0, len(x_list)):
-
-            filtering_values = filtering_variable[b_idx][num_transient_steps:, filter_idx]
-            zero_intersect = np.where(np.logical_and(filtering_values >= -filtering_range,
-                                                     filtering_values <= filtering_range))
-            unique_values_feat = results_y_list[b_idx][num_transient_steps:, feat]
-            unique_values_feat_filtered = unique_values_feat[zero_intersect]
-
-            unique_values_feat = np.unique(np.round(unique_values_feat, decimals=3))
-            unique_values_feat_filtered = np.unique(np.round(unique_values_feat_filtered, decimals=3))
-
-            beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
-            beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
-
-            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='', marker='.', ms='0.05')
-            local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[0], ls='', marker='.', ms='0.5')
-
-        if feat_name != "att" and x_list[-1] > 3.5:
-            local_ax.set_ylim(-1, 1)
-
-        local_ax.set_xlim(x_list[0], x_list[-1])
-
-        if num_feat_patterns == 3:
-            local_ax.set_xlabel(x_label)
-        elif feat > num_feat_patterns-3:
-            local_ax.set_xlabel(x_label)
-
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
-        # local_ax.legend(loc="upper center")
-
-    # fig.tight_layout(pad=0.1)
-    if title is not None:
-        fig.suptitle(title)
-
-    if save_not_plot:
-        fig.savefig(save_path)
-    else:
-        plt.show()
-    plt.close()
-
-
-def filter_y_values_by_0_plane(results_y_list, feat, filter_idx, filtering_range):
-    filtering_values = results_y_list[:, filter_idx]
-    zero_intersect = np.where(np.logical_and(filtering_values >= -filtering_range,
-                                             filtering_values <= filtering_range))[0]
-    return results_y_list[zero_intersect, feat]
-
-
-def plot_filtered_bifurcation_diagram_par(filter_idx, x_list, num_feat_patterns,
-                                          save_path, num_transient_steps, feat_name,
-                                          folder_path,
-                                          filtering_range=0.05,
-                                          show_max_num_patterns=None, save_not_plot=True, title=None,
-                                          is_beta=True, min_bidx=0, show_1_feat=None,
-                                          filter_periodic=100):
-
-    # Plot show_max_num_patterns subfigures if defined
-    if (show_max_num_patterns is not None):
-        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
-
-    feat_list = np.arange(num_feat_patterns)
-    if show_1_feat is not None:
-        feat_list = [show_1_feat]
-        num_feat_patterns = 1
-
-    nrows = (num_feat_patterns + 1) // 2
-
-    if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4), constrained_layout=True)
-    elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(24, 4), constrained_layout=True)
-    else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(16, 4 * nrows), constrained_layout=True)
-
-    latex_str = feat_name_to_latex(feat_name)
-    x_label = r'$\beta$'
-    if not is_beta:
-        x_label = r'$SE\%$'
-
-    for feat_id in range(0, num_feat_patterns):
-        feat = feat_list[feat_id]
-
-        row = feat // 2
-        if num_feat_patterns == 1:
-            local_ax = ax
-        elif num_feat_patterns == 2:
-            local_ax = ax[feat % 2]
-        elif num_feat_patterns == 3:
-            local_ax = ax[feat % 3]
-        else:
-            local_ax = ax[row, feat % 2]
-
-        for idx in range(len(x_list)):
-            b_idx = min_bidx + idx
-            stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
-                               + ".npz")
-
-            # Load data
-            data = np.load(stats_data_path)
-            results_y_list = data[f"{feat_name}_results_beta"]
-
-            unique_values_feat = results_y_list[num_transient_steps:, feat]
-            unique_values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
-                                                                     filter_idx, filtering_range)
-            dec = 3
-            unique_values_feat = np.unique(np.round(unique_values_feat, decimals=dec))
-            unique_values_feat_filtered = np.unique(np.round(unique_values_feat_filtered, decimals=dec))
-
-            beta_values_feat = np.ones(len(unique_values_feat)) * x_list[b_idx]
-            beta_values_feat_filtered = np.ones(len(unique_values_feat_filtered)) * x_list[b_idx]
-
-            local_ax.plot(beta_values_feat, unique_values_feat, c=colors[2], ls='', marker='.', ms='0.05')
-
-            if len(unique_values_feat) < filter_periodic:
-                local_ax.plot(beta_values_feat, unique_values_feat, c=colors[1], ls='',
-                              marker='.', ms='0.5')  # Periodic
-            else:
-                local_ax.plot(beta_values_feat_filtered, unique_values_feat_filtered, c=colors[0], ls='',
-                              marker='.', ms='0.5')  # Other
-
-        local_ax.plot(0.1, 0, 'o', c=colors[1], label="Periodic")
-        local_ax.plot(0.1, 0, 'o', c=colors[0], label="Other")
-        local_ax.plot(0.1, 0, 'o', c="w")
-
-
-        if feat_name != "att" and x_list[-1] > 3.5:
-            local_ax.set_ylim(-1, 1)
-
-        local_ax.set_xlim(x_list[0], x_list[-1])
-        local_ax.set_xlim(x_list[0], x_list[-1])
-
-
-        if num_feat_patterns == 3:
-            local_ax.set_xlabel(x_label)
-        elif feat > num_feat_patterns-3:
-            local_ax.set_xlabel(x_label)
-
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$")
-        local_ax.legend(loc="upper left")
-
-    # fig.tight_layout(pad=0.1)
-    if title is not None:
-        fig.suptitle(title)
-
-    if save_not_plot:
-        fig.savefig(save_path)
-    else:
-        plt.show()
-    plt.close()
-
-
-def compute_max_min(x_list, folder_path, min_bidx, feat_name):
-    """
-    Computes the max and min values for all the betas
-    """
-    max_y = - np.inf
-    min_y = np.inf
-    for idx in range(len(x_list)):
-        b_idx = min_bidx + idx
-        stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
-                           + ".npz")
-
-        # Load data
-        data = np.load(stats_data_path)
-        results_y_list = data[f"{feat_name}_results_beta"]
-        local_min = np.min(results_y_list)
-        local_max = np.max(results_y_list)
-        if local_min < min_y:
-            min_y = local_min
-        if local_max > max_y:
-            max_y = local_max
-
-    return min_y, max_y
 
 def create_imshow_array(x_list, folder_path, min_bidx, feat_name, num_transient_steps, feat, y_resolution, max_y):
 
     # Creates array for imshow
-
-    im_array = np.ones((y_resolution, len(x_list), 4)) * colors[-1] # By default, white color
+    white = [(1.0, 1.0, 1.0, 1.0)]
+    im_array = np.ones((y_resolution, len(x_list), 4)) * white # By default, white color
 
     for idx in range(len(x_list)):
         b_idx = min_bidx + idx
@@ -329,195 +57,98 @@ def create_imshow_array(x_list, folder_path, min_bidx, feat_name, num_transient_
 
     return im_array
 
-def get_filtered_values_by_beta_seq(results_y_list, feature_to_filter_idx, filter_by_feature_idx, num_transient_steps,
-                                filtering_range=0.05):
-    """
-    Function to compute the intersection with the 0 plane.
-    """
-
-    y_resolution = 5001
-
-    values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feature_to_filter_idx,
-                                                      filter_by_feature_idx, filtering_range)
-
-    values_feat_filtered_quantized = (np.unique((y_resolution * (values_feat_filtered + 1) / 2).astype(int))
-                                      / y_resolution * 2 - 1)
-
-    values_feat = results_y_list[num_transient_steps:, feature_to_filter_idx]
-    values_feat_quantized = (np.unique((y_resolution * (values_feat + 1) / 2).astype(int))
-                             / y_resolution * 2 - 1)
-
-    unique_filtered_len = len(values_feat_filtered_quantized)
-    unique_len = len(values_feat_quantized)
-
-    return unique_filtered_len, unique_len
-
-def get_filtered_values_by_beta(idx, folder_path, min_bidx, feat_name,
-                        num_transient_steps, feat, y_resolution, filter_idx, filtering_range, max_y):
-    """
-    Function to compute the intersection with the 0 plane.
-    """
-
-    b_idx = min_bidx + idx
-    stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
-                       + ".npz")
-
-    # Load data
-    data = np.load(stats_data_path)
-    results_y_list = data[f"{feat_name}_results_beta"]
-
-    values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
-                                                      filter_idx, filtering_range)
-
-    values_feat_filtered_quantized = (np.unique((y_resolution * (values_feat_filtered / max_y + 1) / 2).astype(int))
-                                      / y_resolution * 2 - 1) * max_y
-
-    values_feat = results_y_list[num_transient_steps:, feat]
-    values_feat_quantized = (np.unique((y_resolution * (values_feat / max_y + 1) / 2).astype(int))
-                             / y_resolution * 2 - 1) * max_y
-    unique_len = len(values_feat_quantized)
-
-    return values_feat_filtered_quantized, values_feat_quantized, unique_len
-
-
-def plot_filtered_bifurcation_diagram_par_imshow(filter_idx, x_list, num_feat_patterns,
-                                                 save_path, num_transient_steps, feat_name,
-                                                 folder_path,
-                                                 filtering_range=0.05,
-                                                 show_max_num_patterns=None, save_not_plot=True, title=None,
-                                                 is_beta=True, min_bidx=0, show_1_feat=None,
-                                                 filter_periodic=80):
+def plot_bifurcation_diagram(feat_to_plot, x_list, num_transient_steps, feat_name, stats_folder_path, local_ax,
+                             min_y, max_y,
+                             x_label=r'$\beta$', min_bidx=0):
     """
     Plots a bifurcation diagram
-    :param filter_idx: The feature by which we'll do the 0 plane intersection
+    :param feat_to_plot: id of the feature for which to plot the bifurcation diagram
     :param x_list: x domain values. Usually betas.
-    :param num_feat_patterns: Number of patterns to plot
-    :param save_path: Plot save path.
     :param num_transient_steps: Number of transient steps
-    :param feat_name: Feat. name. For plotting purposes.
-    :param folder_path: Folder path in which we saved the results.
-    :param filtering_range: Error band for the 0 plane filter
-    :param show_max_num_patterns: Max number of patterns we want to plot
-    :param save_not_plot: True save. False plot.
-    :param title: Title of the figure.
-    :param is_beta: If x_list is beta.
-    :param min_bidx:
-    :param show_1_feat: If set, it will only show the selected feat in the figure
+    :param feat_name: Feature name. For plotting purposes.
+    :param stats_folder_path: Folder path in which we saved the results.
+    :param local_ax: fig axes in which we plot the bifurcation diagram.
+    :param min_y: min value of `feat_to_plot`.
+    :param max_y: max absolute value of `feat_to_plot` in the whole bifurcation diagram.
+    :param x_label: label associated with the x axis.
+    :param min_bidx: min index of the x_values list to be plotted.
+    """
+
+    abs_max_y = max(abs(min_y), abs(max_y))
+
+    y_resolution_im = 7001
+
+    # 1 - First plot all the quantized values for all x values
+    im_array = create_imshow_array(x_list, stats_folder_path, min_bidx,
+                                   feat_name, num_transient_steps, feat_to_plot, y_resolution_im, abs_max_y)
+
+    local_ax.imshow(im_array, cmap=cmap, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y],
+                    rasterized=True, aspect="auto", alpha=1)
+    local_ax.set_aspect("auto")
+
+
+    # Set x label
+    local_ax.set_xlabel(x_label)
+
+    # Get the feature name nice to plot
+    latex_str = feat_name_to_latex(feat_name)
+    # Rotate y label
+    kwargs = {}
+    kwargs["rotation"] = "horizontal"
+    kwargs["verticalalignment"] = "center"
+    labelpad = 34
+    local_ax.set_ylabel(fr"${latex_str}_{{{feat_to_plot + 1},t}}$", labelpad=labelpad, **kwargs)
+
+    # Plot only the legend in the zoomed in version of the beta's bifurcation diagram
+    if x_list[-1] < 3:
+        local_ax.legend(loc="upper left")
+
+
+def filter_bifurcation_diagram_by_couting(x_list, x_idx_to_filter, values_feat_filtered_quantized, values_feat_quantized,
+                                       unique_len, local_ax, filter_periodic=80):
+    """
+    Plots a bifurcation diagram
+    :param x_list: x domain values. Usually betas.
+    :param x_idx_to_filter: x value to filter
+    :param values_feat_filtered_quantized: y values filtered after quantization
+    :param values_feat_quantized: y values quantized
+    :param unique_len: number of unique y values
+    :param local_ax:
     :param filter_periodic: Number of steps by which we consider some beta has a periodic behavior.
     """
 
-    # Plot show_max_num_patterns subfigures if defined
-    if (show_max_num_patterns is not None):
-        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+    # 2- Then, apply a plane intersection filter
+    # Step 1 and 2 are done separately to avoid memory issues
 
-    feat_list = np.arange(num_feat_patterns)
-    if show_1_feat is not None:
-        feat_list = [show_1_feat]
-        num_feat_patterns = 1
 
-    nrows = (num_feat_patterns + 1) // 2
+    beta_values_feat = np.ones(len(values_feat_quantized)) * x_list[x_idx_to_filter]
+    beta_values_quantized_feat = np.ones(len(values_feat_filtered_quantized)) * x_list[x_idx_to_filter]
 
-    col_size = 5
-    row_size = 4
-    dpi = 250
-    if num_feat_patterns == 1:
-        fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
-    elif num_feat_patterns == 3:
-        fig, ax = plt.subplots(1, 3, figsize=(col_size*num_feat_patterns, row_size),
-                               constrained_layout=True, dpi=dpi)
+    ms = 0.08  # Markersize
+
+    if unique_len < filter_periodic:
+        local_ax.plot(beta_values_feat, values_feat_quantized, c=cmap(3 / 3), ls='',
+                      marker=',', ms=ms, rasterized=True)  # Periodic
+    elif unique_len < 2500:
+        local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(1.5 / 4), ls='',
+                      marker='.', ms=ms, rasterized=True)  # Quasi
     else:
-        fig, ax = plt.subplots(nrows, 2, figsize=(col_size*2, row_size * nrows), constrained_layout=True, dpi=dpi)
+        local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(2.5 / 4), ls='',
+                      marker='.', ms=ms, rasterized=True)  # Chaos
 
-    latex_str = feat_name_to_latex(feat_name)
-    x_label = r'$\beta$'
-    if not is_beta:
-        x_label = r'$SE\%$'
+    # Plot tiny points outside the map for the legend.
+    local_ax.plot(20, 0, 'o', c=cmap(3 / 3), label="periodic")
+    local_ax.plot(20, 0, 'o', c=cmap(1.5 / 4), label="quasi-periodic")
+    local_ax.plot(20, 0, 'o', c=cmap(2.5 / 4), label="chaotic")
+    local_ax.set_xlim([x_list[0], x_list[-1]])
 
-    for feat_id in range(0, num_feat_patterns):
-        feat = feat_list[feat_id]
+    # Plot only the legend in the zoomed in version of the beta's bifurcation diagram
+    if x_list[-1] < 3:
+        local_ax.legend(loc="upper left")
 
-        row = feat // 2
-        if num_feat_patterns == 1:
-            local_ax = ax
-        elif num_feat_patterns == 2:
-            local_ax = ax[feat % 2]
-        elif num_feat_patterns == 3:
-            local_ax = ax[feat % 3]
-        else:
-            local_ax = ax[row, feat % 2]
+    # Return values in case some function needs it for further analysis
+    return values_feat_quantized, values_feat_filtered_quantized
 
-
-        # Compute min max range to define the im_array properly
-        min_y, max_y = compute_max_min(x_list, folder_path, min_bidx, feat_name)
-
-        max_y = max(abs(min_y), abs(max_y))
-
-        y_resolution_im = 7001
-        y_resolution_plot = 5001
-
-        # 1 - First plot all the quantized values for all betas
-        im_array = create_imshow_array(x_list, folder_path, min_bidx,
-                                       feat_name, num_transient_steps, feat, y_resolution_im, max_y)
-
-        local_ax.imshow(im_array, cmap=cmap, interpolation=None, extent=[x_list[0], x_list[-1], -min_y, min_y],
-                        rasterized=True, aspect="auto", alpha=1)
-        local_ax.set_aspect("auto")
-
-        # 2- Then, apply a plane intersection filter
-        # Step 1 and 2 are done separately to avoid memory issues
-        periodic_values_feat_list = {}
-        filtered_values_feat_list = {}
-        for idx in range(len(x_list)):
-            values_feat_filtered_quantized, values_feat_quantized, unique_len = \
-                (get_filtered_values_by_beta(idx, folder_path, min_bidx,
-                                             feat_name, num_transient_steps, feat, y_resolution_plot, filter_idx,
-                                             filtering_range, max_y))
-
-            beta_values_feat = np.ones(len(values_feat_quantized)) * x_list[idx]
-            beta_values_quantized_feat = np.ones(len(values_feat_filtered_quantized)) * x_list[idx]
-
-            periodic_values_feat_list[idx] = values_feat_quantized
-            filtered_values_feat_list[idx] = values_feat_filtered_quantized
-
-            ms = 0.08 # Markersize
-
-            if unique_len < filter_periodic:
-                local_ax.plot(beta_values_feat, values_feat_quantized, c=cmap(3/3), ls='',
-                              marker=',', ms=ms, rasterized=True)  # Periodic
-            elif unique_len < 2500:
-                local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(1.5/4), ls='',
-                              marker='.', ms=ms, rasterized=True)  # Quasi
-            else:
-                local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(2.5/4), ls='',
-                              marker='.', ms=ms, rasterized=True)  # Chaos
-
-        # Plot tiny points outside the map for the legend.
-        local_ax.plot(20, 0, 'o', c=cmap(3/3), label="periodic")
-        local_ax.plot(20, 0, 'o', c=cmap(1.5/4), label="quasi-periodic")
-        local_ax.plot(20, 0, 'o', c=cmap(2.5/4), label="chaotic")
-        local_ax.set_xlim([x_list[0], x_list[-1]])
-        local_ax.set_xlabel(x_label)
-
-        # Rotate y label
-        kwargs = {}
-        kwargs["rotation"] = "horizontal"
-        kwargs["verticalalignment"] = "center"
-        labelpad = 34
-        local_ax.set_ylabel(fr"${latex_str}_{{{feat+1},t}}$", labelpad=labelpad, **kwargs)
-
-        # Plot only the legend in the zoomed in version of the beta's bifurcation diagram
-        if x_list[-1] < 3:
-            local_ax.legend(loc="upper left")
-
-    # fig.tight_layout(pad=0.1)
-    if title is not None:
-        fig.suptitle(title)
-
-    if save_not_plot:
-        fig.savefig(save_path, bbox_inches='tight')
-    else:
-        plt.show()
-    plt.close()
 
 def plot_phase_diagram(unique_matrix, unique_filtered_matrix, att_values_list, out_values_list, save_path):
 
@@ -563,7 +194,6 @@ def plot_phase_diagram(unique_matrix, unique_filtered_matrix, att_values_list, o
 
 
     plt.close()
-
 
 
 def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_steps, label_tag,

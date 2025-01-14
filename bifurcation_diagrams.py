@@ -2,12 +2,12 @@ import numpy as np
 from models.Embedding import Embedding
 from models.HopfieldSelfAttentionNNMFInfNPE import HopfieldSelfAttentionNNMFInfNPE
 from models.HopfieldSelfAttentionNNMFPE import HopfieldSelfAttentionNNMFPE
-from plotting.plotting import plot_filtered_bifurcation_diagram_par_imshow
+from plotting.plotting import (plot_save_plane, plot_lyapunov_graphs, plot_bifurcation_lyapunov, plot_bifurcation_diagram,
+                               filter_bifurcation_diagram_by_couting)
 import os
 import time
 import copy
 from utils import create_dir, create_dir_from_filepath, load_context
-from plotting.plotting import plot_save_plane, plot_lyapunov_graphs, plot_bifurcation_lyapunov
 import matplotlib.pyplot as plt
 import yaml
 import datetime
@@ -257,10 +257,85 @@ def plot_lowres_lyapunov(S_i_sum, worker_values_list, beta_idx, cfg,
 
     create_dir_from_filepath(plot_save_path_lya)
 
-
     # Plot lyapunov related statistics
     plot_lyapunov_graphs(S_i_sum, cfg, worker_values_list[beta_idx],
                          save_not_plot=True, save_path=plot_save_path_lya, lowres=True)
+
+def compute_max_min(x_list, folder_path, min_bidx, feat_name):
+    """
+    Computes the max and min values for all the betas
+    """
+    max_y = - np.inf
+    min_y = np.inf
+    for idx in range(len(x_list)):
+        b_idx = min_bidx + idx
+        stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
+                           + ".npz")
+
+        # Load data
+        data = np.load(stats_data_path)
+        results_y_list = data[f"{feat_name}_results_beta"]
+        local_min = np.min(results_y_list)
+        local_max = np.max(results_y_list)
+        if local_min < min_y:
+            min_y = local_min
+        if local_max > max_y:
+            max_y = local_max
+
+    return min_y, max_y
+
+def filter_y_values_by_0_plane(results_y_list, feat, filter_idx, filtering_range):
+    filtering_values = results_y_list[:, filter_idx]
+    zero_intersect = np.where(np.logical_and(filtering_values >= -filtering_range,
+                                             filtering_values <= filtering_range))[0]
+    return results_y_list[zero_intersect, feat]
+
+def get_0_plane_filter_intersection(idx, folder_path, min_bidx, feat_name,
+                        num_transient_steps, feat, y_resolution, filter_idx, filtering_range, max_y):
+    """
+    Function to compute the intersection with the 0 plane for each x value.
+    """
+
+    b_idx = min_bidx + idx
+    stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx)
+                       + ".npz")
+
+    # Load data
+    data = np.load(stats_data_path)
+    results_y_list = data[f"{feat_name}_results_beta"]
+
+    values_feat_filtered = filter_y_values_by_0_plane(results_y_list[num_transient_steps:], feat,
+                                                      filter_idx, filtering_range)
+
+    values_feat_filtered_quantized = (np.unique((y_resolution * (values_feat_filtered / max_y + 1) / 2).astype(int))
+                                      / y_resolution * 2 - 1) * max_y
+
+    values_feat = results_y_list[num_transient_steps:, feat]
+    values_feat_quantized = (np.unique((y_resolution * (values_feat / max_y + 1) / 2).astype(int))
+                             / y_resolution * 2 - 1) * max_y
+    unique_len = len(values_feat_quantized)
+
+    return values_feat_filtered_quantized, values_feat_quantized, unique_len
+
+
+def filter_bifurcation_diagram(beta_list_to_plot, beta_idx_to_filter, min_beta_idx, exp_dir, stat_name,
+                               num_transient_steps_plot_arg, feat_to_plot, filter_by_feat, filtering_range, max_y,
+                               local_ax):
+
+    y_resolution_filtered_plot = 5001
+    # Filter y values of `feat_to_plot` py 0 plane of `filter_by_feat`
+    values_feat_filtered_quantized, values_feat_quantized, unique_len = \
+        (get_0_plane_filter_intersection(beta_idx_to_filter, exp_dir, min_beta_idx,
+                                         stat_name, num_transient_steps_plot_arg, feat_to_plot,
+                                         y_resolution_filtered_plot, filter_by_feat,
+                                         filtering_range, max_y))
+
+    # Old heuristic: if the number of different quantized points is < 80, assume it's periodic
+    filter_periodic = 80
+    filter_bifurcation_diagram_by_couting(beta_list_to_plot, beta_idx_to_filter,
+                                          values_feat_filtered_quantized, values_feat_quantized,
+                                          unique_len, local_ax, filter_periodic=filter_periodic)
+
 
 def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     """
@@ -426,19 +501,20 @@ def plotter(worker_values_list, cfg, exp_dir,
     filtering_range = cfg["filtering_range"]
 
     # Get the requested list of betas
-    filtered_beta_list = worker_values_list[min_beta_idx:max_beta_idx]
-
-    show_max_num_patterns = 6  # Just important if we are plotting more than 6 features at the same time
-
-    # If `show_1_feat` is defined it will only plot one feature at a time.
-    # The value of the list is the index of the feature to plot.
-    show_1_feat = [1, 0, 0]
-    # show_1_feat = [None, None, None]
-    # Load each stat and plot/save it
+    beta_list_to_plot = worker_values_list[min_beta_idx:max_beta_idx]
 
     # Hardcoded, :(, select what you want to plot
-    # operations = ["bifurcation", "lyapunov"]
-    operations = ["lyapunov"]
+    operations = ["bifurcation", "lyapunov"]
+    # operations = ["lyapunov"]
+
+    ###############################
+    # Plot the bifurcation diagrams
+    ###############################
+
+    # The value of the list is the index of the feature to plot.
+    feat_to_plot_list = [0, 0, 1, 2]
+    filter_by_feat_list = [1, 2, 0, 0]
+
     if "bifurcation" in operations:
         for stat_name in stats_to_save_plot:
 
@@ -446,8 +522,11 @@ def plotter(worker_values_list, cfg, exp_dir,
             if cfg["save_not_plot"] and (not os.path.exists(exp_dir + f"/{stat_name}/")):
                 os.makedirs(exp_dir + f"/{stat_name}/")
 
-            # filter_idx defines what feature we are using for intersecting with 0.
-            for filter_idx in range(cfg["num_feat_patterns"]):
+            for plot_i in range(len(feat_to_plot_list)):
+                # The feature for which we are computing the bifurcation diagram
+                feat_to_plot = feat_to_plot_list[plot_i]
+                # The feature we use for intersection with the 0 plane
+                filter_by_feat = filter_by_feat_list[plot_i]
 
                 # Title for internal use
                 if show_title:
@@ -459,20 +538,46 @@ def plotter(worker_values_list, cfg, exp_dir,
                     title = None
 
                 # Save path
-                filtered_save_path = (exp_dir + f"/{stat_name}/" +
-                                      "transient_steps-" + str(cfg["num_transient_steps"]) + "-filter_idx-" + str(filter_idx) +
-                                      "-filter_rg-" + str(filtering_range) + image_format)
+                filtered_plot_save_path = (exp_dir + f"/{stat_name}/" +
+                                           "transient_steps-" + str(cfg["num_transient_steps"]) +
+                                           "-filter_idx-" + str(filter_by_feat) +
+                                           "-filter_rg-" + str(filtering_range) + image_format)
 
                 # Plotting and saving
                 print("Creating and saving diagram")
-                plot_filtered_bifurcation_diagram_par_imshow(filter_idx, filtered_beta_list, cfg["num_feat_patterns"],
-                                                             filtered_save_path, num_transient_steps_plot_arg,
-                                                             stat_name, exp_dir,
-                                                             filtering_range=filtering_range,
-                                                             show_max_num_patterns=show_max_num_patterns,
-                                                             save_not_plot=cfg["save_not_plot"], title=title,
-                                                             show_1_feat=show_1_feat[filter_idx])
 
+                col_size = 5
+                row_size = 4
+                dpi = 250
+                # Using subplot to generalize the behavior if we want to compute a more complex plot
+                fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
+
+                # Compute min max range to define the im_array properly
+                min_y, max_y = compute_max_min(beta_list_to_plot, exp_dir, min_beta_idx, stat_name)
+
+                # Plot basic bifurcation diagram
+                plot_bifurcation_diagram(feat_to_plot, beta_list_to_plot, num_transient_steps_plot_arg, stat_name,
+                                         exp_dir, ax, min_y, max_y, x_label=r'$\beta$', min_bidx=min_beta_idx)
+
+
+
+                # Filter the bifurcation diagram
+                for beta_idx_to_filter in range(len(beta_list_to_plot)):
+                    filter_bifurcation_diagram(beta_list_to_plot, beta_idx_to_filter, min_beta_idx, exp_dir, stat_name,
+                               num_transient_steps_plot_arg, feat_to_plot, filter_by_feat, filtering_range, max_y,
+                               ax)
+
+                if title is not None:
+                    fig.suptitle(title)
+
+                if cfg["save_not_plot"]:
+                    fig.savefig(filtered_plot_save_path, bbox_inches='tight')
+                else:
+                    plt.show()
+
+    ####################################################
+    # Plot the stats related with the Lyapunov exponents
+    ####################################################
 
     if "lyapunov" in operations:
         lya_hist_save_basepath = (exp_dir + f"/Lyapunov/")
@@ -480,7 +585,7 @@ def plotter(worker_values_list, cfg, exp_dir,
         if cfg["save_not_plot"] and (not os.path.exists(lya_hist_save_basepath)):
             os.makedirs(lya_hist_save_basepath)
 
-        plot_bifurcation_lyapunov(filtered_beta_list, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_basepath,
+        plot_bifurcation_lyapunov(beta_list_to_plot, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_basepath,
                       save_not_plot=cfg["save_not_plot"], title=None, min_bidx=min_beta_idx)
 
 
