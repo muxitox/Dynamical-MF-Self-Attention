@@ -245,7 +245,6 @@ def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_for
                         stat_results_beta_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx[plot_i],
                         flat_ax[plot_i], tag_names=stats_to_plot[plot_i])
 
-    print("saving", plot_save_path_plane)
     fig.savefig(plot_save_path_plane, bbox_inches='tight')
 
     plt.close(fig)
