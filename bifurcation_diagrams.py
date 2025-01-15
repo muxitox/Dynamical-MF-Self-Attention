@@ -494,6 +494,8 @@ def plotter(worker_values_list, cfg, exp_dir,
     else:
         num_transient_steps_plot_arg = 0
 
+    save_not_plot = cfg["save_not_plot"] # If true -> saves, if false -> plots
+
     # image_format = ".jpeg"
     image_format = ".pdf"
 
@@ -519,7 +521,7 @@ def plotter(worker_values_list, cfg, exp_dir,
         for stat_name in stats_to_save_plot:
 
             # Create folder if it does not exist and we are saving the image
-            if cfg["save_not_plot"] and (not os.path.exists(exp_dir + f"/{stat_name}/")):
+            if save_not_plot and (not os.path.exists(exp_dir + f"/{stat_name}/")):
                 os.makedirs(exp_dir + f"/{stat_name}/")
 
             for plot_i in range(len(feat_to_plot_list)):
@@ -570,7 +572,7 @@ def plotter(worker_values_list, cfg, exp_dir,
                 if title is not None:
                     fig.suptitle(title)
 
-                if cfg["save_not_plot"]:
+                if save_not_plot:
                     fig.savefig(filtered_plot_save_path, bbox_inches='tight')
                 else:
                     plt.show()
@@ -582,11 +584,11 @@ def plotter(worker_values_list, cfg, exp_dir,
     if "lyapunov" in operations:
         lya_hist_save_basepath = (exp_dir + f"/Lyapunov/")
 
-        if cfg["save_not_plot"] and (not os.path.exists(lya_hist_save_basepath)):
+        if save_not_plot and (not os.path.exists(lya_hist_save_basepath)):
             os.makedirs(lya_hist_save_basepath)
 
         plot_bifurcation_lyapunov(beta_list_to_plot, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_basepath,
-                      save_not_plot=cfg["save_not_plot"], title=None, min_bidx=min_beta_idx)
+                      save_not_plot=save_not_plot, title=None, min_bidx=min_beta_idx)
 
 
 
