@@ -233,7 +233,7 @@ def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_for
     # Define the index of the features you want to compare against each other
     feat_idx = [[0, 1], [0, 2], [1, 2], [0, 1], [0, 2], [1, 2]]
 
-    flat_ax = ax.flatten()
+    flat_ax = ax.ravel()
 
     for plot_i in range(len(flat_ax)):
         # Load needed statistics
@@ -241,8 +241,8 @@ def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_for
         stat_results_beta_1 = data[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][1]]
 
         plot_save_plane(stat_results_beta_0,
-                        stat_results_beta_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx[plot_i], ax,
-                        tag_names=stats_to_plot[plot_i])
+                        stat_results_beta_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx[plot_i],
+                        flat_ax[plot_i], tag_names=stats_to_plot[plot_i])
 
         fig.savefig(plot_save_path_plane, bbox_inches='tight')
 
@@ -495,6 +495,7 @@ def plotter(worker_values_list, cfg, exp_dir,
         num_transient_steps_plot_arg = 0
 
     save_not_plot = cfg["save_not_plot"] # If true -> saves, if false -> plots
+    save_not_plot = False
 
     # image_format = ".jpeg"
     image_format = ".pdf"
@@ -546,7 +547,7 @@ def plotter(worker_values_list, cfg, exp_dir,
                                            "-filter_rg-" + str(filtering_range) + image_format)
 
                 # Plotting and saving
-                print("Creating and saving diagram")
+                print("Creating and saving/plotting diagram")
 
                 col_size = 5
                 row_size = 4
@@ -561,10 +562,14 @@ def plotter(worker_values_list, cfg, exp_dir,
                 plot_bifurcation_diagram(feat_to_plot, beta_list_to_plot, num_transient_steps_plot_arg, stat_name,
                                          exp_dir, ax, min_y, max_y, x_label=r'$\beta$', min_bidx=min_beta_idx)
 
+                if not save_not_plot:
+                    print("Plotting bifurcation diagram before filtering")
+                    plt.show()
 
-
-                # Filter the bifurcation diagram
+                # Filter the bifurcation diagram using counting mechanisms
                 for beta_idx_to_filter in range(len(beta_list_to_plot)):
+                    if beta_idx_to_filter % 100 == 0:
+                        print(f"Filtering {beta_idx_to_filter + 1}/{len(beta_list_to_plot)}")
                     filter_bifurcation_diagram(beta_list_to_plot, beta_idx_to_filter, min_beta_idx, exp_dir, stat_name,
                                num_transient_steps_plot_arg, feat_to_plot, filter_by_feat, filtering_range, max_y,
                                ax)
@@ -575,6 +580,7 @@ def plotter(worker_values_list, cfg, exp_dir,
                 if save_not_plot:
                     fig.savefig(filtered_plot_save_path, bbox_inches='tight')
                 else:
+                    print("Plotting filtered bifurcation diagram")
                     plt.show()
 
     ####################################################
@@ -587,6 +593,7 @@ def plotter(worker_values_list, cfg, exp_dir,
         if save_not_plot and (not os.path.exists(lya_hist_save_basepath)):
             os.makedirs(lya_hist_save_basepath)
 
+        print("Creating and saving/plotting lyapunov statistics")
         plot_bifurcation_lyapunov(beta_list_to_plot, cfg["num_feat_patterns"], cfg["context_size"], exp_dir, lya_hist_save_basepath,
                       save_not_plot=save_not_plot, title=None, min_bidx=min_beta_idx)
 

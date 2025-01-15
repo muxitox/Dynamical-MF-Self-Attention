@@ -100,9 +100,6 @@ def plot_bifurcation_diagram(feat_to_plot, x_list, num_transient_steps, feat_nam
     labelpad = 34
     local_ax.set_ylabel(fr"${latex_str}_{{{feat_to_plot + 1},t}}$", labelpad=labelpad, **kwargs)
 
-    # Plot only the legend in the zoomed in version of the beta's bifurcation diagram
-    if x_list[-1] < 3:
-        local_ax.legend(loc="upper left")
 
 
 def filter_bifurcation_diagram_by_couting(x_list, x_idx_to_filter, values_feat_filtered_quantized, values_feat_quantized,
@@ -690,7 +687,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     dpi = 250
     # Then plot histogram of the 3 main features
     fig, ax = plt.subplots(num_feat_patterns, 1, figsize=(col_size, row_size), dpi=dpi, constrained_layout=True)
-    flat_ax = ax.flatten()
+    flat_ax = ax.ravel()
 
     for i in range(num_feat_patterns):
         flat_ax[i].hist(S_array[:, i], bins=200)
@@ -703,7 +700,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     num_other_feats = num_valid_dims - num_feat_patterns
     row_size = 16
     fig, ax = plt.subplots(num_other_feats, 1, figsize=(col_size, row_size), dpi=dpi)
-    flat_ax = ax.flatten()
+    flat_ax = ax.ravel()
 
     for i in range(num_other_feats):
         flat_ax[i].hist(S_array[1:, i + num_feat_patterns], bins=200)
