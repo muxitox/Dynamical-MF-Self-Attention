@@ -324,17 +324,25 @@ def filter_bifurcation_diagram(beta_list_to_plot, beta_idx_to_filter, min_beta_i
 
     y_resolution_filtered_plot = 5001
     # Filter y values of `feat_to_plot` py 0 plane of `filter_by_feat`
+    # start = time.time()
     values_feat_filtered_quantized, values_feat_quantized, unique_len = \
         (get_0_plane_filter_intersection(beta_idx_to_filter, exp_dir, min_beta_idx,
                                          stat_name, num_transient_steps_plot_arg, feat_to_plot,
                                          y_resolution_filtered_plot, filter_by_feat,
                                          filtering_range, max_y))
+    # end = time.time()
+    # print("filter time", end - start)
+
+    # import pdb; pdb.set_trace()
 
     # Old heuristic: if the number of different quantized points is < 80, assume it's periodic
     filter_periodic = 80
+    # start = time.time()
     filter_bifurcation_diagram_by_couting(beta_list_to_plot, beta_idx_to_filter,
                                           values_feat_filtered_quantized, values_feat_quantized,
                                           unique_len, local_ax, filter_periodic=filter_periodic)
+    # end = time.time()
+    # print("plot time", end - start)
 
 
 def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
@@ -495,7 +503,6 @@ def plotter(worker_values_list, cfg, exp_dir,
         num_transient_steps_plot_arg = 0
 
     save_not_plot = cfg["save_not_plot"] # If true -> saves, if false -> plots
-    save_not_plot = False
 
     # image_format = ".jpeg"
     image_format = ".pdf"
@@ -543,7 +550,8 @@ def plotter(worker_values_list, cfg, exp_dir,
                 # Save path
                 filtered_plot_save_path = (exp_dir + f"/{stat_name}/" +
                                            "transient_steps-" + str(cfg["num_transient_steps"]) +
-                                           "-filter_idx-" + str(filter_by_feat) +
+                                           "-feat_idx-" + str(feat_to_plot) +
+                                           "-filter_by_idx-" + str(filter_by_feat) +
                                            "-filter_rg-" + str(filtering_range) + image_format)
 
                 # Plotting and saving
@@ -562,13 +570,12 @@ def plotter(worker_values_list, cfg, exp_dir,
                 plot_bifurcation_diagram(feat_to_plot, beta_list_to_plot, num_transient_steps_plot_arg, stat_name,
                                          exp_dir, ax, min_y, max_y, x_label=r'$\beta$', min_bidx=min_beta_idx)
 
-                if not save_not_plot:
-                    print("Plotting bifurcation diagram before filtering")
-                    plt.show()
 
                 # Filter the bifurcation diagram using counting mechanisms
                 for beta_idx_to_filter in range(len(beta_list_to_plot)):
-                    if beta_idx_to_filter % 100 == 0:
+
+                    filtering_log_inter = 500
+                    if beta_idx_to_filter % filtering_log_inter == 0:
                         print(f"Filtering {beta_idx_to_filter + 1}/{len(beta_list_to_plot)}")
                     filter_bifurcation_diagram(beta_list_to_plot, beta_idx_to_filter, min_beta_idx, exp_dir, stat_name,
                                num_transient_steps_plot_arg, feat_to_plot, filter_by_feat, filtering_range, max_y,
@@ -581,7 +588,7 @@ def plotter(worker_values_list, cfg, exp_dir,
                     fig.savefig(filtered_plot_save_path, bbox_inches='tight')
                 else:
                     print("Plotting filtered bifurcation diagram")
-                    plt.show()
+                    fig.show()
 
     ####################################################
     # Plot the stats related with the Lyapunov exponents
