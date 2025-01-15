@@ -226,6 +226,7 @@ def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_for
     dpi = 17
     fig, ax = plt.subplots(nrows, ncols, figsize=(8 * ncols, 8), constrained_layout=True, dpi=dpi)
 
+    feat_suffix = "_results_beta"
     # Define the statistics you want to plot against each other
     # In this case the feature mo with only the semantic information
     stats_to_plot = [["mo_se", "mo_se"], ["mo_se", "mo_se"], ["mo_se", "mo_se"],
@@ -237,14 +238,17 @@ def plot_lowres_planes(worker_values_list, beta_idx, cfg, folder_path, image_for
 
     for plot_i in range(len(flat_ax)):
         # Load needed statistics
-        stat_results_beta_0 = data[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][0]]
-        stat_results_beta_1 = data[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][1]]
+        stat_results_beta_0 = data[stats_to_plot[plot_i][0] + feat_suffix][:, feat_idx[plot_i][0]]
+        stat_results_beta_1 = data[stats_to_plot[plot_i][1] + feat_suffix][:, feat_idx[plot_i][1]]
 
         plot_save_plane(stat_results_beta_0,
                         stat_results_beta_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx[plot_i],
                         flat_ax[plot_i], tag_names=stats_to_plot[plot_i])
 
-        fig.savefig(plot_save_path_plane, bbox_inches='tight')
+    print("saving", plot_save_path_plane)
+    fig.savefig(plot_save_path_plane, bbox_inches='tight')
+
+    plt.close(fig)
 
 
 def plot_lowres_lyapunov(S_i_sum, worker_values_list, beta_idx, cfg,
