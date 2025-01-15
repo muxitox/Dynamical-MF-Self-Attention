@@ -119,30 +119,33 @@ def filter_bifurcation_diagram_by_couting(x_list, x_idx_to_filter, values_feat_f
     # Step 1 and 2 are done separately to avoid memory issues
 
 
-    beta_values_feat = np.ones(len(values_feat_quantized)) * x_list[x_idx_to_filter]
-    beta_values_quantized_feat = np.ones(len(values_feat_filtered_quantized)) * x_list[x_idx_to_filter]
+    x_values_feat = np.ones(len(values_feat_quantized)) * x_list[x_idx_to_filter]
+    x_values_quantized_feat = np.ones(len(values_feat_filtered_quantized)) * x_list[x_idx_to_filter]
 
     ms = 0.08  # Markersize
 
     if unique_len < filter_periodic:
-        local_ax.plot(beta_values_feat, values_feat_quantized, c=cmap(3 / 3), ls='',
+        local_ax.plot(x_values_feat, values_feat_quantized, c=cmap(3 / 3), ls='',
                       marker=',', ms=ms, rasterized=True)  # Periodic
     elif unique_len < 2500:
-        local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(1.5 / 4), ls='',
+        local_ax.plot(x_values_quantized_feat, values_feat_filtered_quantized, c=cmap(1.5 / 4), ls='',
                       marker='.', ms=ms, rasterized=True)  # Quasi
     else:
-        local_ax.plot(beta_values_quantized_feat, values_feat_filtered_quantized, c=cmap(2.5 / 4), ls='',
+        local_ax.plot(x_values_quantized_feat, values_feat_filtered_quantized, c=cmap(2.5 / 4), ls='',
                       marker='.', ms=ms, rasterized=True)  # Chaos
 
-    # Plot tiny points outside the map for the legend.
-    local_ax.plot(20, 0, 'o', c=cmap(3 / 3), label="periodic")
-    local_ax.plot(20, 0, 'o', c=cmap(1.5 / 4), label="quasi-periodic")
-    local_ax.plot(20, 0, 'o', c=cmap(2.5 / 4), label="chaotic")
-    local_ax.set_xlim([x_list[0], x_list[-1]])
 
-    # Plot only the legend in the zoomed in version of the beta's bifurcation diagram
-    if x_list[-1] < 3:
-        local_ax.legend(loc="upper left")
+    # Only define legend the first time we plot an x value
+    if x_idx_to_filter == 0:
+        # Plot tiny points outside the map for the legend.
+        local_ax.plot(20, 0, 'o', c=cmap(3 / 3), label="periodic")
+        local_ax.plot(20, 0, 'o', c=cmap(1.5 / 4), label="quasi-periodic")
+        local_ax.plot(20, 0, 'o', c=cmap(2.5 / 4), label="chaotic")
+        local_ax.set_xlim([x_list[0], x_list[-1]])
+
+        # Plot only the legend in the zoomed in version of the beta's bifurcation diagram
+        if x_list[-1] < 3:
+            local_ax.legend(loc="upper left")
 
     # Return values in case some function needs it for further analysis
     return values_feat_quantized, values_feat_filtered_quantized
