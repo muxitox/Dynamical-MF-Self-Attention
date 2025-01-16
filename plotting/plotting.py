@@ -684,7 +684,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     ax[1].plot(x_list[1:], valid_S[1:,num_feat_patterns:])
     ax[1].axhline(y=0, color='black', linestyle='--', alpha=0.3)
     ax[1].set_xlabel(r"$\beta$")
-    ax[0].set_ylabel(r"$\lambda^{other}$")
+    ax[1].set_ylabel(r"$\lambda^{other}$")
 
     if save_not_plot:
         fig.savefig(save_basepath + "/lyapunov_evolution.png")
@@ -736,8 +736,8 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     plt.plot(S_array[1:, 0], S_array[1:, 1], '.', c="k", rasterized=True)
     plt.axhline(y=0, color='black', linestyle='--', alpha=0.3)
     plt.axvline(x=0, color='black', linestyle='--', alpha=0.3)
-    plt.xlabel(r"$S_1$")
-    plt.ylabel(r"$S_2$")
+    plt.xlabel(r"$\lambda_1$")
+    plt.ylabel(r"$\lambda_2$")
     # plt.xlim([min(S_array[1:, 0]), max(S_array[1:, 0])])
     # plt.ylim([min(S_array[1:, 1]), max(S_array[1:, 1])])
     fig.tight_layout()
