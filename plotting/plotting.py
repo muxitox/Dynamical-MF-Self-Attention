@@ -664,7 +664,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
 
 
     S_array_inf_any = np.any(S_array_inf, axis=0)
-    print("Affected idxs", S_array_inf_any)
+    print("Affected (discarded) idxs", S_array_inf_any)
     print("Num failures", count_failures)
 
     # First plot evolution of lyapunov exponents
