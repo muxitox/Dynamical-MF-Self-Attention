@@ -629,17 +629,14 @@ def plot_lyapunov_graphs(S_i_sum, cfg, beta, save_not_plot=False, save_path=None
         plt.show()
 
 
-def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_path, save_not_plot=True, title=None,
+def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_basepath, save_not_plot=True, title=None,
                   min_bidx=0):
     """
     Plots statistics related with the Lyapunov exponents of a bifurcation diagram
     """
 
 
-    col_size = 5
-    row_size = 4
-    dpi = 250
-    fig, ax = plt.subplots(2, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
+    # Process Lyapunov exponents and mark errors
 
     lyapunov_size = num_feat_patterns * context_size
 
@@ -655,7 +652,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
         # Load data
         data = np.load(stats_data_path)
         # Load only variables not associated with the copying of Positional Encoding values
-        S_array[idx] = S = data["S"][:lyapunov_size]
+        S_array[idx] = data["S"][:lyapunov_size]
         S_array_inf[idx] = S_inf_flag = data["S_inf_flag"][:lyapunov_size]
 
 
@@ -675,15 +672,26 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     valid_S = S_array[:,np.logical_not(S_array_inf_any)]
     num_valid_dims = valid_S.shape[1]
 
+    col_size = 5
+    row_size = 4
+    dpi = 250
+    fig, ax = plt.subplots(2, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
+
     ax[0].plot(x_list[1:], valid_S[1:,:num_feat_patterns])
     ax[0].axhline(y=0, color='black', linestyle='--', alpha=0.3)
+    ax[0].set_ylabel(r"$\lambda^{1-3}$")
 
     ax[1].plot(x_list[1:], valid_S[1:,num_feat_patterns:])
     ax[1].axhline(y=0, color='black', linestyle='--', alpha=0.3)
     ax[1].set_xlabel(r"$\beta$")
+    ax[0].set_ylabel(r"$\lambda^{other}$")
 
-    plt.show()
-    plt.close()
+    if save_not_plot:
+        fig.savefig(save_basepath + "/lyapunov_evolution.png")
+    else:
+        fig.show()
+
+    plt.close(fig)
 
     col_size = 8
     row_size = 6
@@ -694,9 +702,14 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
 
     for i in range(num_feat_patterns):
         flat_ax[i].hist(S_array[:, i], bins=200)
+        flat_ax[i].set_xlabel(rf"$\lambda_{i}$")
+        flat_ax[i].set_ylabel("Freqs.")
 
-    plt.show()
-    plt.close()
+    if save_not_plot:
+        fig.savefig(save_basepath + "/hist_1.png")
+    else:
+        fig.show()
+    plt.close(fig)
 
 
     # Then plot the hist of the remaining features
@@ -707,12 +720,19 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
 
     for i in range(num_other_feats):
         flat_ax[i].hist(S_array[1:, i + num_feat_patterns], bins=200)
+        flat_ax[i].set_xlabel(rf"$\lambda_{i+num_feat_patterns}$")
+        flat_ax[i].set_ylabel("Freqs.")
 
     plt.tight_layout()
-    plt.show()
-    plt.close()
 
-    plt.figure(figsize=(8, 8))
+    if save_not_plot:
+        fig.savefig(save_basepath + "/hist_2.png")
+    else:
+        fig.show()
+    plt.close(fig)
+
+
+    fig = plt.figure(figsize=(8, 8))
     plt.plot(S_array[1:, 0], S_array[1:, 1], '.', c="k", rasterized=True)
     plt.axhline(y=0, color='black', linestyle='--', alpha=0.3)
     plt.axvline(x=0, color='black', linestyle='--', alpha=0.3)
@@ -720,19 +740,22 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     plt.ylabel(r"$S_2$")
     # plt.xlim([min(S_array[1:, 0]), max(S_array[1:, 0])])
     # plt.ylim([min(S_array[1:, 1]), max(S_array[1:, 1])])
-    plt.tight_layout()
+    fig.tight_layout()
     if save_not_plot:
-        plt.savefig(save_path + "/plane.png")
-
-    plt.show()
-    plt.close()
+        fig.savefig(save_basepath + "/plane.png")
+    else:
+        fig.show()
+    plt.close(fig)
 
     fig = plt.figure(figsize=(8, 8), constrained_layout=True)
     local_ax = fig.add_subplot(1, 1, 1, projection='3d')
     local_ax.scatter(S_array[1:, 0], S_array[1:, 1], x_list[1:])
-    local_ax.set_xlabel(r"$S_1$")
-    local_ax.set_ylabel(r"$S_2$")
+    local_ax.set_xlabel(r"$\lambda_1$")
+    local_ax.set_ylabel(r"$\lambda_2$")
     local_ax.set_zlabel(r"$\beta$")
-    plt.show()
-    plt.close()
+    if save_not_plot:
+        fig.savefig(save_basepath + "/3Dplane.png")
+    else:
+        fig.show()
+    plt.close(fig)
 
