@@ -30,15 +30,27 @@ for SEED in "${SEED_LIST[@]}"; do
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/planes/
                 mkdir -p ${SUFFIX}${EXP_DIR}/lyapunov_traces/
 
-                for WORKER_ID in $(seq $(($NUM_BIFURCATION_VALUES)) -1 1); do
+                # Organize it like this so it's similar to the real slurm one
+                echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
+                source slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
+                  $EXP_DIR_BASE $DATE $NUM_BIFURCATION_VALUES
+
+                # First pre-compute the initial condition
+                for WORKER_ID in $(seq $(($NUM_BIFURCATION_VALUES - 1)) -1 1); do
                   echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
                   source slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
                   $EXP_DIR_BASE $DATE $WORKER_ID
                 done
 
-                source slurm_parallel/launcher_continuation_post_diagrams_inf_ctx_run_localtest.sh $SEED $NUM_FEAT_PATTERNS \
-                $POSITIONAL_EMBEDDING_SIZE $INI_TOKEN_IDX $CFG_PATH_POST $NUM_BIFURCATION_VALUES $EXP_DIR_BASE $DATE
+                # Now given the initial condition for each beta, compute all values.
+                for WORKER_ID in $(seq 1 $(($NUM_BIFURCATION_VALUES))); do
+                  echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
+                  source slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST  \
+                  $EXP_DIR_BASE $DATE $WORKER_ID
+                done
 
             done
         done
