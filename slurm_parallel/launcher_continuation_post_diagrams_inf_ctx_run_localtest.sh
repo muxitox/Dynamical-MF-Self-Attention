@@ -1,0 +1,34 @@
+#!/bin/bash
+
+#SEED_LIST=(1)
+#NUM_FEAT_PATTERNS_LIST=(3)
+#POSITIONAL_EMBEDDING_SIZE_LIST=(2)
+#INI_TOKEN_IDX_LIST=(0)
+SEED=$1
+NUM_FEAT_PATTERNS=$2
+POSITIONAL_EMBEDDING_SIZE=$3
+INI_TOKEN_IDX=$4
+CFG_PATH=$5
+NUM_BIFURCATION_VALUES=$6
+EXP_DIR_BASE=$7
+DATE=$8
+
+
+SUFFIX=""
+VAR1=$(basename "$PWD")
+if [ "$VAR1" = "slurm_parallel" ]; 
+then
+  SUFFIX="../"
+fi
+
+
+for WORKER_ID in $(seq 1 $(($NUM_BIFURCATION_VALUES))); do
+  echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
+  source slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH  \
+  $EXP_DIR_BASE $DATE $WORKER_ID
+done
+
+
+
+

@@ -7,7 +7,7 @@ from plotting.plotting import (plot_save_plane, plot_lyapunov_graphs, plot_bifur
 import os
 import time
 import copy
-from utils import create_dir, create_dir_from_filepath, load_context
+from utils import create_dir, create_dir_from_filepath, load_context, save_context
 import matplotlib.pyplot as plt
 import yaml
 import datetime
@@ -361,6 +361,8 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
         file.close()
 
 
+    pre_compute = "pre_compute" in cfg.keys() and cfg["pre_compute"]
+
     vocab = Embedding(cfg["semantic_embedding_size"], cfg["positional_embedding_size"])
 
     # Seed equal to 0 for initial token set up
@@ -376,11 +378,20 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     if not cfg["save_non_transient"]:
         min_saved_step = cfg["num_transient_steps"]
 
-    # Create path for stats saving
+    # Create path for stats and checkpoint saving
     folder_path_stats = exp_dir + "/stats/"
     create_dir(folder_path_stats)
+    folder_path_stats_pre = exp_dir + "/pre_chpt/"
+    create_dir(folder_path_stats_pre)
+
 
     compute_lyapunov = cfg["compute_lyapunov"]
+    if pre_compute: # Make sure we don't compute Lyapunov exponents in the pre-run
+        compute_lyapunov = False
+
+    continuation_diagram = cfg["continuation_diagram"]
+    if continuation_diagram and pre_compute:
+        raise ValueError("continuation_diagram and pre_compute are mutually exclusive")
 
     # Define the seed that will create the weights/correlations
     np.random.seed(cfg["seed"])
@@ -435,19 +446,34 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     # Measure only simulation time
     start = time.time()
 
-    if cfg["load_chpt"]:
-        # Load checkpoint from last beta
-        att_window, pe_window = load_context(cfg["chpt_path"])
-        # Simulate from context
-        HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"], compute_lyapunov=cfg["compute_lyapunov"])
-    else:
-        # Define the initial token. x0 is only used if load_from_context_mode!=2
-        x0 = define_ini_token(cfg["ini_token_from_w"], HT, cfg["ini_token_idx"], ini_tokens_list)
-        if cfg["ini_token_from_w"] != 0:  # Otherwise it's already set
-            x0[-cfg["positional_embedding_size"]:] = -1  # Initialize position to -1
+    if (pre_compute and worker_id < len(worker_values_list)-1)  or continuation_diagram:
 
-        # Simulate for max_sim_steps steps from x0
-        HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"], compute_lyapunov=cfg["compute_lyapunov"])
+        if pre_compute:
+            # If we are pre-computing the initial conditions for the continuation diagram
+            # Load checkpoint from the previous execution
+            worker_to_load = worker_id + 1
+        else:
+            # If we are already computing the continuation diagram, start from the transient of your same id
+            worker_to_load = worker_id
+
+        chpt_path = folder_path_stats_pre + f"/beta_idx-{worker_to_load}_window_chpt.npz"
+        att_window, pe_window = load_context(chpt_path)
+        # Simulate from context
+        HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"], compute_lyapunov=compute_lyapunov)
+    else:
+        if cfg["load_chpt"]:
+            # Load checkpoint from last beta
+            att_window, pe_window = load_context(cfg["chpt_path"])
+            # Simulate from context
+            HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"], compute_lyapunov=compute_lyapunov)
+        else:
+            # Define the initial token. x0 is only used if load_from_context_mode!=2
+            x0 = define_ini_token(cfg["ini_token_from_w"], HT, cfg["ini_token_idx"], ini_tokens_list)
+            if cfg["ini_token_from_w"] != 0:  # Otherwise it's already set
+                x0[-cfg["positional_embedding_size"]:] = -1  # Initialize position to -1
+
+            # Simulate for max_sim_steps steps from x0
+            HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"], compute_lyapunov=compute_lyapunov)
 
     end = time.time()
     elapsed_time = end - start
@@ -455,39 +481,55 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     print("Simulation: elapsed time in hours", elapsed_time / 3600)
 
 
-    for stat_name in stats_to_save_plot:
-        # Accumulate results in a var of beta_list length
-        results_beta[stat_name] = np.copy(HT.mf_statistics[stat_name])
+    if pre_compute:
+        # Save chpt in the desired folder
+        cw = HT.get_context_window()
+        save_context(cw, folder_path_stats_pre, worker_id)
 
-    stats_data_path = (folder_path_stats + "beta_idx-" + str(worker_id) + ".npz")
-
-    if compute_lyapunov:
-        results_beta["S"] = HT.S
-        results_beta["S_inf_flag"] = HT.S_inf_flag
+        print(f"Saved checkpoint", cfg["num_feat_patterns"],  "seed ", cfg["seed"])
 
 
-    # Save results
-    print("Saving results in ", os.path.abspath(stats_data_path))
-    np.savez_compressed(stats_data_path,
-                        mo_results_beta=results_beta["mo"],
-                        mo_se_results_beta=results_beta["mo_se"],
-                        mv_results_beta=results_beta["mv"],
-                        mq_results_beta=results_beta["mq"],
-                        mk_results_beta=results_beta["mk"],
-                        att_results_beta=results_beta["att"],
-                        S=results_beta["S"],
-                        S_inf_flag=results_beta["S_inf_flag"],
-                        simulation_time=elapsed_time
-                        )
+    else:
 
-    plot_lowres= True
-    if plot_lowres:
-        plot_lowres_planes(worker_values_list, worker_id, cfg, exp_dir)
+        for stat_name in stats_to_save_plot:
+            # Accumulate results in a var of beta_list length
+            results_beta[stat_name] = np.copy(HT.mf_statistics[stat_name])
 
-        if cfg["compute_lyapunov"]:
-            plot_lowres_lyapunov(HT.S_i_sum, worker_values_list, worker_id, cfg, exp_dir)
+        stats_data_path = (folder_path_stats + "beta_idx-" + str(worker_id) + ".npz")
 
-    print(f"Saved stats num_feat_patterns", cfg["num_feat_patterns"],  "seed ", cfg["seed"])
+        if compute_lyapunov:
+            results_beta["S"] = HT.S
+            results_beta["S_inf_flag"] = HT.S_inf_flag
+
+
+        # Save results
+        print("Saving results in ", os.path.abspath(stats_data_path))
+        np.savez_compressed(stats_data_path,
+                            mo_results_beta=results_beta["mo"],
+                            mo_se_results_beta=results_beta["mo_se"],
+                            mv_results_beta=results_beta["mv"],
+                            mq_results_beta=results_beta["mq"],
+                            mk_results_beta=results_beta["mk"],
+                            att_results_beta=results_beta["att"],
+                            pe_final_state=HT.PE.p_t_d,
+                            S=results_beta["S"],
+                            S_inf_flag=results_beta["S_inf_flag"],
+                            simulation_time=elapsed_time
+                            )
+
+        plot_lowres= True
+        if plot_lowres:
+            plot_lowres_planes(worker_values_list, worker_id, cfg, exp_dir)
+
+            if compute_lyapunov:
+                plot_lowres_lyapunov(HT.S_i_sum, worker_values_list, worker_id, cfg, exp_dir)
+
+        # For studying convergence in the Lyapunov traces
+        if compute_lyapunov and (worker_id % 20==0 or np.random.rand(1)>0.9):
+            lyapunov_filepath = ""
+            np.savez_compressed(lyapunov_filepath, S_i=HT.S_i)
+
+        print(f"Saved stats num_feat_patterns", cfg["num_feat_patterns"],  "seed ", cfg["seed"])
 
 
 def plotter(worker_values_list, cfg, exp_dir,
