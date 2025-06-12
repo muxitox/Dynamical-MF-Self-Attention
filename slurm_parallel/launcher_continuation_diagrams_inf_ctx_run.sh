@@ -32,7 +32,7 @@ for SEED in "${SEED_LIST[@]}"; do
 
 
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
-                previd=$(sbatch slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                previd=$(sbatch --parsable slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
                   $EXP_DIR_BASE $DATE $NUM_BIFURCATION_VALUES)
 
@@ -41,7 +41,8 @@ for SEED in "${SEED_LIST[@]}"; do
                 for WORKER_ID in $(seq $(($NUM_BIFURCATION_VALUES - 1)) -1 1); do
                   echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
 
-                  previd=$(sbatch --time=03:00:00 --dependency=afterok:$previd  slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                  previd=$(sbatch --time=03:00:00 -D /home/apoc/projects/Dynamical-MF-Self-Attention\
+                --output=/dev/null -N 1 -c 1 -p medium  --mem=4G --dependency=afterok:$previd --parsable  slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
                   $EXP_DIR_BASE $DATE $WORKER_ID )
                 done
