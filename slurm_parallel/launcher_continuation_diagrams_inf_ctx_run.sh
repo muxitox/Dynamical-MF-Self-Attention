@@ -31,15 +31,17 @@ for SEED in "${SEED_LIST[@]}"; do
                 mkdir -p ${SUFFIX}${EXP_DIR}/lyapunov_traces/
 
 
-                echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
+                echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
                 previd=$(sbatch slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
                   $EXP_DIR_BASE $DATE $NUM_BIFURCATION_VALUES)
 
+
+                echo "ID ${previd}"
                 for WORKER_ID in $(seq $(($NUM_BIFURCATION_VALUES - 1)) -1 1); do
                   echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
 
-                  previd=$(sbatch --dependency=afterok:$previd -p medium -t 03:00:00 slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                  previd=$(sbatch --dependency=afterok:$previd --time=03:00:00 slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
                   $EXP_DIR_BASE $DATE $WORKER_ID )
                 done
