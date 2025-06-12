@@ -6,7 +6,7 @@ POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
 CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
 CFG_PATH_POST="cfgs/cont_diagram_post_inf_0_zoom-in.yaml"
-NUM_BIFURCATION_VALUES=10
+NUM_BIFURCATION_VALUES=3
 
 
 SUFFIX=""

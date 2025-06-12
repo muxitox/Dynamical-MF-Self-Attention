@@ -34,8 +34,16 @@ then
 WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
 
-LOG_DIR=log/log_parallel_cont/${SLURM_JOB_ID}_${SLURM_ARRAY_JOB_ID}_date_${DATE}
+if [ -z "$SLURM_ARRAY_JOB_ID" ]; # Check if variable is not defined, if not, define it from console args
+then
+# This is not an array job
+LOG_DIR=log/log_parallel_cont/date_${DATE}
+LOG_PATH=${LOG_DIR}/${SLURM_JOB_ID}
+else
+# This is an array job
+LOG_DIR=log/log_parallel_cont/date_${DATE}_${SLURM_JOB_ID}_${SLURM_ARRAY_JOB_ID}
 LOG_PATH=${LOG_DIR}/${SLURM_ARRAY_TASK_ID}
+fi
 
 mkdir -p $LOG_DIR
 
