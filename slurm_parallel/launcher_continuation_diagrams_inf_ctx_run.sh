@@ -31,21 +31,22 @@ for SEED in "${SEED_LIST[@]}"; do
                 mkdir -p ${SUFFIX}${EXP_DIR}/lyapunov_traces/
 
 
+                echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
                 previd=$(sbatch slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
                   $EXP_DIR_BASE $DATE $NUM_BIFURCATION_VALUES)
 
-                for WORKER_ID in $(seq $(($NUM_BIFURCATION_VALUES - 1)) -1 1); do
-                  echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
+#                for WORKER_ID in $(seq $(($NUM_BIFURCATION_VALUES - 1)) -1 1); do
+#                  echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
+#
+#                  previd=$(sbatch --dependency=afterok:$previd slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
+#                  $EXP_DIR_BASE $DATE $WORKER_ID )
+#                done
 
-                  previd=$(sbatch --dependency=afterok:$previd slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                  $EXP_DIR_BASE $DATE $WORKER_ID )
-                done
-
-                # After pre-computing the initial condition, run all in parallel
-                sbatch --dependency=afterok:$previd --array=1-$NUM_BIFURCATION_VALUES bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR_BASE $DATE
+#                # After pre-computing the initial condition, run all in parallel
+#                sbatch --dependency=afterok:$previd --array=1-$NUM_BIFURCATION_VALUES slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR_BASE $DATE
 
 
             done
