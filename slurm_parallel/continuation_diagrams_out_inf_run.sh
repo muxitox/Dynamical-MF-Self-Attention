@@ -66,9 +66,7 @@ ENDTIME=$(date +%s)
 
 echo "It took $((($ENDTIME - $STARTTIME)/60)) minutes to complete this task..." >> ${LOG_PATH}.out
 
-
-#
-if [ "$WORKER_ID" -neq "1" ]; then
+if [[ "$WORKER_ID" -ne 1 ]]; then
 
    WORKER_ID=$((WORKER_ID - 1))
 
