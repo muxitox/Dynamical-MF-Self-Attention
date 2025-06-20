@@ -83,6 +83,6 @@ else
   echo "We have finished computing the first seed. Now queue the bifurcation diagram in parallel. " >> ${LOG_PATH}.out
 
   sbatch --array=1-$NUM_BIFURCATION_VALUES slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH $EXP_DIR_BASE $DATE
+                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR_BASE $DATE
 fi
 
