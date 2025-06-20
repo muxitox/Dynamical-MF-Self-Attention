@@ -525,8 +525,8 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
                 plot_lowres_lyapunov(HT.S_i_sum, worker_values_list, worker_id, cfg, exp_dir)
 
         # For studying convergence in the Lyapunov traces
-        if compute_lyapunov and (worker_id % 20==0 or np.random.rand(1)>0.9):
-            lyapunov_filepath = ""
+        if compute_lyapunov and worker_id % 2 ==0:
+            lyapunov_filepath = exp_dir + "/lyapunov_traces/trace" + str(worker_id) + ".npz"
             np.savez_compressed(lyapunov_filepath, S_i=HT.S_i)
 
         print(f"Saved stats num_feat_patterns", cfg["num_feat_patterns"],  "seed ", cfg["seed"])
