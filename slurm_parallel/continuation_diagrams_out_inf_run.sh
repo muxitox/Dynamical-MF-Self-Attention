@@ -25,7 +25,7 @@ CFG_PATH_PRE=$6
 CFG_PATH_POST=$7
 EXP_DIR_BASE=$8
 DATE=$9
-WORKER_ID=$10
+WORKER_ID=${10}
 
 EXP_DIR=$EXP_DIR_BASE/$DATE/
 
@@ -60,7 +60,13 @@ ARGS=" \
 "
 echo $ARGS >> ${LOG_PATH}.out
 python bifurcation_diagrams_from_sh_run.py $ARGS >> ${LOG_PATH}.out 2>> ${LOG_PATH}.err
+EXIT_CODE=$?
 #python ../bifurcation_diagrams_from_sh_run.py $ARGS
+
+if [[ "EXIT_CODE" -ne 0 ]]; then
+  echo "Error in the execution. Exiting..." >> ${LOG_PATH}.out
+  exit 1
+fi
 
 ENDTIME=$(date +%s)
 
@@ -68,7 +74,9 @@ echo "It took $((($ENDTIME - $STARTTIME)/60)) minutes to complete this task..." 
 
 if [[ "$WORKER_ID" -ne 1 ]]; then
 
+   echo "$WORKER_ID" >> ${LOG_PATH}.out
    WORKER_ID=$((WORKER_ID - 1))
+   echo "$WORKER_ID" >> ${LOG_PATH}.out
 
    echo "Queue next experiment with worker ID $WORKER_ID" >> ${LOG_PATH}.out
 
