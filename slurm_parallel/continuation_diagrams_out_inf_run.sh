@@ -54,7 +54,7 @@ ARGS=" \
 --positional_embedding_size=$POSITIONAL_EMBEDDING_SIZE \
 --num_bifurcation_values=$NUM_BIFURCATION_VALUES \
 --ini_token_idx=$INI_TOKEN_IDX \
---cfg_path=$CFG_PATH \
+--cfg_path=$CFG_PATH_PRE \
 --exp_dir=$EXP_DIR \
 --worker_id=$WORKER_ID \
 "
