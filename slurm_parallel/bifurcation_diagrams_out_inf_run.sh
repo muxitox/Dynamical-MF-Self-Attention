@@ -31,9 +31,8 @@ WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
 
 # This is not an array job
-LOG_DIR=${EXP_DIR}log
-LOG_PATH=${LOG_DIR}/pro/${WORKER_ID}
-fi
+LOG_DIR=${EXP_DIR}/log/post
+LOG_PATH=${LOG_DIR}/${WORKER_ID}
 
 mkdir -p $LOG_DIR
 
