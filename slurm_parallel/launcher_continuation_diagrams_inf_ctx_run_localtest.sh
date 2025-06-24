@@ -34,14 +34,14 @@ for SEED in "${SEED_LIST[@]}"; do
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
                 source slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                  $EXP_DIR_BASE $DATE $NUM_BIFURCATION_VALUES
+                  $EXP_DIR $NUM_BIFURCATION_VALUES
 
                 # First pre-compute the initial condition
                 for WORKER_ID in $(seq $(($NUM_BIFURCATION_VALUES - 1)) -1 1); do
                   echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $WORKER_ID
                   source slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                  $EXP_DIR_BASE $DATE $WORKER_ID
+                  $EXP_DIR $WORKER_ID
                 done
 
                 # Now given the initial condition for each beta, compute all values.

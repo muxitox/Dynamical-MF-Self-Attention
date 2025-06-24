@@ -36,7 +36,7 @@ for SEED in "${SEED_LIST[@]}"; do
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
                 sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                  $CFG_PATH_POST $EXP_DIR_BASE $DATE $NUM_BIFURCATION_VALUES
+                  $CFG_PATH_POST $EXP_DIR $NUM_BIFURCATION_VALUES
 
 
             done
