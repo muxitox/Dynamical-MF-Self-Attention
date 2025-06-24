@@ -6,7 +6,7 @@ POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
 CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
 CFG_PATH_POST="cfgs/cont_diagram_post_inf_0_zoom-in.yaml"
-NUM_BIFURCATION_VALUES=101
+NUM_BIFURCATION_VALUES=31
 
 
 SUFFIX=""
@@ -23,8 +23,10 @@ for SEED in "${SEED_LIST[@]}"; do
     for NUM_FEAT_PATTERNS in "${NUM_FEAT_PATTERNS_LIST[@]}"; do
         for POSITIONAL_EMBEDDING_SIZE in "${POSITIONAL_EMBEDDING_SIZE_LIST[@]}"; do
           for INI_TOKEN_IDX in "${INI_TOKEN_IDX_LIST[@]}"; do
+
                 DATE=$(date +%Y%m%d_%H%M%S)/
                 EXP_DIR=$EXP_DIR_BASE/$DATE/
+                # Create folders here to avoid errors creating them in parallel
                 mkdir -p  ${SUFFIX}${EXP_DIR}/stats/
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/lyapunov/
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/planes/

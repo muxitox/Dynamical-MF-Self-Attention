@@ -24,15 +24,17 @@ for SEED in "${SEED_LIST[@]}"; do
                 # Each experiment will be saved in a different folder
                 DATE=$(date +%Y%m%d_%H%M%S)/
                 EXP_DIR=$EXP_DIR_BASE/$DATE/
+                # Create folders here to avoid errors creating them in parallel
                 mkdir -p  ${SUFFIX}${EXP_DIR}/stats/
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/lyapunov/
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/planes/
+                mkdir -p ${SUFFIX}${EXP_DIR}/lyapunov_traces/
 
                 echo Num betas parallel $NUM_BIFURCATION_VALUES
                 sbatch --array=1-$NUM_BIFURCATION_VALUES bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH $EXP_DIR_BASE $DATE
+                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH $EXP_DIR
 
-                # Sleep so the next step will be saved in another folder
+                # Sleep to guarantee different folder names
                 sleep 5
           done
         done

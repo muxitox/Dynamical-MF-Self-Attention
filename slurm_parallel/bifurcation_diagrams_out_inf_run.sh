@@ -3,7 +3,7 @@
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
 #SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
-#SBATCH -p medium -t 03:00:00
+#SBATCH -p medium -t 04:30:00
 #SBATCH --mem=4G
 
 
@@ -22,27 +22,17 @@ POSITIONAL_EMBEDDING_SIZE=$3
 NUM_BIFURCATION_VALUES=$4
 INI_TOKEN_IDX=$5
 CFG_PATH=$6
-EXP_DIR_BASE=$7
-DATE=$8
-WORKER_ID=$9
-
-EXP_DIR=$EXP_DIR_BASE/$DATE/
-
+EXP_DIR=$7
+WORKER_ID=$8
 
 if [ -z "$WORKER_ID" ]; # Check if variable is not defined, if not, define it from console args
 then
 WORKER_ID=$SLURM_ARRAY_TASK_ID
 fi
 
-if [ -z "$SLURM_ARRAY_JOB_ID" ]; # Check if variable is not defined, if not, define it from console args
-then
 # This is not an array job
-LOG_DIR=log/log_parallel_cont/date_${DATE}
-LOG_PATH=${LOG_DIR}/${SLURM_JOB_ID}
-else
-# This is an array job
-LOG_DIR=log/log_parallel_cont/date_${DATE}_${SLURM_JOB_ID}_${SLURM_ARRAY_JOB_ID}
-LOG_PATH=${LOG_DIR}/${SLURM_ARRAY_TASK_ID}
+LOG_DIR=${EXP_DIR}log
+LOG_PATH=${LOG_DIR}/pro/${WORKER_ID}
 fi
 
 mkdir -p $LOG_DIR
@@ -62,5 +52,8 @@ python bifurcation_diagrams_from_sh_run.py $ARGS >> ${LOG_PATH}.out 2>> ${LOG_PA
 #python ../bifurcation_diagrams_from_sh_run.py $ARGS
 
 ENDTIME=$(date +%s)
+ELAPSEDTIME=$((end - start))
+# Convert to minutes (with decimal)
+MINUTES=$(echo "scale=2; $ELAPSEDTIME/ 60" | bc)
 
-echo "It took $((($ENDTIME - $STARTTIME)/60)) minutes to complete this task..." >> ${LOG_PATH}.out
+echo "It took $MINUTES minutes to complete this task..." >> ${LOG_PATH}.out
