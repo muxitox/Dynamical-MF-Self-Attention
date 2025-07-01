@@ -514,7 +514,8 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
                             pe_final_state=HT.PE.p_t_d,
                             S=results_beta["S"],
                             S_inf_flag=results_beta["S_inf_flag"],
-                            simulation_time=elapsed_time
+                            simulation_time=elapsed_time,
+                            beta=worker_values_list[worker_id],
                             )
 
         plot_lowres= True
