@@ -54,13 +54,13 @@ def str2bool(v):
         raise Exception('Boolean value expected.')
 
 
-def save_context(context_window, folder_path_chpt, beta_idx):
+def save_context(context_window, folder_path_chpt, worker_idx, worker_values):
     """
     Saves the mean-field values associated to the context window
     """
     att_window, mo_window, mv_window, mq_window, mk_window, pe_window = context_window
 
-    chpt_path = folder_path_chpt + f"/beta_idx-{beta_idx}_window_chpt.npz"
+    chpt_path = folder_path_chpt + f"/beta_idx-{worker_idx}_window_chpt.npz"
 
     np.savez_compressed(chpt_path,
                         att_window=att_window,
@@ -68,7 +68,8 @@ def save_context(context_window, folder_path_chpt, beta_idx):
                         mv_window=mv_window,
                         mq_window=mq_window,
                         mk_window=mk_window,
-                        pe_window=pe_window)
+                        pe_window=pe_window,
+                        beta=worker_values[worker_idx])
 
 def load_context(chpt_path):
     """
