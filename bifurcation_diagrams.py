@@ -484,7 +484,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     if pre_compute:
         # Save chpt in the desired folder
         cw = HT.get_context_window()
-        save_context(cw, folder_path_stats_pre, worker_id)
+        save_context(cw, folder_path_stats_pre, worker_id, worker_values_list)
 
         print(f"Saved checkpoint", cfg["num_feat_patterns"],  "seed ", cfg["seed"])
 
