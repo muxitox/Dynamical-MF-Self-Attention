@@ -45,7 +45,7 @@ def plotter(worker_values_list, beta_to_show_idx, cfg, exp_dir, plot_range = Non
         #     f"MODE={correlations_from_weights} CONTEXT={context_size} NUM_PATTERNS={num_feat_patterns} SEED={seed} "
         #     f"BETA={beta_to_show} NUM_TRANSIENT={num_transient_steps}")
 
-        title = fr"$\beta$ = {beta_to_show}"
+        title = fr"$\beta$ = {worker_values_list[beta_to_show_idx]}"
 
         if plot_range is None:
             plot_range = [0, None]
@@ -113,10 +113,46 @@ def plotter(worker_values_list, beta_to_show_idx, cfg, exp_dir, plot_range = Non
     print(data["S_inf_flag"])
 
 
+    show_lyapunov_traces = True
+    lya_trace_folder = (exp_dir + "/lyapunov_traces/")
+    print(lya_trace_folder)
+    if show_lyapunov_traces and os.path.exists(lya_trace_folder):
+        lyapunov_trace = np.load(f"{lya_trace_folder}trace{beta_to_show_idx}.npz")
+        S_i = lyapunov_trace["S_i"]
+        S_i_mean = np.mean(S_i, axis=0)
+        std = np.sqrt(np.mean((S_i - S_i_mean)**2, axis=0)/(S_i_mean.shape[0]-1))
+        std_error = std/np.sqrt(S_i_mean.shape[0])
+
+        T = np.arange(1, S_i.shape[0] + 1)
+
+        S_i_sum = np.cumsum(S_i, axis=0) / T[:, None]
+
+        num_last_steps = 5000
+        conv_error = np.mean(np.abs(np.diff(S_i[-num_last_steps:,:], axis=0)), axis=0)
+        conv_error_sum = np.mean(np.abs(np.diff(S_i_sum[-num_last_steps:,:], axis=0)), axis=0)
+
+
+        print("Mean", S_i_mean[0], "Std", std[0], "StdError", std_error[0], "Converg Error", conv_error[0], "Converg Error Sum", conv_error_sum[0])
+
+
+        plt.plot(S_i[-num_last_steps:,0])
+        plt.ylabel(r"$\lambda_0$")
+        plt.show()
+        plt.close()
+
+        plt.plot(S_i_sum[-num_last_steps:,0])
+        plt.ylabel(r"$\lambda_0$")
+        plt.show()
+        plt.close()
+
+
+
 
 if __name__ == "__main__":
 
     exp_dir = "results_parallel_v3/results_small_sample_zoom2"
+    exp_dir = "results_continuation/20250701_150546_original"
+
 
     cfg_path = exp_dir + "/cfg.yaml"
     # Load cfg
@@ -136,11 +172,12 @@ if __name__ == "__main__":
                                      cfg["num_bifurcation_values"])  # Betas or Epsilon values
 
     # It will look for the most similar beta in the experiments
-    beta_to_show = 1.27382
+    beta_to_show = 1.26
     # beta_to_show = 1.27387
     # Search idx for the beta nearest to beta_to_show
     beta_to_show_idx = np.searchsorted(worker_values_list, beta_to_show)
-    beta_to_show_idx = 657  # You can also define the index instead of searching
+    # 679 chaos, 680 periodic, 681 periodic, 682 chaotic, 683 periodic
+    # beta_to_show_idx = 214  # You can also define the index instead of searching
     print("beta", beta_to_show_idx, worker_values_list[beta_to_show_idx])
 
 
