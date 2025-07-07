@@ -48,39 +48,41 @@ ARGS=" \
 --worker_id=$WORKER_ID \
 "
 echo $ARGS >> ${LOG_PATH}.out
-python bifurcation_diagrams_from_sh_run.py $ARGS >> ${LOG_PATH}.out 2>> ${LOG_PATH}.err
-EXIT_CODE=$?
-#python ../bifurcation_diagrams_from_sh_run.py $ARGS
+#python bifurcation_diagrams_from_sh_run.py $ARGS >> ${LOG_PATH}.out 2>> ${LOG_PATH}.err
+#EXIT_CODE=$?
+##python ../bifurcation_diagrams_from_sh_run.py $ARGS
+#
+#if [[ "EXIT_CODE" -ne 0 ]]; then
+#  echo "Error in the execution. Exiting..." >> ${LOG_PATH}.out
+#  exit 1
+#fi
+#
+#ENDTIME=$(date +%s)
+#ELAPSEDTIME=$((end - start))
+## Convert to minutes (with decimal)
+#MINUTES=$(echo "scale=2; $ELAPSEDTIME/ 60" | bc)
+#
+#echo "It took $MINUTES minutes to complete this task..." >> ${LOG_PATH}.out
+#
+#if [[ "$WORKER_ID" -ne 1 ]]; then
+#
+#   echo "$WORKER_ID" >> ${LOG_PATH}.out
+#   WORKER_ID=$((WORKER_ID - 1))
+#   echo "$WORKER_ID" >> ${LOG_PATH}.out
+#
+#   echo "Queue next experiment with worker ID $WORKER_ID" >> ${LOG_PATH}.out
+#
+#   sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
+#                  $EXP_DIR $WORKER_ID
+#
+#else
+#
+#  echo "We have finished computing the first seed. Now queue the bifurcation diagram in parallel. " >> ${LOG_PATH}.out
+#
+#  sbatch --array=1-$NUM_BIFURCATION_VALUES slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
+#fi
 
-if [[ "EXIT_CODE" -ne 0 ]]; then
-  echo "Error in the execution. Exiting..." >> ${LOG_PATH}.out
-  exit 1
-fi
-
-ENDTIME=$(date +%s)
-ELAPSEDTIME=$((end - start))
-# Convert to minutes (with decimal)
-MINUTES=$(echo "scale=2; $ELAPSEDTIME/ 60" | bc)
-
-echo "It took $MINUTES minutes to complete this task..." >> ${LOG_PATH}.out
-
-if [[ "$WORKER_ID" -ne 1 ]]; then
-
-   echo "$WORKER_ID" >> ${LOG_PATH}.out
-   WORKER_ID=$((WORKER_ID - 1))
-   echo "$WORKER_ID" >> ${LOG_PATH}.out
-
-   echo "Queue next experiment with worker ID $WORKER_ID" >> ${LOG_PATH}.out
-
-   sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
-                  $EXP_DIR $WORKER_ID
-
-else
-
-  echo "We have finished computing the first seed. Now queue the bifurcation diagram in parallel. " >> ${LOG_PATH}.out
-
-  sbatch --array=1-$NUM_BIFURCATION_VALUES slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+sbatch --array=1-$NUM_BIFURCATION_VALUES slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                 $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
-fi
-

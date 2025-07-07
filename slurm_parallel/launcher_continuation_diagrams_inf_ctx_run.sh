@@ -25,7 +25,8 @@ for SEED in "${SEED_LIST[@]}"; do
           for INI_TOKEN_IDX in "${INI_TOKEN_IDX_LIST[@]}"; do
 
                 DATE=$(date +%Y%m%d_%H%M%S)/
-                EXP_DIR=$EXP_DIR_BASE/$DATE/
+#                EXP_DIR=$EXP_DIR_BASE/$DATE/
+                EXP_DIR="results_continuation/20250704_160253_zoom-2"
                 # Create folders here to avoid errors creating them in parallel
                 mkdir -p  ${SUFFIX}${EXP_DIR}/stats/
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/lyapunov/
