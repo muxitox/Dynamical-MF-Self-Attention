@@ -7,6 +7,8 @@ INI_TOKEN_IDX_LIST=(0)
 CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
 CFG_PATH_POST="cfgs/cont_diagram_post_inf_0_zoom-in.yaml"
 NUM_BIFURCATION_VALUES=501
+CONT_ORDER="c"  # c: center and then divide, r: scan towards the right, l: scan towards the left
+INI_WORKER_ID=$NUM_BIFURCATION_VALUES
 
 
 SUFFIX=""
@@ -25,8 +27,8 @@ for SEED in "${SEED_LIST[@]}"; do
           for INI_TOKEN_IDX in "${INI_TOKEN_IDX_LIST[@]}"; do
 
                 DATE=$(date +%Y%m%d_%H%M%S)/
-#                EXP_DIR=$EXP_DIR_BASE/$DATE/
-                EXP_DIR="results_continuation/20250704_160253_zoom-2"
+                EXP_DIR=$EXP_DIR_BASE/$DATE/
+
                 # Create folders here to avoid errors creating them in parallel
                 mkdir -p  ${SUFFIX}${EXP_DIR}/stats/
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/lyapunov/
@@ -37,7 +39,7 @@ for SEED in "${SEED_LIST[@]}"; do
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
                 sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                  $CFG_PATH_POST $EXP_DIR $NUM_BIFURCATION_VALUES
+                  $CFG_PATH_POST $EXP_DIR $CONT_ORDER $NUM_BIFURCATION_VALUES
 
 
             done
