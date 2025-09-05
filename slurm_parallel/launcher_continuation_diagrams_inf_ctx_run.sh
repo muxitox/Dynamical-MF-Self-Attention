@@ -8,8 +8,7 @@ CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
 CFG_PATH_POST="cfgs/cont_diagram_post_inf_0_zoom-in.yaml"
 NUM_BIFURCATION_VALUES=501
 CONT_ORDER="c"  # c: center and then divide, r: scan towards the right, l: scan towards the left
-INI_WORKER_ID=$NUM_BIFURCATION_VALUES
-
+INI_WORKER_ID=101 # Number between 1 and NUM_BIFURCATION_VALUES
 
 SUFFIX=""
 VAR1=$(basename "$PWD")
@@ -28,20 +27,76 @@ for SEED in "${SEED_LIST[@]}"; do
 
                 DATE=$(date +%Y%m%d_%H%M%S)/
                 EXP_DIR=$EXP_DIR_BASE/$DATE/
+                DONE_DIR=${SUFFIX}${EXP_DIR}/job_done
+
 
                 # Create folders here to avoid errors creating them in parallel
                 mkdir -p  ${SUFFIX}${EXP_DIR}/stats/
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/lyapunov/
                 mkdir -p ${SUFFIX}${EXP_DIR}/indiv_lowres_traj/planes/
                 mkdir -p ${SUFFIX}${EXP_DIR}/lyapunov_traces/
+                mkdir -p $DONE_DIR
 
+
+                # First submit the initial job
+                CHAIN=0
 
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
-                sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                jobid=$(sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                  $CFG_PATH_POST $EXP_DIR $CONT_ORDER $NUM_BIFURCATION_VALUES
+                  $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $INI_WORKER_ID | awk '{print $4}')
+
+                echo We will create a dependency on job $jobid to finish
+
+                # The dependency argument does not work well with the script arguments and the #SBATCH directives
+                # So we'll include them in the call
+
+                # Then submit the left and right chains. -1 LEFT, +1 RIGHT
+
+                # If initial ID is already 1, then don't submit and create done file to organize the final collection
+                CHAIN=-1
+                if [[ "$INI_WORKER_ID" -ne 1 ]]; then
+
+                  WORKER_ID_L=$((INI_WORKER_ID - 1))
+                  echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
+                  sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention \
+                        --output=/dev/null \
+                        -N 1 -c 1 \
+                        -p short -t 00:30:00 \
+                        --mem=4G \
+                        --dependency=afterok:$jobid \
+                        slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
+                        $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_L
+                else
+                  echo Creating lock file "$DONE_DIR/$CHAIN.done"
+                  touch "$DONE_DIR/$CHAIN.done"
+
+                fi
 
 
+                # If initial ID is already NUM_BIFURCATION_VALUES, then don't submit and create lock file to organize the final collection
+                CHAIN=+1
+                if [[ "$INI_WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" ]]; then
+
+                  WORKER_ID_R=$((INI_WORKER_ID + 1))
+                  sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention \
+                        --output=/dev/null \
+                        -N 1 -c 1 \
+                        -p short -t 00:30:00 \
+                        --mem=4G \
+                        --dependency=afterok:$jobid \
+                        slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
+                        $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_R
+
+
+                  else
+
+                  echo Creating lock file "$DONE_DIR/$CHAIN.done"
+                  touch "$DONE_DIR/$CHAIN.done"
+
+                fi
             done
         done
     done

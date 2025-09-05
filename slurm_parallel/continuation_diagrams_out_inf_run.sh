@@ -3,7 +3,7 @@
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
 #SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
-#SBATCH -p medium -t 04:30:00
+#SBATCH -p short -t 00:30:00
 #SBATCH --mem=4G
 
 
@@ -24,8 +24,9 @@ INI_TOKEN_IDX=$5
 CFG_PATH_PRE=$6
 CFG_PATH_POST=$7
 EXP_DIR=$8
-CONT_ORDER=$9
-WORKER_ID=${10}
+DONE_DIR=$9
+CHAIN=${10}
+WORKER_ID=${11}
 
 if [ -z "$WORKER_ID" ]; # Check if variable is not defined, if not, define it from console args
 then
@@ -66,49 +67,41 @@ MINUTES=$(echo "scale=2; $ELAPSEDTIME/ 60" | bc)
 
 echo "It took $MINUTES minutes to complete this task..." >> ${LOG_PATH}.out
 
+if [[ "CHAIN" -eq 0]]; then
+  echo "Central job finished. Slurm will now be able to start computing the left and right chains." >> ${LOG_PATH}.out
+  exit 0
+fi
 
-if  [[ "$CONT_ORDER" == "l" ]] && [[ "$WORKER_ID" -ne 1 ]]; then
 
-   WORKER_ID=$((WORKER_ID - 1))
+if  [[ "$WORKER_ID" -ne 1 ]] && [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" ]]; then
 
-   echo "Queue next experiment with worker ID $WORKER_ID" >> ${LOG_PATH}.out
+  # If the worker index is neither at the beginning or the end for the chain, queue a new job
 
-   sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
-                  $EXP_DIR $CONT_ORDER $WORKER_ID
-
-elif [[ "$CONT_ORDER" == "r" ]] && [[ "$WORKER_ID" -ne $NUM_BIFURCATION_VALUES ]]; then
-
-  WORKER_ID=$((WORKER_ID + 1))
+   WORKER_ID=$((WORKER_ID - CHAIN))
 
    echo "Queue next experiment with worker ID $WORKER_ID" >> ${LOG_PATH}.out
 
    sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
-                  $EXP_DIR $CONT_ORDER $WORKER_ID
-
-elif [[ "$CONT_ORDER" == "c" ]] && [[ "$WORKER_ID" -ne $NUM_BIFURCATION_VALUES ]]; then
-
-   WORKER_ID_L=$((WORKER_ID - 1))
-   WORKER_ID_R=$((WORKER_ID + 1))
-
-   echo "Queue next experiment with worker ID $WORKER_ID" >> ${LOG_PATH}.out
-
-   sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
-                  $EXP_DIR "r" $WORKER_ID_R
-
-   sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
-                  $EXP_DIR "l" $WORKER_ID_L
+                  $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
 
 else
 
-  echo "We have finished computing the first seed. Now queue the bifurcation diagram in parallel. " >> ${LOG_PATH}.out
+  echo "We have finished computing the $CHAIN chain." >> ${LOG_PATH}.out
 
-  sbatch --array=1-$NUM_BIFURCATION_VALUES slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
+  touch "$DONE_DIR/$CHAIN.done"
+  LOCK=$DONE_DIR/collector.lock
+
+  if [[ -f "$DONE_DIR/left.done" && -f "$DONE_DIR/right.done" ]]; then
+    if (set -o noclobber; echo $$ > "$LOCK") 2>/dev/null; then
+        echo "Both chains finished. Collector can be launched" >> ${LOG_PATH}.out
+        sbatch --array=1-$NUM_BIFURCATION_VALUES \
+                  slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
+    else
+        echo "Waiting for the other chain to finish" >> ${LOG_PATH}.out
+    fi
+  fi
 fi
 
-#TODO:  change python code to assimilate the cont_order parameter.
-# TODO: check if there's any argument in this slurm version that allows me to wait for all jobs to finish given that they all have different ids
+#TODO:  change python code to assimilate the CHAIN parameter.
