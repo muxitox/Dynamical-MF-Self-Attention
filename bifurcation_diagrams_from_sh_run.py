@@ -20,6 +20,8 @@ parser.add_argument("--cfg_path", help="Specify path to the input YAML config fi
                     type=str)
 parser.add_argument("--exp_dir", help="Specify path to where the experiments will be saved",
                     type=str)
+parser.add_argument("--chain", help="Specify the direction towards which the chain is moving in the sequential job",
+                    type=int, default=None, nargs="?")
 
 
 if __name__ == "__main__":
@@ -43,6 +45,13 @@ if __name__ == "__main__":
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
                                      cfg["num_bifurcation_values"])  # Betas or Epsilon values
 
+    # If it's a sequential job, define the job direction
+    if "pre_compute" in cfg.keys() and cfg["pre_compute"]:
+        cfg["chain"] = args.chain
+
+        if cfg["chain"] == None:
+            raise Exception("Define the chain parameter in the slum script.")
+
     # Create variables for the Hopfield Transformer (HT)
     cfg["seed"] = args.seed
     cfg["num_feat_patterns"] = args.num_feat_patterns
@@ -51,9 +60,9 @@ if __name__ == "__main__":
     show_title = True
 
     if cfg["context_size"] > 2 ** cfg["positional_embedding_size"]:
-        raise ("The positional embedding cannot cover the whole context size.")
+        raise Exception("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
-        raise ("You cannot discard more timesteps than you are simulating.")
+        raise Exception("You cannot discard more timesteps than you are simulating.")
 
     stats_to_save_plot = ["mo", "mo_se", "att"]
 

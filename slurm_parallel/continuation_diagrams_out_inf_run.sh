@@ -47,7 +47,7 @@ ARGS=" \
 --ini_token_idx=$INI_TOKEN_IDX \
 --cfg_path=$CFG_PATH_PRE \
 --exp_dir=$EXP_DIR \
---cont_order=$CONT_ORDER \
+--chain=$CHAIN \
 --worker_id=$WORKER_ID \
 "
 echo $ARGS >> ${LOG_PATH}.out
@@ -72,12 +72,13 @@ if [[ "CHAIN" -eq 0]]; then
   exit 0
 fi
 
+# If chain==0, you don't get to execute the part below
 
-if  [[ "$WORKER_ID" -ne 1 ]] && [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" ]]; then
+if  [[ "$WORKER_ID" -ne 1 && $CHAIN==+1]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN==-1]]; then
 
   # If the worker index is neither at the beginning or the end for the chain, queue a new job
 
-   WORKER_ID=$((WORKER_ID - CHAIN))
+   WORKER_ID=$((WORKER_ID + CHAIN))
 
    echo "Queue next experiment with worker ID $WORKER_ID" >> ${LOG_PATH}.out
 
@@ -92,7 +93,7 @@ else
   touch "$DONE_DIR/$CHAIN.done"
   LOCK=$DONE_DIR/collector.lock
 
-  if [[ -f "$DONE_DIR/left.done" && -f "$DONE_DIR/right.done" ]]; then
+  if [[ -f "$DONE_DIR/-1.done" && -f "$DONE_DIR/+1.done" ]]; then
     if (set -o noclobber; echo $$ > "$LOCK") 2>/dev/null; then
         echo "Both chains finished. Collector can be launched" >> ${LOG_PATH}.out
         sbatch --array=1-$NUM_BIFURCATION_VALUES \
@@ -103,5 +104,3 @@ else
     fi
   fi
 fi
-
-#TODO:  change python code to assimilate the CHAIN parameter.

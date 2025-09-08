@@ -446,12 +446,14 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     # Measure only simulation time
     start = time.time()
 
-    if (pre_compute and worker_id < len(worker_values_list)-1)  or continuation_diagram:
+    if (pre_compute and cfg["chain"]!=0)  or continuation_diagram:
 
         if pre_compute:
             # If we are pre-computing the initial conditions for the continuation diagram
             # Load checkpoint from the previous execution
-            worker_to_load = worker_id + 1
+            # If going to the right(+1), get the id -1 job
+            # If going to the left(-1), get the id +1 job
+            worker_to_load = worker_id + cfg["chain"] * -1
         else:
             # If we are already computing the continuation diagram, start from the transient of your same id
             worker_to_load = worker_id
@@ -560,8 +562,8 @@ def plotter(worker_values_list, cfg, exp_dir,
     beta_list_to_plot = worker_values_list[min_beta_idx:max_beta_idx]
 
     # Hardcoded, :(, select what you want to plot
-    operations = ["bifurcation", "lyapunov"]
-    # operations = ["lyapunov"]
+    # operations = ["bifurcation", "lyapunov"]
+    operations = ["lyapunov"]
 
     ###############################
     # Plot the bifurcation diagrams
@@ -683,9 +685,9 @@ if __name__ == "__main__":
     show_title = False  # Whether to plot a title with the characteristics of the experiment. For internal use mostly.
 
     if cfg["context_size"] > 2 ** cfg["positional_embedding_size"]:
-        raise ("The positional embedding cannot cover the whole context size.")
+        raise ValueError("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
-        raise ("You cannot discard more timesteps than you are simulating.")
+        raise ValueError("You cannot discard more timesteps than you are simulating.")
 
     stats_to_save_plot = ["mo_se", "att"]
 
