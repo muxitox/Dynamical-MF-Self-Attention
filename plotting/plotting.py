@@ -672,6 +672,15 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     valid_S = S_array[:,np.logical_not(S_array_inf_any)]
     num_valid_dims = valid_S.shape[1]
 
+    # Create some thresholds to separate regimes. 0: quasi, 1:chaotic, -1: periodic
+    zero_threshold = 0.0005
+    regimes = np.zeros(len(x_list))
+    regimes[valid_S[:,0] > zero_threshold] = 1
+    regimes[valid_S[:,0] < - zero_threshold] = -1
+    changes = regimes[1:] != regimes[:-1]
+    boundaries = np.where(changes)[0] + 1
+
+
     col_size = 5
     row_size = 4
     dpi = 250
@@ -691,7 +700,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     else:
         fig.show()
 
-    plt.close(fig)
+    # plt.close(fig)
 
     col_size = 8
     row_size = 6
@@ -709,7 +718,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
         fig.savefig(save_basepath + "/hist_1.png")
     else:
         fig.show()
-    plt.close(fig)
+    # plt.close(fig)
 
 
     # Then plot the hist of the remaining features
@@ -729,7 +738,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
         fig.savefig(save_basepath + "/hist_2.png")
     else:
         fig.show()
-    plt.close(fig)
+    # plt.close(fig)
 
 
     fig = plt.figure(figsize=(8, 8))
@@ -745,7 +754,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
         fig.savefig(save_basepath + "/plane.png")
     else:
         fig.show()
-    plt.close(fig)
+    # plt.close(fig)
 
     fig = plt.figure(figsize=(8, 8), constrained_layout=True)
     local_ax = fig.add_subplot(1, 1, 1, projection='3d')
@@ -757,5 +766,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
         fig.savefig(save_basepath + "/3Dplane.png")
     else:
         fig.show()
-    plt.close(fig)
+    # plt.close(fig)
+
+
 
