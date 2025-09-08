@@ -23,7 +23,7 @@ save_not_plot: True    # True save. False plot.
 bifurcation_mode: out # One of ["betas", "out", "att", "pe"]
 inf_mode: True # If True, loads inf. Hopfield Transformer. Otherwise, loads finite Hopfield Transformer.
 load_chpt: True # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
-chpt_path: "chpt/continuation/general_beta_idx-463_value_1.277.npz"
+chpt_path: "chpt/continuation/zoom-1_beta_idx-326_value_1.26608_window_chpt_chaotic.npz"
 compute_lyapunov: False  # If true, computes the Lyapunov exponents for the non-transient data points
 pre_compute: True # If true, it just runs for approx num_transient_steps and saves the final context so that it can be used for the continuation diagram
 continuation_diagram: False # If true, it computes the continuation diagram from the pre-computed checkpoints
