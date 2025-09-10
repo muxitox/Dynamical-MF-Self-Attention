@@ -77,19 +77,11 @@ if { [[ "$WORKER_ID" -ne 1 && "$CHAIN"=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIF
 
    LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID}
 
-   echo "Queue next experiment with worker ID $WORKER_ID"
-   echo "Next log dir: $LOG_PATH"
-   echo [[ "$WORKER_ID" -ne 1 && "$CHAIN"=="+1" ]]
-   echo [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && "$CHAIN"=="-1" ]]
-   echo [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]
-   echo [["$CHAIN"=="+1"]]
-   echo  [["$CHAIN"=="-1"]]
-
-#   sbatch --output=$LOG_PATH.out \
-#          --error=$LOG_PATH.err \
-#          slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-#                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
-#                  $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
+   sbatch --output=$LOG_PATH.out \
+          --error=$LOG_PATH.err \
+          slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
+                  $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
 
 else
 
