@@ -36,12 +36,18 @@ for SEED in "${SEED_LIST[@]}"; do
                 mkdir -p ${SUFFIX}${EXP_DIR}/lyapunov_traces/
                 mkdir -p $DONE_DIR
 
+                LOG_DIR=${EXP_DIR}/log/pre
+                mkdir -p $LOG_DIR
+
+                LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_L}
 
                 # First submit the initial job
                 CHAIN=0
 
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
-                jobid=$(sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                jobid=$(sbatch --output=$LOG_PATH.out \
+                        --error=$LOG_PATH.err \
+                  slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
                   $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $INI_WORKER_ID | awk '{print $4}')
 
