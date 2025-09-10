@@ -67,7 +67,7 @@ MINUTES=$(echo "scale=2; $ELAPSEDTIME/ 60" | bc)
 
 echo "It took $MINUTES minutes to complete this task..." >> ${LOG_PATH}.out
 
-if [[ "CHAIN" -eq 0]]; then
+if [[ "$CHAIN" -eq 0]]; then
   echo "Central job finished. Slurm will now be able to start computing the left and right chains." >> ${LOG_PATH}.out
   exit 0
 fi
