@@ -64,12 +64,12 @@ for SEED in "${SEED_LIST[@]}"; do
                   WORKER_ID_L=$((INI_WORKER_ID - 1))
                   echo Queuing chain start [$WORKER_ID_L - 1]
 
-                  LOG_PATH=${LOG_DIR}/${WORKER_ID_L}
-
+                  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_L}
+                  echo Log path: $LOG_PATH
 #                         --output=/dev/null \
-                  sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention \
-                        --output=$LOG_PATH \
-                        --output=$LOG_PATH.err \
+                  sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention/ \
+                        --output=$LOG_PATH.out \
+                        --error=$LOG_PATH.err \
                         -N 1 -c 1 \
                         -p short -t 00:30:00 \
                         --mem=4G \
@@ -91,11 +91,12 @@ for SEED in "${SEED_LIST[@]}"; do
                   WORKER_ID_R=$((INI_WORKER_ID + 1))
                   echo Queuing chain start [$WORKER_ID_R - $NUM_BIFURCATION_VALUES]
 
-                  LOG_PATH=${LOG_DIR}/${WORKER_ID_R}
+                  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_R}
+                  echo Log path: $LOG_PATH
 
                   sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention \
                         --output=$LOG_PATH.out \
-                        --output=$LOG_PATH.err \
+                        --error=$LOG_PATH.err \
                         -N 1 -c 1 \
                         -p short -t 00:30:00 \
                         --mem=4G \
