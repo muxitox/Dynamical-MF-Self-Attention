@@ -46,10 +46,10 @@ for SEED in "${SEED_LIST[@]}"; do
 
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
                 jobid=$(sbatch --output=$LOG_PATH.out \
-                        --error=$LOG_PATH.err \
-                  slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                  $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $INI_WORKER_ID | awk '{print $4}')
+                                --error=$LOG_PATH.err \
+                                slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+                                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
+                                $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $INI_WORKER_ID | awk '{print $4}')
 
                 echo We will create a dependency on job $jobid to finish
 
@@ -58,21 +58,15 @@ for SEED in "${SEED_LIST[@]}"; do
 
                 # Then submit the left and right chains. -1 LEFT, +1 RIGHT
 
-
-                # TODO: remove this after debugging
-                LOG_DIR=${EXP_DIR}/log/pre
-                mkdir -p $LOG_DIR
-
                 # If initial ID is already 1, then don't submit and create done file to organize the final collection
-                CHAIN=-1
+                CHAIN="-1"
                 if [[ "$INI_WORKER_ID" -ne 1 ]]; then
 
                   WORKER_ID_L=$((INI_WORKER_ID - 1))
                   echo Queuing chain start [$WORKER_ID_L - 1]
 
                   LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_L}
-                  echo Log path: $LOG_PATH
-#                         --output=/dev/null \
+
                   sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention/ \
                         --output=$LOG_PATH.out \
                         --error=$LOG_PATH.err \
@@ -91,14 +85,13 @@ for SEED in "${SEED_LIST[@]}"; do
 
 
                 # If initial ID is already NUM_BIFURCATION_VALUES, then don't submit and create lock file to organize the final collection
-                CHAIN=+1
+                CHAIN="+1"
                 if [[ "$INI_WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" ]]; then
 
                   WORKER_ID_R=$((INI_WORKER_ID + 1))
                   echo Queuing chain start [$WORKER_ID_R - $NUM_BIFURCATION_VALUES]
 
                   LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_R}
-                  echo Log path: $LOG_PATH
 
                   sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention \
                         --output=$LOG_PATH.out \

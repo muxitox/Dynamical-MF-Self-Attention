@@ -35,9 +35,6 @@ fi
 
 # This is not an array job
 LOG_DIR=${EXP_DIR}/log/pre
-LOG_PATH=${LOG_DIR}/${WORKER_ID}
-
-mkdir -p $LOG_DIR
 
 ARGS=" \
 --seed=$SEED \
@@ -50,13 +47,13 @@ ARGS=" \
 --chain=$CHAIN \
 --worker_id=$WORKER_ID \
 "
-echo $ARGS >> ${LOG_PATH}.out
-python bifurcation_diagrams_from_sh_run.py $ARGS >> ${LOG_PATH}.out 2>> ${LOG_PATH}.err
+echo $ARGS
+python bifurcation_diagrams_from_sh_run.py $ARGS
 EXIT_CODE=$?
 #python ../bifurcation_diagrams_from_sh_run.py $ARGS
 
 if [[ "EXIT_CODE" -ne 0 ]]; then
-  echo "Error in the execution. Exiting..." >> ${LOG_PATH}.out
+  echo "Error in the execution. Exiting..."
   exit 1
 fi
 
@@ -65,42 +62,45 @@ ELAPSEDTIME=$((end - start))
 # Convert to minutes (with decimal)
 MINUTES=$(echo "scale=2; $ELAPSEDTIME/ 60" | bc)
 
-echo "It took $MINUTES minutes to complete this task..." >> ${LOG_PATH}.out
+echo "It took $MINUTES minutes to complete this task..."
 
-if [[ "$CHAIN" -eq 0]]; then
-  echo "Central job finished. Slurm will now be able to start computing the left and right chains." >> ${LOG_PATH}.out
-  exit 0
+if [[ "$CHAIN" -eq 0 ]]; then
+  echo "Central job finished. Slurm will now be able to start computing the left and right chains."
 fi
 
 # If chain==0, you don't get to execute the part below
 
-if  [[ "$WORKER_ID" -ne 1 && $CHAIN==+1]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN==-1]]; then
+if  [[ "$WORKER_ID" -ne 1 && $CHAIN==+1 ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN==-1 ]]; then
 
   # If the worker index is neither at the beginning or the end for the chain, queue a new job
 
    WORKER_ID=$((WORKER_ID + CHAIN))
 
-   echo "Queue next experiment with worker ID $WORKER_ID" >> ${LOG_PATH}.out
+  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${INI_WORKER_ID}${LOG_DIR}/${WORKER_ID}
 
-   sbatch slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+   echo "Queue next experiment with worker ID $WORKER_ID"
+
+   sbatch --output=$LOG_PATH.out \
+          --error=$LOG_PATH.err \
+          slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
                   $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
 
 else
 
-  echo "We have finished computing the $CHAIN chain." >> ${LOG_PATH}.out
+  echo "We have finished computing the $CHAIN chain."
 
   touch "$DONE_DIR/$CHAIN.done"
   LOCK=$DONE_DIR/collector.lock
 
   if [[ -f "$DONE_DIR/-1.done" && -f "$DONE_DIR/+1.done" ]]; then
     if (set -o noclobber; echo $$ > "$LOCK") 2>/dev/null; then
-        echo "Both chains finished. Collector can be launched" >> ${LOG_PATH}.out
+        echo "Both chains finished. Collector can be launched"
         sbatch --array=1-$NUM_BIFURCATION_VALUES \
                   slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
                   $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
     else
-        echo "Waiting for the other chain to finish" >> ${LOG_PATH}.out
+        echo "Waiting for the other chain to finish"
     fi
   fi
 fi
