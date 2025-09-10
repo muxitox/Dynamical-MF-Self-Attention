@@ -79,6 +79,8 @@ if  [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURC
 
    echo "Queue next experiment with worker ID $WORKER_ID"
    echo "Next log dir: $LOG_PATH"
+   echo [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]]
+   echo [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]
 
    wait 200
 
