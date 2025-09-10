@@ -458,6 +458,8 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
             # If we are already computing the continuation diagram, start from the transient of your same id
             worker_to_load = worker_id
 
+        print("Loading results from ID", worker_to_load, "to use as seed.")
+
         chpt_path = folder_path_stats_pre + f"/beta_idx-{worker_to_load}_window_chpt.npz"
         att_window, pe_window = load_context(chpt_path)
         # Simulate from context
