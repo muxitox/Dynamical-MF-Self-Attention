@@ -39,7 +39,7 @@ for SEED in "${SEED_LIST[@]}"; do
                 LOG_DIR=${EXP_DIR}/log/pre
                 mkdir -p $LOG_DIR
 
-                LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_L}
+                LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${INI_WORKER_ID}
 
                 # First submit the initial job
                 CHAIN=0
