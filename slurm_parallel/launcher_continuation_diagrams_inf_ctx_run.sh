@@ -6,8 +6,8 @@ POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
 CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
 CFG_PATH_POST="cfgs/cont_diagram_post_inf_0_zoom-in.yaml"
-NUM_BIFURCATION_VALUES=31
-INI_WORKER_ID=15 # Number between 1 and NUM_BIFURCATION_VALUES
+NUM_BIFURCATION_VALUES=11
+INI_WORKER_ID=6 # Number between 1 and NUM_BIFURCATION_VALUES
 
 SUFFIX=""
 VAR1=$(basename "$PWD")
@@ -43,6 +43,7 @@ for SEED in "${SEED_LIST[@]}"; do
 
                 # First submit the initial job
                 CHAIN="0"
+                echo Log path for the first job: $LOG_PATH
 
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
                 jobid=$(sbatch --output=$LOG_PATH.out \
