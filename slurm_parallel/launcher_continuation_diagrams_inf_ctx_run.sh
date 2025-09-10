@@ -59,59 +59,59 @@ for SEED in "${SEED_LIST[@]}"; do
 
                 # Then submit the left and right chains. -1 LEFT, +1 RIGHT
 
-                # If initial ID is already 1, then don't submit and create done file to organize the final collection
-                CHAIN="-1"
-                if [[ "$INI_WORKER_ID" -ne 1 ]]; then
-
-                  WORKER_ID_L=$((INI_WORKER_ID - 1))
-                  echo Queuing chain start [$WORKER_ID_L - 1]
-
-                  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_L}
-
-                  sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention/ \
-                        --output=$LOG_PATH.out \
-                        --error=$LOG_PATH.err \
-                        -N 1 -c 1 \
-                        -p short -t 00:30:00 \
-                        --mem=4G \
-                        --dependency=afterok:$jobid \
-                        slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                        $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_L
-                else
-                  echo Creating lock file "$DONE_DIR/$CHAIN.done"
-                  touch "$DONE_DIR/$CHAIN.done"
-
-                fi
-
-
-                # If initial ID is already NUM_BIFURCATION_VALUES, then don't submit and create lock file to organize the final collection
-                CHAIN="+1"
-                if [[ "$INI_WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" ]]; then
-
-                  WORKER_ID_R=$((INI_WORKER_ID + 1))
-                  echo Queuing chain start [$WORKER_ID_R - $NUM_BIFURCATION_VALUES]
-
-                  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_R}
-
-                  sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention \
-                        --output=$LOG_PATH.out \
-                        --error=$LOG_PATH.err \
-                        -N 1 -c 1 \
-                        -p short -t 00:30:00 \
-                        --mem=4G \
-                        --dependency=afterok:$jobid \
-                        slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                        $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_R
-
-
-                  else
-
-                  echo Creating lock file "$DONE_DIR/$CHAIN.done"
-                  touch "$DONE_DIR/$CHAIN.done"
-
-                fi
+#                # If initial ID is already 1, then don't submit and create done file to organize the final collection
+#                CHAIN="-1"
+#                if [[ "$INI_WORKER_ID" -ne 1 ]]; then
+#
+#                  WORKER_ID_L=$((INI_WORKER_ID - 1))
+#                  echo Queuing chain start [$WORKER_ID_L - 1]
+#
+#                  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_L}
+#
+#                  sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention/ \
+#                        --output=$LOG_PATH.out \
+#                        --error=$LOG_PATH.err \
+#                        -N 1 -c 1 \
+#                        -p short -t 00:30:00 \
+#                        --mem=4G \
+#                        --dependency=afterok:$jobid \
+#                        slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
+#                        $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_L
+#                else
+#                  echo Creating lock file "$DONE_DIR/$CHAIN.done"
+#                  touch "$DONE_DIR/$CHAIN.done"
+#
+#                fi
+#
+#
+#                # If initial ID is already NUM_BIFURCATION_VALUES, then don't submit and create lock file to organize the final collection
+#                CHAIN="+1"
+#                if [[ "$INI_WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" ]]; then
+#
+#                  WORKER_ID_R=$((INI_WORKER_ID + 1))
+#                  echo Queuing chain start [$WORKER_ID_R - $NUM_BIFURCATION_VALUES]
+#
+#                  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID_R}
+#
+#                  sbatch -D /home/apoc/projects/Dynamical-MF-Self-Attention \
+#                        --output=$LOG_PATH.out \
+#                        --error=$LOG_PATH.err \
+#                        -N 1 -c 1 \
+#                        -p short -t 00:30:00 \
+#                        --mem=4G \
+#                        --dependency=afterok:$jobid \
+#                        slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
+#                        $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_R
+#
+#
+#                  else
+#
+#                  echo Creating lock file "$DONE_DIR/$CHAIN.done"
+#                  touch "$DONE_DIR/$CHAIN.done"
+#
+#                fi
             done
         done
     done

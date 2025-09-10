@@ -51,7 +51,7 @@ echo $ARGS
 python bifurcation_diagrams_from_sh_run.py $ARGS
 EXIT_CODE=$?
 #python ../bifurcation_diagrams_from_sh_run.py $ARGS
-
+echo Hey 1
 if [[ "EXIT_CODE" -ne 0 ]]; then
   echo "Error in the execution. Exiting..."
   exit 1
@@ -68,39 +68,39 @@ if [[ "$CHAIN" == "0" ]]; then
   echo "Central job finished. Slurm will now be able to start computing the left and right chains."
 fi
 
-# If chain==0, you don't get to execute the part below
-
-if  [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]; then
-
-  # If the worker index is neither at the beginning or the end of the chain, queue a new job
-   WORKER_ID=$((WORKER_ID + CHAIN))
-
-   LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID}
-
-   echo "Queue next experiment with worker ID $WORKER_ID"
-   echo "Next log dir: $LOG_PATH"
-
-   sbatch --output=$LOG_PATH.out \
-          --error=$LOG_PATH.err \
-          slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
-                  $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
-
-else
-
-  echo "We have finished computing the $CHAIN chain."
-
-  touch "$DONE_DIR/$CHAIN.done"
-  LOCK=$DONE_DIR/collector.lock
-
-  if [[ -f "$DONE_DIR/-1.done" && -f "$DONE_DIR/+1.done" ]]; then
-    if (set -o noclobber; echo $$ > "$LOCK") 2>/dev/null; then
-        echo "Both chains finished. Collector can be launched"
-        sbatch --array=1-$NUM_BIFURCATION_VALUES \
-                  slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
-    else
-        echo "Waiting for the other chain to finish"
-    fi
-  fi
-fi
+## If chain==0, you don't get to execute the part below
+#
+#if  [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]; then
+#
+#  # If the worker index is neither at the beginning or the end of the chain, queue a new job
+#   WORKER_ID=$((WORKER_ID + CHAIN))
+#
+#   LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID}
+#
+#   echo "Queue next experiment with worker ID $WORKER_ID"
+#   echo "Next log dir: $LOG_PATH"
+#
+#   sbatch --output=$LOG_PATH.out \
+#          --error=$LOG_PATH.err \
+#          slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
+#                  $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
+#
+#else
+#
+#  echo "We have finished computing the $CHAIN chain."
+#
+#  touch "$DONE_DIR/$CHAIN.done"
+#  LOCK=$DONE_DIR/collector.lock
+#
+#  if [[ -f "$DONE_DIR/-1.done" && -f "$DONE_DIR/+1.done" ]]; then
+#    if (set -o noclobber; echo $$ > "$LOCK") 2>/dev/null; then
+#        echo "Both chains finished. Collector can be launched"
+#        sbatch --array=1-$NUM_BIFURCATION_VALUES \
+#                  slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
+#    else
+#        echo "Waiting for the other chain to finish"
+#    fi
+#  fi
+#fi
