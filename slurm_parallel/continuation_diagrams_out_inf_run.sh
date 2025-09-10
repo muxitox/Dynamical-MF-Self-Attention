@@ -64,21 +64,21 @@ MINUTES=$(echo "scale=2; $ELAPSEDTIME/ 60" | bc)
 
 echo "It took $MINUTES minutes to complete this task..."
 
-if [[ "$CHAIN" -eq 0 ]]; then
+if [[ "$CHAIN" == "0" ]]; then
   echo "Central job finished. Slurm will now be able to start computing the left and right chains."
 fi
 
 # If chain==0, you don't get to execute the part below
 
-if  [[ "$WORKER_ID" -ne 1 && $CHAIN==+1 ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN==-1 ]]; then
+if  [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]; then
 
-  # If the worker index is neither at the beginning or the end for the chain, queue a new job
-
+  # If the worker index is neither at the beginning or the end of the chain, queue a new job
    WORKER_ID=$((WORKER_ID + CHAIN))
 
-  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${INI_WORKER_ID}${LOG_DIR}/${WORKER_ID}
+   LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID}
 
    echo "Queue next experiment with worker ID $WORKER_ID"
+   echo "Next log dir: $LOG_PATH"
 
    sbatch --output=$LOG_PATH.out \
           --error=$LOG_PATH.err \

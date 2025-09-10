@@ -42,7 +42,7 @@ for SEED in "${SEED_LIST[@]}"; do
                 LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${INI_WORKER_ID}
 
                 # First submit the initial job
-                CHAIN=0
+                CHAIN="0"
 
                 echo Num bifurcation values parallel $NUM_BIFURCATION_VALUES $NUM_BIFURCATION_VALUES
                 jobid=$(sbatch --output=$LOG_PATH.out \
