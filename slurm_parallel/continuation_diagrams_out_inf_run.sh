@@ -72,7 +72,7 @@ fi
 
 if  [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]; then
 
-  # If the worker index is neither at the beginning or the end of the chain, queue a new job
+   # If the worker index is neither at the beginning or the end of the chain, queue a new job
    WORKER_ID=$((WORKER_ID + CHAIN))
 
    LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID}
@@ -81,14 +81,15 @@ if  [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURC
    echo "Next log dir: $LOG_PATH"
    echo [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]]
    echo [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]
+   echo [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]
+   echo  $CHAIN=="+1"
+   echo $CHAIN=="-1"
 
-   wait 200
-
-   sbatch --output=$LOG_PATH.out \
-          --error=$LOG_PATH.err \
-          slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
-                  $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
+#   sbatch --output=$LOG_PATH.out \
+#          --error=$LOG_PATH.err \
+#          slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+#                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
+#                  $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
 
 else
 
@@ -96,8 +97,6 @@ else
 
   touch "$DONE_DIR/$CHAIN.done"
   LOCK=$DONE_DIR/collector.lock
-
- wait 200
 
 
   if [[ -f "$DONE_DIR/-1.done" && -f "$DONE_DIR/+1.done" ]]; then
