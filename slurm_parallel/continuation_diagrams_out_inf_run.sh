@@ -70,7 +70,7 @@ fi
 
 # If chain==0, you don't get to execute the part below
 
-if  [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]; then
+if { [[ "$WORKER_ID" -ne 1 && "$CHAIN"=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && "$CHAIN"=="-1" ]]}; then
 
    # If the worker index is neither at the beginning or the end of the chain, queue a new job
    WORKER_ID=$((WORKER_ID + CHAIN))
@@ -79,11 +79,11 @@ if  [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURC
 
    echo "Queue next experiment with worker ID $WORKER_ID"
    echo "Next log dir: $LOG_PATH"
-   echo [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]]
-   echo [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]
+   echo [[ "$WORKER_ID" -ne 1 && "$CHAIN"=="+1" ]]
+   echo [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && "$CHAIN"=="-1" ]]
    echo [[ "$WORKER_ID" -ne 1 && $CHAIN=="+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && $CHAIN=="-1" ]]
-   echo  $CHAIN=="+1"
-   echo $CHAIN=="-1"
+   echo [["$CHAIN"=="+1"]]
+   echo  [["$CHAIN"=="-1"]]
 
 #   sbatch --output=$LOG_PATH.out \
 #          --error=$LOG_PATH.err \
