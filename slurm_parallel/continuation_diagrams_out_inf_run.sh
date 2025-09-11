@@ -66,11 +66,12 @@ echo "It took $MINUTES minutes to complete this task..."
 
 if [[ "$CHAIN" == "0" ]]; then
   echo "Central job finished. Slurm will now be able to start computing the left and right chains."
+  exit 0
 fi
 
 # If chain==0, you don't get to execute the part below
 
-if [[ "$WORKER_ID" -ne 1 && "$CHAIN" == "+1" ]] || [[ "$WORKER_ID" -ne "$NUM_BIFURCATION_VALUES" && "$CHAIN" == "-1" ]]; then
+if [[ $WORKER_ID -ne 1 && "$CHAIN" == "+1" ]] || [[ $WORKER_ID -ne $NUM_BIFURCATION_VALUES && "$CHAIN" == "-1" ]]; then
 
    # If the worker index is neither at the beginning or the end of the chain, queue a new job
    WORKER_ID=$((WORKER_ID + CHAIN))
