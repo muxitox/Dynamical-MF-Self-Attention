@@ -6,8 +6,8 @@ POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
 CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
 CFG_PATH_POST="cfgs/cont_diagram_post_inf_0_zoom-in.yaml"
-NUM_BIFURCATION_VALUES=5
-INI_WORKER_ID=3 # Number between 1 and NUM_BIFURCATION_VALUES
+NUM_BIFURCATION_VALUES=501
+INI_WORKER_ID=326 # Number between 1 and NUM_BIFURCATION_VALUES
 
 SUFFIX=""
 VAR1=$(basename "$PWD")
