@@ -71,27 +71,27 @@ fi
 
 # If chain==0, you don't get to execute the part below
 
-if [[ $WORKER_ID -gt 1 && "$CHAIN" == "+1" ]] || [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES && "$CHAIN" == "-1" ]]; then
+if [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES && "$CHAIN" == "+1" ]] || [[ $WORKER_ID -gt 1 && "$CHAIN" == "-1" ]]; then
 
   echo $CHAIN $WORKER_ID
-  if [[ $WORKER_ID -gt 1 && "$CHAIN" == "+1" ]]; then
+  if [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES && "$CHAIN" == "+1" ]]; then
       echo "DEBUG: first condition is TRUE"
   fi
 
-  if [[ $WORKER_ID -gt 1 ]]; then
-      echo "$WORKER_ID -gt 1"
+  if [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES ]]; then
+      echo "$WORKER_ID -lt $NUM_BIFURCATION_VALUES"
   fi
 
   if [[ "$CHAIN" == "+1" ]]; then
       echo "$CHAIN" == "+1"
   fi
 
-  if [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES && "$CHAIN" == "-1" ]]; then
+  if [[ $WORKER_ID -gt 1 && "$CHAIN" == "-1" ]]; then
       echo "DEBUG: second condition is TRUE"
   fi
 
-  if [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES ]]; then
-      echo "$WORKER_ID -lt $NUM_BIFURCATION_VALUES"
+  if [[ $WORKER_ID -gt 1 ]]; then
+      echo "$WORKER_ID -gt 1"
   fi
 
   if [[ "$CHAIN" == "-1" ]]; then
