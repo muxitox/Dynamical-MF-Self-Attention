@@ -71,7 +71,32 @@ fi
 
 # If chain==0, you don't get to execute the part below
 
-if [[ $WORKER_ID -ne 1 && "$CHAIN" == "+1" ]] || [[ $WORKER_ID -ne $NUM_BIFURCATION_VALUES && "$CHAIN" == "-1" ]]; then
+if [[ $WORKER_ID -gt 1 && "$CHAIN" == "+1" ]] || [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES && "$CHAIN" == "-1" ]]; then
+
+  echo $CHAIN $WORKER_ID
+  if [[ $WORKER_ID -gt 1 && "$CHAIN" == "+1" ]]; then
+      echo "DEBUG: first condition is TRUE"
+  fi
+
+  if [[ $WORKER_ID -gt 1 ]]; then
+      echo "$WORKER_ID -gt 1"
+  fi
+
+  if [[ "$CHAIN" == "+1" ]]; then
+      echo "$CHAIN" == "+1"
+  fi
+
+  if [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES && "$CHAIN" == "-1" ]]; then
+      echo "DEBUG: second condition is TRUE"
+  fi
+
+  if [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES ]]; then
+      echo "$WORKER_ID -lt $NUM_BIFURCATION_VALUES"
+  fi
+
+  if [[ "$CHAIN" == "-1" ]]; then
+      echo "$CHAIN" == "-1"
+  fi
 
    # If the worker index is neither at the beginning or the end of the chain, queue a new job
    WORKER_ID=$((WORKER_ID + CHAIN))
