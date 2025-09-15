@@ -117,12 +117,18 @@ else
   LOCK=$DONE_DIR/collector.lock
 
 
+  # Log dir for the post processing phase
+  LOG_DIR=${EXP_DIR}/log/post
+  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID}
+
   if [[ -f "$DONE_DIR/-1.done" && -f "$DONE_DIR/+1.done" ]]; then
     if (set -o noclobber; echo $$ > "$LOCK") 2>/dev/null; then
         echo "Both chains finished. Collector can be launched"
         sbatch --array=1-$NUM_BIFURCATION_VALUES \
-                  slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
+               --output=$LOG_PATH.out \
+               --error=$LOG_PATH.err \
+               slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
+               $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
     else
         echo "Waiting for the other chain to finish"
     fi
