@@ -119,6 +119,7 @@ else
 
   # Log dir for the post processing phase
   LOG_DIR=${EXP_DIR}/log/post
+  mkdir -p $LOG_DIR
   LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID}
 
   if [[ -f "$DONE_DIR/-1.done" && -f "$DONE_DIR/+1.done" ]]; then
