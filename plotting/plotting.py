@@ -710,7 +710,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     flat_ax = ax.ravel()
 
     for i in range(num_feat_patterns):
-        flat_ax[i].hist(S_array[:, i], bins=200)
+        flat_ax[i].hist(valid_S[:, i], bins=200)
         flat_ax[i].set_xlabel(rf"$\lambda_{i}$")
         flat_ax[i].set_ylabel("Freqs.")
 
@@ -728,7 +728,9 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     flat_ax = ax.ravel()
 
     for i in range(num_other_feats):
-        flat_ax[i].hist(S_array[1:, i + num_feat_patterns], bins=200)
+        if i ==6:
+            print()
+        flat_ax[i].hist(valid_S[1:, i + num_feat_patterns], bins=200)
         flat_ax[i].set_xlabel(rf"$\lambda_{i+num_feat_patterns}$")
         flat_ax[i].set_ylabel("Freqs.")
 
