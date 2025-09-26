@@ -16,9 +16,15 @@ if __name__ == "__main__":
     if args.exp_dir:
         exp_dir = args.exp_dir
     else:
-        # exp_dir = "results_parallel_v3/20241218_130238"
+        exp_dir = "results_parallel_v3/20241218_130238"
         # exp_dir = "results_parallel_v3/20241218_130242_zoom"
         exp_dir = "results_parallel_v3/20241219_120830_zoom1"
+        # exp_dir = "results_parallel_v3/20241219_120838_zoom2"
+        exp_dir = "results_continuation/20250701_150546_original"
+        exp_dir = "results_continuation/20250703_153601_zoom-1"
+        # exp_dir = "results_continuation/20250704_160253_zoom-2_right"
+        exp_dir = "results_continuation/20250916_124511_zoom-2_middle"
+
 
 
     cfg_path = exp_dir + "/cfg.yaml"
@@ -30,7 +36,7 @@ if __name__ == "__main__":
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
                                      cfg["num_bifurcation_values"])  # Betas or Epsilon values
 
-    show_title = False
+    show_title = True
 
     stats_to_save_plot = ["mo_se", "att"]
 
