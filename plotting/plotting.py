@@ -629,12 +629,11 @@ def plot_lyapunov_graphs(S_i_sum, cfg, beta, save_not_plot=False, save_path=None
         plt.show()
 
 
-def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_basepath, save_not_plot=True, title=None,
-                  min_bidx=0):
+def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_basepath, save_not_plot=True,
+                              title=None, min_bidx=0):
     """
     Plots statistics related with the Lyapunov exponents of a bifurcation diagram
     """
-
 
     # Process Lyapunov exponents and mark errors
 
@@ -645,8 +644,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
 
     count_failures = 0
 
-
-    for idx in range(1, len(x_list)):
+    for idx in range(0, len(x_list)):
         b_idx = min_bidx + idx
         stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx) + ".npz")
         # Load data
@@ -662,6 +660,12 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
             print()
             count_failures += 1
 
+    # If the leftmost x value is 0, in case of being a bifurcation or continuation diagrams of \beta we don't want
+    # to process this value since the lyapunov exponents computation makes no sense (all ms are 0)
+    if x_list[0] == 0.0:
+        x_list = x_list[1:]
+        S_array = S_array[1:]
+        S_array_inf = S_array_inf[1:]
 
     S_array_inf_any = np.any(S_array_inf, axis=0)
     print("Affected (discarded) idxs", S_array_inf_any)
@@ -673,24 +677,53 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     num_valid_dims = valid_S.shape[1]
 
     # Create some thresholds to separate regimes. 0: quasi, 1:chaotic, -1: periodic
-    zero_threshold = 0.0005
+    zero_threshold = 0.0001
     regimes = np.zeros(len(x_list))
-    regimes[valid_S[:,0] > zero_threshold] = 1
-    regimes[valid_S[:,0] < - zero_threshold] = -1
+    regimes[:] = np.nan
+    regimes[valid_S[:,0] > zero_threshold] = 1  # Chaos
+    regimes[(valid_S[:, 0] > zero_threshold) & (valid_S[:, 1] > zero_threshold)] = 2  # Hyperchaos
+    regimes[(valid_S[:, 0] > -zero_threshold) & (valid_S[:, 0] < zero_threshold)] = 0  # Quasi-periodic
+    regimes[(valid_S[:, 0] > -zero_threshold) & (valid_S[:, 0] < zero_threshold) &
+            (valid_S[:, 1] > -zero_threshold) & (valid_S[:, 1] < zero_threshold)] = 3  # Special Quasi-periodic
+    regimes[valid_S[:,0] < -zero_threshold] = -1  # Periodic
+
     changes = regimes[1:] != regimes[:-1]
     boundaries = np.where(changes)[0] + 1
 
+    regime_colors = {-1: "lightgray", 0: "lightblue", 1: "lightgreen", 2: "mistyrose", 3: "lightsalmon"}
+    regime_labels = {-1: "Period", 0: "Quasi", 1: "Chaos", 2: "HyperChaos", 3: "DoubleQuasi"}
+
+    # Plot the 2 first lyapunov exponents evolution along with the x_values.
+    plt.plot(x_list, valid_S[:,:2])
+    plt.axhline(0, color="gray", linestyle="--", alpha=0.3)  # horizontal line at y=0
+    segments = np.split(x_list, boundaries)
+    regimes = np.split(regimes, boundaries)
+
+
+    # Shade background by regime
+    previous_regimes = []
+    for seg, reg in zip(segments, regimes):
+        if reg[0] in previous_regimes:
+            plt.axvspan(seg[0], seg[-1], color=regime_colors[reg[0]], alpha=0.3)
+        else:
+            plt.axvspan(seg[0], seg[-1], color=regime_colors[reg[0]], alpha=0.3, label=regime_labels[reg[0]])
+            previous_regimes.append(reg[0])
+
+
+    plt.legend()
+    plt.show()
 
     col_size = 5
     row_size = 4
     dpi = 250
     fig, ax = plt.subplots(2, 1, figsize=(col_size, row_size), constrained_layout=True, dpi=dpi)
 
-    ax[0].plot(x_list[1:], valid_S[1:,:num_feat_patterns])
+    # Same plot but for all the Lyapunov exponents
+    ax[0].plot(x_list, valid_S[:,:num_feat_patterns])
     ax[0].axhline(y=0, color='black', linestyle='--', alpha=0.3)
     ax[0].set_ylabel(r"$\lambda^{1-3}$")
 
-    ax[1].plot(x_list[1:], valid_S[1:,num_feat_patterns:])
+    ax[1].plot(x_list, valid_S[:,num_feat_patterns:])
     ax[1].axhline(y=0, color='black', linestyle='--', alpha=0.3)
     ax[1].set_xlabel(r"$\beta$")
     ax[1].set_ylabel(r"$\lambda^{other}$")
