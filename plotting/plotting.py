@@ -1,6 +1,6 @@
 import platform
 import matplotlib.pyplot as plt
-from utils import feat_name_to_latex
+from utils import feat_name_to_latex, load_lyapunov
 import numpy as np
 from scipy.signal import hilbert, chirp
 import matplotlib
@@ -628,53 +628,15 @@ def plot_lyapunov_graphs(S_i_sum, cfg, beta, save_not_plot=False, save_path=None
     else:
         plt.show()
 
-
 def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_path, save_basepath, save_not_plot=True,
                               title=None, min_bidx=0):
     """
     Plots statistics related with the Lyapunov exponents of a bifurcation diagram
     """
 
-    # Process Lyapunov exponents and mark errors
+    # Load Lyapunov exponents
+    valid_S, num_valid_dims = load_lyapunov(folder_path, num_feat_patterns, context_size, x_list, min_bidx)
 
-    lyapunov_size = num_feat_patterns * context_size
-
-    S_array = np.zeros((len(x_list), lyapunov_size))
-    S_array_inf = np.zeros((len(x_list), lyapunov_size))
-
-    count_failures = 0
-
-    for idx in range(0, len(x_list)):
-        b_idx = min_bidx + idx
-        stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx) + ".npz")
-        # Load data
-        data = np.load(stats_data_path)
-        # Load only variables not associated with the copying of Positional Encoding values
-        S_array[idx] = data["S"][:lyapunov_size]
-        S_array_inf[idx] = S_inf_flag = data["S_inf_flag"][:lyapunov_size]
-
-
-        if True in S_inf_flag:
-            print(x_list[b_idx], "Fallo exponentes")
-            print(S_inf_flag)
-            print()
-            count_failures += 1
-
-    # If the leftmost x value is 0, in case of being a bifurcation or continuation diagrams of \beta we don't want
-    # to process this value since the lyapunov exponents computation makes no sense (all ms are 0)
-    if x_list[0] == 0.0:
-        x_list = x_list[1:]
-        S_array = S_array[1:]
-        S_array_inf = S_array_inf[1:]
-
-    S_array_inf_any = np.any(S_array_inf, axis=0)
-    print("Affected (discarded) idxs", S_array_inf_any)
-    print("Num failures", count_failures)
-
-    # First plot evolution of lyapunov exponents
-
-    valid_S = S_array[:,np.logical_not(S_array_inf_any)]
-    num_valid_dims = valid_S.shape[1]
 
     # Create some thresholds to separate regimes. 0: quasi, 1:chaotic, -1: periodic
     zero_threshold = 0.0001
@@ -777,7 +739,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
 
 
     fig = plt.figure(figsize=(8, 8))
-    plt.plot(S_array[1:, 0], S_array[1:, 1], '.', c="k", rasterized=True)
+    plt.plot(valid_S[:, 0], valid_S[:, 1], '.', c="k", rasterized=True)
     plt.axhline(y=0, color='black', linestyle='--', alpha=0.3)
     plt.axvline(x=0, color='black', linestyle='--', alpha=0.3)
     plt.xlabel(r"$\lambda_1$")
@@ -793,7 +755,7 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
 
     fig = plt.figure(figsize=(8, 8), constrained_layout=True)
     local_ax = fig.add_subplot(1, 1, 1, projection='3d')
-    local_ax.scatter(S_array[1:, 0], S_array[1:, 1], x_list[1:])
+    local_ax.scatter(valid_S[:, 0], valid_S[:, 1], x_list)
     local_ax.set_xlabel(r"$\lambda_1$")
     local_ax.set_ylabel(r"$\lambda_2$")
     local_ax.set_zlabel(r"$\beta$")

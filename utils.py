@@ -83,4 +83,39 @@ def load_context(chpt_path):
     return cw['att_window'], cw['pe_window']
 
 
+def load_lyapunov(folder_path, num_feat_patterns, context_size, x_list, min_bidx):
+    # Process Lyapunov exponents and mark errors
 
+    lyapunov_size = num_feat_patterns * context_size
+
+    S_array = np.zeros((len(x_list), lyapunov_size))
+    S_array_inf = np.zeros((len(x_list), lyapunov_size))
+
+    count_failures = 0
+
+    for idx in range(0, len(x_list)):
+        b_idx = min_bidx + idx
+        stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx) + ".npz")
+        # Load data
+        data = np.load(stats_data_path)
+        # Load only variables not associated with the copying of Positional Encoding values
+        S_array[idx] = data["S"][:lyapunov_size]
+        S_array_inf[idx] = S_inf_flag = data["S_inf_flag"][:lyapunov_size]
+
+
+        if True in S_inf_flag:
+            print(x_list[b_idx], "Fallo exponentes")
+            print(S_inf_flag)
+            print()
+            count_failures += 1
+
+    S_array_inf_any = np.any(S_array_inf, axis=0)
+    print("Affected (discarded) idxs", S_array_inf_any)
+    print("Num failures", count_failures)
+
+    # First plot evolution of lyapunov exponents
+
+    valid_S = S_array[:,np.logical_not(S_array_inf_any)]
+    num_valid_dims = valid_S.shape[1]
+
+    return valid_S, num_valid_dims
