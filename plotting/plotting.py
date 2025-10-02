@@ -671,6 +671,13 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
             plt.axvspan(seg[0], seg[-1], color=regime_colors[reg[0]], alpha=0.3, label=regime_labels[reg[0]])
             previous_regimes.append(reg[0])
 
+    show_cutting_points = True
+    if show_cutting_points:
+        # x_cutting_points_idxs = [18, 47, 50, 75, 95, 118, 166, 235, 300, 363, 375, 382, 390, 415, 455, 485]
+        x_cutting_points_idxs = [18, 47, 50, 95, 118, 166, 235, 300, 363, 375, 382, 390, 455, 485]
+        x_cutting_points = x_list[x_cutting_points_idxs]
+        plt.vlines(x_cutting_points, np.min(valid_S[:,:2]) * 1.2, np.max(valid_S[:,:2]) * 1.2, color="black", alpha=0.3)
+        plt.ylim(np.min(valid_S[:,:2]) * 1.1, np.max(valid_S[:,:2]) * 1.1 )
 
     plt.legend()
     plt.show()
