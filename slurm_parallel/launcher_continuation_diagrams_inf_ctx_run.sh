@@ -2,12 +2,12 @@
 
 SEED_LIST=(1)
 NUM_FEAT_PATTERNS_LIST=(3)
-POSITIONAL_EMBEDDING_SIZE_LIST=(2)
+POSITIONAL_EMBEDDING_SIZE_LIST=(3)
 INI_TOKEN_IDX_LIST=(0)
-CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
-CFG_PATH_POST="cfgs/cont_diagram_post_inf_0_zoom-in.yaml"
+CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0.yaml"
+CFG_PATH_POST="cfgs/cont_diagram_post_inf_0.yaml"
 NUM_BIFURCATION_VALUES=501
-INI_WORKER_ID=81 # Number between 1 and NUM_BIFURCATION_VALUES
+INI_WORKER_ID=501 # Number between 1 and NUM_BIFURCATION_VALUES
 
 SUFFIX=""
 VAR1=$(basename "$PWD")
@@ -118,8 +118,4 @@ for SEED in "${SEED_LIST[@]}"; do
 done
 
 
-
-
-# For Hypatia: first see if there's a declared variable with the worker_id. If there is not, assign the last ID,
-# execute and at the end sbatch the following one (or end if id is 1)
 
