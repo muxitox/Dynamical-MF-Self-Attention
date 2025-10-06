@@ -22,8 +22,8 @@ save_non_transient: False  # If true, save points from the transient. Not recomm
 save_not_plot: True    # True save. False plot.
 bifurcation_mode: out # One of ["betas", "out", "att", "pe"]
 inf_mode: True # If True, loads inf. Hopfield Transformer. Otherwise, loads finite Hopfield Transformer.
-load_chpt: True # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
-chpt_path: "results_betas_ft/beta3.0/seed-1-transient_steps-100000-max_sim_steps-175000.npz"
+load_chpt: False # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
+chpt_path: "results_betas_ft/beta3.0/seed-1-transient_steps-100000-max_sim_steps-175000.npz" # Make sure the checkpoint is that of an experiment with the same variables size
 compute_lyapunov: False  # If true, computes the Lyapunov exponents for the non-transient data points
 pre_compute: True # If true, it just runs for approx num_transient_steps and saves the final context so that it can be used for the continuation diagram
 continuation_diagram: False # If true, it computes the continuation diagram from the pre-computed checkpoints
