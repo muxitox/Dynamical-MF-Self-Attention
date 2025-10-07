@@ -16,6 +16,8 @@ then
   source venv/bin/activate
 fi
 
+echo "This is a test error message" >&2
+
 SEED=$1
 NUM_FEAT_PATTERNS=$2
 POSITIONAL_EMBEDDING_SIZE=$3

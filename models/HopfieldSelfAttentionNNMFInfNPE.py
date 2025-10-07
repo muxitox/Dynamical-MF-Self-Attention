@@ -581,7 +581,13 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
             self.Jacobian_Func = jacobian(self._step)
             dx = np.eye(self.num_feat_patterns * self.context_size + self.pe_bit_size * self.context_size)
 
+        DEBUG_STEPS = 25000
+
         for t in range(ini_t, max_steps):
+
+            if t % DEBUG_STEPS == 0:
+                print("Simulating step", t)
+
             self.t = t
             self.effective_context_size = min(self.context_size, self.t)
 
