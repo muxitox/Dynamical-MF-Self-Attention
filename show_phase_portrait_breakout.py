@@ -19,9 +19,9 @@ def plotter(worker_x_values_list , x_cutting_points_idxs, cfg, exp_dir, save_not
 
 
 
-    for x_idx in x_cutting_points_idxs:
+    for i in range(len(x_cutting_points_idxs)):
 
-        stats_data_path = (exp_dir + "/stats/beta_idx-" + str(x_idx) + ".npz")
+        stats_data_path = (exp_dir + "/stats/beta_idx-" + str(x_cutting_points_idxs[i]) + ".npz")
 
         # Load data
         data = np.load(stats_data_path)
@@ -34,7 +34,7 @@ def plotter(worker_x_values_list , x_cutting_points_idxs, cfg, exp_dir, save_not
         #################
 
         plot_save_path_plane = (save_basepath + f"/planes/"
-                                + f"/plane-beta-{x_idx}" + "-transient_steps-" +
+                                + f"/plane-{i}-beta-{x_cutting_points_idxs[i]}" + "-transient_steps-" +
                                 str(cfg["num_transient_steps"]) + image_format)
 
         if save_not_plot:
@@ -63,7 +63,7 @@ def plotter(worker_x_values_list , x_cutting_points_idxs, cfg, exp_dir, save_not
                             stat_results_beta_1, cfg["max_sim_steps"] - cfg["num_transient_steps"], feat_idx[plot_i],
                             flat_ax[plot_i], tag_names=stats_to_plot[plot_i])
 
-        title = rf"$\beta$={worker_x_values_list[x_idx]} $\lambda_0$={lyapunov_0:0.5g}"
+        title = rf"{i} $\beta$={worker_x_values_list[i]} $\lambda_0$={lyapunov_0:0.5g}"
 
         fig.suptitle(title)
 
@@ -80,7 +80,8 @@ def plotter(worker_x_values_list , x_cutting_points_idxs, cfg, exp_dir, save_not
 
 if __name__ == "__main__":
 
-    exp_dir = "results_continuation/20250925_171913_zoom2_middle2"
+    exp_dir = "results_continuation/20250704_160253_zoom-2_right"
+    # exp_dir = "results_continuation/20250925_171913_zoom-2_middle2"
 
 
     cfg_path = exp_dir + "/cfg.yaml"
@@ -89,7 +90,7 @@ if __name__ == "__main__":
         cfg = yaml.safe_load(file)
 
     stats_to_save_plot = ["mo_se", "att"]
-    save_not_plot = False     # True -> save, False -> plot
+    save_not_plot = True     # True -> save, False -> plot
 
     # Create x values for the bifurcation diagram.
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
