@@ -1,9 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
-#SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
-#SBATCH -p medium -t 06:00:00
+#SBATCH -p large -t 12:00:00
 #SBATCH --mem=4G
 
 

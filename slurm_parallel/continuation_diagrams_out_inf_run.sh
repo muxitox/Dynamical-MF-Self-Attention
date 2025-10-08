@@ -1,7 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="transformer-mf"
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
-#SBATCH --output=/dev/null
 #SBATCH -N 1 -c 1
 #SBATCH -p short -t 00:30:00
 #SBATCH --mem=4G
@@ -97,11 +96,13 @@ else
   # Log dir for the post processing phase
   LOG_DIR=${EXP_DIR}/log/post
   mkdir -p $LOG_DIR
-  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/${WORKER_ID}
+  # %a is the array task ID
+  LOG_PATH=/home/apoc/projects/Dynamical-MF-Self-Attention/${LOG_DIR}/%a
 
   if [[ -f "$DONE_DIR/-1.done" && -f "$DONE_DIR/+1.done" ]]; then
     if (set -o noclobber; echo $$ > "$LOCK") 2>/dev/null; then
         echo "Both chains finished. Collector can be launched"
+        echo "Logging path $LOG_PATH"
         sbatch --array=1-$NUM_BIFURCATION_VALUES \
                --output=$LOG_PATH.out \
                --error=$LOG_PATH.err \
