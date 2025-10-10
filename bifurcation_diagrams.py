@@ -360,9 +360,6 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
         yaml.dump(cfg, file)
         file.close()
 
-
-    pre_compute = "pre_compute" in cfg.keys() and cfg["pre_compute"]
-
     vocab = Embedding(cfg["semantic_embedding_size"], cfg["positional_embedding_size"])
 
     # Seed equal to 0 for initial token set up
@@ -385,13 +382,14 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     create_dir(folder_path_stats_pre)
 
 
-    compute_lyapunov = cfg["compute_lyapunov"]
-    if pre_compute: # Make sure we don't compute Lyapunov exponents in the pre-run
-        compute_lyapunov = False
-
-    continuation_diagram = cfg["continuation_diagram"]
+    pre_compute = "pre_compute" in cfg.keys() and cfg["pre_compute"]
+    continuation_diagram = "continuation_diagram" in cfg.keys() and cfg["continuation_diagram"]
     if continuation_diagram and pre_compute:
         raise ValueError("continuation_diagram and pre_compute are mutually exclusive")
+
+    compute_lyapunov = cfg["compute_lyapunov"]
+    if pre_compute:  # Make sure we don't compute Lyapunov exponents in the pre-run
+        compute_lyapunov = False
 
     # Define the seed that will create the weights/correlations
     np.random.seed(cfg["seed"])
