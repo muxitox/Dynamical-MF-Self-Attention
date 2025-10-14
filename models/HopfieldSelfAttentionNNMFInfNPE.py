@@ -436,7 +436,7 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         att_t_0 = anp.einsum("da,d->a", mv_window, key_prob)
 
         # Append new attention values to old ones
-        att_t_d = anp.vstack((att_t_0, att_t_1_d[:self.context_size-1]))
+        att_t_d = anp.vstack((att_t_0, att_t_1_d[:self.effective_context_size-1]))
 
         # Save att if required
         self.save_att_stats(att_t_0)
@@ -568,8 +568,8 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
     def simulate(self, context_att, context_pe, max_steps, compute_lyapunov=True):
         # We simulate given a previously computed attention window and positional encoding
 
-        ini_t = context_att.shape[0]
-        self.t = ini_t
+        self.effective_context_size = context_att.shape[0]
+        self.t = self.effective_context_size
 
         # Flatten input for the jacobian
         att_t_1_d_flat = anp.reshape(context_att, context_att.shape[0] * self.num_feat_patterns)
@@ -583,13 +583,12 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
 
         DEBUG_STEPS = 25000
 
-        for t in range(ini_t, max_steps):
+        for t in range(0, max_steps):
 
             if t % DEBUG_STEPS == 0:
                 print("Simulating step", t)
 
             self.t = t
-            self.effective_context_size = min(self.context_size, self.t)
 
             if not compute_lyapunov or (compute_lyapunov and (t < self.min_saved_step)):
                 # If we don't want the gradients, just compute the output
@@ -600,6 +599,12 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
             if compute_lyapunov and (t >= self.min_saved_step):
                 # Otherwise compute gradients and perturbations
                 dx = self.lyapunov_step(self.next_input, dx)
+
+
+            if self.t < self.context_size:
+                self.effective_context_size = max(self.effective_context_size, self.t + 1)
+            # else:
+            #     self.effective_context_size = self.context_size
 
         if compute_lyapunov:
             self.lyapunov_end()
