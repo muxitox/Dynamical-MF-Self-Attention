@@ -2,10 +2,10 @@
 
 SEED_LIST=(1)
 NUM_FEAT_PATTERNS_LIST=(3)
-POSITIONAL_EMBEDDING_SIZE_LIST=(3)
+POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
-CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0.yaml"
-CFG_PATH_POST="cfgs/cont_diagram_post_inf_0.yaml"
+CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
+CFG_PATH_POST="cfgs/cont_diagram_post_inf_0_zoom-in.yaml"
 NUM_BIFURCATION_VALUES=501
 INI_WORKER_ID=501 # Number between 1 and NUM_BIFURCATION_VALUES
 
@@ -53,6 +53,9 @@ for SEED in "${SEED_LIST[@]}"; do
                                 $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $INI_WORKER_ID | awk '{print $4}')
 
                 echo We will create a dependency on job $jobid to finish
+
+                # Save this into a config file
+                printf "INI_WORKER_ID:\t%s\n" "$INI_WORKER_ID" >> "${SUFFIX}${EXP_DIR}/ini_worker_cfg.yaml"
 
                 # The dependency argument does not work well with the script arguments and the #SBATCH directives
                 # So we'll include them in the call
