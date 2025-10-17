@@ -62,7 +62,7 @@ def save_context(context_window, folder_path_chpt, worker_idx, worker_values):
 
     chpt_path = folder_path_chpt + f"/beta_idx-{worker_idx}_window_chpt.npz"
 
-    np.savez_compressed(chpt_path,
+    np.savez(chpt_path,
                         att_window=att_window,
                         mo_window=mo_window,
                         mv_window=mv_window,
