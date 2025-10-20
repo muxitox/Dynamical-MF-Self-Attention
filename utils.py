@@ -88,13 +88,16 @@ def load_lyapunov(folder_path, num_feat_patterns, context_size, x_list, min_bidx
 
     lyapunov_size = num_feat_patterns * context_size
 
-    S_array = np.zeros((len(x_list), lyapunov_size))
-    S_array_inf = np.zeros((len(x_list), lyapunov_size))
+    # If the leftmost x value is 0 for beta, all the values will be 0 and therefore no Lyapunov analysis can be made
+    start_index = 1 if x_list[min_bidx] == 0 else 0
+
+    S_array = np.zeros((len(x_list) - start_index, lyapunov_size))
+    S_array_inf = np.zeros((len(x_list) - start_index, lyapunov_size))
 
     count_failures = 0
 
-    for idx in range(0, len(x_list)):
-        b_idx = min_bidx + idx
+    for idx in range(0, len(x_list) - start_index):
+        b_idx = min_bidx + idx + start_index
         stats_data_path = (folder_path + "/stats" + "/beta_idx-" + str(b_idx) + ".npz")
         # Load data
         data = np.load(stats_data_path)
@@ -109,6 +112,7 @@ def load_lyapunov(folder_path, num_feat_patterns, context_size, x_list, min_bidx
             print()
             count_failures += 1
 
+
     S_array_inf_any = np.any(S_array_inf, axis=0)
     print("Affected (discarded) idxs", S_array_inf_any)
     print("Num failures", count_failures)
@@ -118,4 +122,4 @@ def load_lyapunov(folder_path, num_feat_patterns, context_size, x_list, min_bidx
     valid_S = S_array[:,np.logical_not(S_array_inf_any)]
     num_valid_dims = valid_S.shape[1]
 
-    return valid_S, num_valid_dims
+    return valid_S, num_valid_dims, x_list[start_index:]
