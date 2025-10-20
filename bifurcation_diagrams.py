@@ -354,9 +354,17 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     :return:
     """
 
-    if worker_id == 0:
-        # If you are node 0, save the config
+    pre_compute = "pre_compute" in cfg.keys() and cfg["pre_compute"]
+
+    # Save config
+    if pre_compute and cfg["chain"]==0:
+        cfg["ini_worker_id"] = worker_id
+        file = open(f"{exp_dir}/pre_cfg.yaml", "w")
+
+    elif not pre_compute and worker_id == 0:
         file = open(f"{exp_dir}/cfg.yaml", "w")
+
+    if  (pre_compute and cfg["chain"]==0) or (not pre_compute and worker_id == 0):
         yaml.dump(cfg, file)
         file.close()
 
@@ -382,7 +390,6 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     create_dir(folder_path_stats_pre)
 
 
-    pre_compute = "pre_compute" in cfg.keys() and cfg["pre_compute"]
     continuation_diagram = "continuation_diagram" in cfg.keys() and cfg["continuation_diagram"]
     if continuation_diagram and pre_compute:
         raise ValueError("continuation_diagram and pre_compute are mutually exclusive")
@@ -444,6 +451,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     # Measure only simulation time
     start = time.time()
 
+    # If chain = 0, then this is the first job of the pre-computed cont. diagram
     if (pre_compute and cfg["chain"]!=0)  or continuation_diagram:
 
         if pre_compute:
