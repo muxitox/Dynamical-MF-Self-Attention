@@ -436,7 +436,7 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         att_t_0 = anp.einsum("da,d->a", mv_window, key_prob)
 
         # Append new attention values to old ones
-        att_t_d = anp.vstack((att_t_0, att_t_1_d[:self.effective_context_size-1]))
+        att_t_d = anp.vstack((att_t_0, att_t_1_d[:self.context_size-1]))
 
         # Save att if required
         self.save_att_stats(att_t_0)
@@ -602,7 +602,9 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
 
 
             if self.t < self.context_size:
-                self.effective_context_size = max(self.effective_context_size, self.t + 1)
+                # Increase previous context size + 1 until it reaches max
+                self.effective_context_size = min(self.context_size, self.effective_context_size + 1)
+
             # else:
             #     self.effective_context_size = self.context_size
 
