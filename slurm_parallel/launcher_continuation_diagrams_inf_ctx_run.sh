@@ -54,9 +54,6 @@ for SEED in "${SEED_LIST[@]}"; do
 
                 echo We will create a dependency on job $jobid to finish
 
-                # Save this into a config file
-                printf "INI_WORKER_ID:\t%s\n" "$INI_WORKER_ID" >> "${SUFFIX}${EXP_DIR}/ini_worker_cfg.yaml"
-
                 # The dependency argument does not work well with the script arguments and the #SBATCH directives
                 # So we'll include them in the call
 
