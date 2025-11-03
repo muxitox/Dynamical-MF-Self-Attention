@@ -25,6 +25,6 @@ save_not_plot: True    # True save. False plot.
 bifurcation_mode: out # One of ["betas", "out", "att", "pe"]
 inf_mode: True # If True, loads inf. Hopfield Transformer. Otherwise, loads finite Hopfield Transformer.
 load_chpt: True # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
-chpt_path: "chpt/continuation/zoom-2_beta_idx-55_value_1.26543_rightmost1.npz"
+chpt_path: "chpt/continuation/zoom-2_beta_idx-55_value_1.26543_window_chpt_rightmost1.npz"
 compute_lyapunov: True  # If true, computes the Lyapunov exponents for the non-transient data points (not in the pre-run)
 continuation_diagram: True # If true, it computes the continuation diagram. Need to send a job with pre_compute=True to compute the initial seeds.
