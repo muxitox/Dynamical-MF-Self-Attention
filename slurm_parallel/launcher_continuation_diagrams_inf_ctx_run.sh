@@ -4,7 +4,7 @@ SEED_LIST=(1)
 NUM_FEAT_PATTERNS_LIST=(3)
 POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
-CFG_PATH="cfgs/cont_diagram_pre_inf_0_zoom-in_less_steps.yaml"
+CFG_PATH="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
 NUM_BIFURCATION_VALUES=501
 INI_WORKER_ID=501 # Number between 1 and NUM_BIFURCATION_VALUES
 
