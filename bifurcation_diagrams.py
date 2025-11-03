@@ -456,8 +456,10 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     # Measure only simulation time
     start = time.time()
 
-    # If chain = 0, then this is the first job of the pre-computed cont. diagram
-    if (pre_compute and cfg["chain"]!=0)  or continuation_diagram:
+    # If chain = 0, then this is the first job of the pre-computed cont. diagram, so you have to go through the else
+    # to compute the first job.
+    # If continuation_diagram and not pre_compute, then we are in the post phase
+    if (pre_compute and cfg["chain"]!=0)  or  (continuation_diagram and not pre_compute):
 
         if pre_compute:
             # If we are pre-computing the initial conditions for the continuation diagram
