@@ -20,12 +20,11 @@ NUM_FEAT_PATTERNS=$2
 POSITIONAL_EMBEDDING_SIZE=$3
 NUM_BIFURCATION_VALUES=$4
 INI_TOKEN_IDX=$5
-CFG_PATH_PRE=$6
-CFG_PATH_POST=$7
-EXP_DIR=$8
-DONE_DIR=$9
-CHAIN=${10}
-WORKER_ID=${11}
+CFG_PATH=$6
+EXP_DIR=$7
+DONE_DIR=$8
+CHAIN=${9}
+WORKER_ID=${10}
 
 if [ -z "$WORKER_ID" ]; # Check if variable is not defined, if not, define it from console args
 then
@@ -41,9 +40,10 @@ ARGS=" \
 --positional_embedding_size=$POSITIONAL_EMBEDDING_SIZE \
 --num_bifurcation_values=$NUM_BIFURCATION_VALUES \
 --ini_token_idx=$INI_TOKEN_IDX \
---cfg_path=$CFG_PATH_PRE \
+--cfg_path=$CFG_PATH \
 --exp_dir=$EXP_DIR \
 --chain=$CHAIN \
+--pre_compute \
 --worker_id=$WORKER_ID \
 "
 echo $ARGS
@@ -82,7 +82,7 @@ if [[ $WORKER_ID -lt $NUM_BIFURCATION_VALUES && "$CHAIN" == "+1" ]] || [[ $WORKE
    sbatch --output=$LOG_PATH.out \
           --error=$LOG_PATH.err \
           slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE $CFG_PATH_POST  \
+                  $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH  \
                   $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID
 
 else
@@ -107,7 +107,7 @@ else
                --output=$LOG_PATH.out \
                --error=$LOG_PATH.err \
                slurm_parallel/bifurcation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-               $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_POST $EXP_DIR
+               $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH $EXP_DIR
     else
         echo "Waiting for the other chain to finish"
     fi

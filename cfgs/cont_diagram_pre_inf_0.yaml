@@ -6,6 +6,8 @@ max_bifurcation_value: 3.0 # Max x value in the bifurcation diagram. Substitutes
 epsilon_pe: 0.02
 num_transient_steps: 100000
 max_sim_steps: 100100
+num_transient_steps_pre: 100000
+max_sim_steps_pre: 100100
 ini_token_from_w: 1  # Set the mode of how to set the initial token. 0 random. 1, 2, 3, 4: one of the features of W^{o,v,q,k}
 reorder_weights: False  # Feature not used in the experiments
 normalize_weights_str_o: "N"  # Define the output normalization
@@ -25,5 +27,4 @@ inf_mode: True # If True, loads inf. Hopfield Transformer. Otherwise, loads fini
 load_chpt: False # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
 chpt_path: "results_betas_ft/beta3.0/seed-1-transient_steps-100000-max_sim_steps-175000.npz" # Make sure the checkpoint is that of an experiment with the same variables size
 compute_lyapunov: False  # If true, computes the Lyapunov exponents for the non-transient data points
-pre_compute: True # If true, it just runs for approx num_transient_steps and saves the final context so that it can be used for the continuation diagram
-continuation_diagram: False # If true, it computes the continuation diagram from the pre-computed checkpoints
+continuation_diagram: True # If true, it computes the continuation diagram. Need to send a job with pre_compute=True to compute the initial seeds.

@@ -22,6 +22,10 @@ parser.add_argument("--exp_dir", help="Specify path to where the experiments wil
                     type=str)
 parser.add_argument("--chain", help="Specify the direction towards which the chain is moving in the sequential job",
                     type=int, default=None, nargs="?")
+parser.add_argument("--pre_compute", action="store_true", help="If true, it just runs for approx "
+                   "num_transient_steps and saves the final context so that it can be used for the continuation diagram"
+)
+
 
 
 if __name__ == "__main__":
@@ -45,10 +49,11 @@ if __name__ == "__main__":
     worker_values_list = np.linspace(cfg["min_bifurcation_value"], cfg["max_bifurcation_value"],
                                      cfg["num_bifurcation_values"])  # Betas or Epsilon values
 
+    # Continuation diagram related args
+    pre_compute = args.pre_compute
     # If it's a sequential job, define the job direction
-    if "pre_compute" in cfg.keys() and cfg["pre_compute"]:
+    if pre_compute:
         cfg["chain"] = args.chain
-
         if cfg["chain"] == None:
             raise Exception("Define the chain parameter in the slum script.")
 
@@ -63,6 +68,8 @@ if __name__ == "__main__":
         raise Exception("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise Exception("You cannot discard more timesteps than you are simulating.")
+    if "num_transient_steps_pre" in cfg and "max_sim_steps" in cfg and cfg["num_transient_steps_pre"] > cfg["max_sim_steps"]:
+        raise Exception("You cannot discard more timesteps than you are simulating in the pre-computing phase.")
 
     stats_to_save_plot = ["mo", "mo_se", "att"]
 

@@ -354,17 +354,18 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     :return:
     """
 
+    # Continuation diagram
+    continuation_diagram = "continuation_diagram" in cfg.keys() and cfg["continuation_diagram"]
+    # Pre-compute seeds before the parallel continuation diagram phase
     pre_compute = "pre_compute" in cfg.keys() and cfg["pre_compute"]
 
-    # Save config
+    # Save initial job for the continuation diagram
     if pre_compute and cfg["chain"]==0:
         cfg["ini_worker_id"] = worker_id
-        file = open(f"{exp_dir}/pre_cfg.yaml", "w")
 
-    elif not pre_compute and worker_id == 0:
-        file = open(f"{exp_dir}/cfg.yaml", "w")
-
-    if  (pre_compute and cfg["chain"]==0) or (not pre_compute and worker_id == 0):
+    # Save config if you are in the pre-compute phase of the continuation diagram or if you are the job 0 in
+    # a bifurcation diagram
+    if  (pre_compute and cfg["chain"]==0) or (not continuation_diagram and worker_id == 0):
         yaml.dump(cfg, file)
         file.close()
 
@@ -383,6 +384,13 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     if not cfg["save_non_transient"]:
         min_saved_step = cfg["num_transient_steps"]
 
+        if pre_compute:
+            min_saved_step = cfg["num_transient_steps_pre"]
+
+    max_sim_steps = cfg["max_sim_steps"]
+    if pre_compute:
+        max_sim_steps = cfg["num_transient_steps_pre"]
+
     # Create path for stats and checkpoint saving
     folder_path_stats = exp_dir + "/stats/"
     create_dir(folder_path_stats)
@@ -390,9 +398,6 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     create_dir(folder_path_stats_pre)
 
 
-    continuation_diagram = "continuation_diagram" in cfg.keys() and cfg["continuation_diagram"]
-    if continuation_diagram and pre_compute:
-        raise ValueError("continuation_diagram and pre_compute are mutually exclusive")
 
     compute_lyapunov = cfg["compute_lyapunov"]
     if pre_compute:  # Make sure we don't compute Lyapunov exponents in the pre-run
@@ -405,7 +410,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
         # Initialize the Hopfield Transformer class. \beta will be set afterwards
         HT = HopfieldSelfAttentionNNMFInfNPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=cfg["num_feat_patterns"],
                                              positional_embedding_bitsize=cfg["positional_embedding_size"], vocab=vocab,
-                                             context_size=cfg["context_size"], max_sim_steps=cfg["max_sim_steps"],
+                                             context_size=cfg["context_size"], max_sim_steps=max_sim_steps,
                                              min_saved_step=min_saved_step,
                                              normalize_weights_str_att=cfg["normalize_weights_str_att"],
                                              normalize_weights_str_o=cfg["normalize_weights_str_o"],
@@ -422,7 +427,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
     else:
         HT = HopfieldSelfAttentionNNMFPE(cfg["beta_o"], cfg["beta_att"], num_feat_patterns=cfg["num_feat_patterns"],
                                          embedding_size=cfg["semantic_embedding_size"] + cfg["positional_embedding_size"],
-                                         vocab=vocab, context_size=cfg["context_size"], max_sim_steps=cfg["max_sim_steps"],
+                                         vocab=vocab, context_size=cfg["context_size"], max_sim_steps=max_sim_steps,
                                          min_saved_step=min_saved_step,
                                          normalize_weights_str_att=cfg["normalize_weights_str_att"],
                                          normalize_weights_str_o=cfg["normalize_weights_str_o"],
@@ -469,13 +474,13 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
         chpt_path = folder_path_stats_pre + f"/beta_idx-{worker_to_load}_window_chpt.npz"
         att_window, pe_window = load_context(chpt_path)
         # Simulate from context
-        HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"], compute_lyapunov=compute_lyapunov)
+        HT.simulate(att_window, pe_window, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
     else:
         if cfg["load_chpt"]:
             # Load checkpoint from last beta
             att_window, pe_window = load_context(cfg["chpt_path"])
             # Simulate from context
-            HT.simulate(att_window, pe_window, max_steps=cfg["max_sim_steps"], compute_lyapunov=compute_lyapunov)
+            HT.simulate(att_window, pe_window, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
         else:
             # Define the initial token. x0 is only used if load_from_context_mode!=2
             x0 = define_ini_token(cfg["ini_token_from_w"], HT, cfg["ini_token_idx"], ini_tokens_list)
@@ -483,7 +488,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
                 x0[-cfg["positional_embedding_size"]:] = -1  # Initialize position to -1
 
             # Simulate for max_sim_steps steps from x0
-            HT.simulate_from_token(x0, max_steps=cfg["max_sim_steps"], compute_lyapunov=compute_lyapunov)
+            HT.simulate_from_token(x0, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
 
     end = time.time()
     elapsed_time = end - start
@@ -497,7 +502,6 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
         save_context(cw, folder_path_stats_pre, worker_id, worker_values_list)
 
         print(f"Saved checkpoint", cfg["num_feat_patterns"],  "seed ", cfg["seed"])
-
 
     else:
 
@@ -646,6 +650,8 @@ def plotter(worker_values_list, cfg, exp_dir,
                     print("Plotting filtered bifurcation diagram")
                     fig.show()
 
+                plt.close()
+
     ####################################################
     # Plot the stats related with the Lyapunov exponents
     ####################################################
@@ -676,6 +682,14 @@ if __name__ == "__main__":
     print("Creating dir for saving the experiments in", exp_dir)
     create_dir(exp_dir)
 
+    # Continuation diagram related arguments
+    pre_compute = True
+    continuation_diagram = False
+
+    if pre_compute:
+        cfg["num_transient_steps"] = 100000
+        cfg["max_sim_steps"] = 100010
+
     # Create the variables from the experiment that are not set up in the yaml cfg.
     cfg["num_bifurcation_values"] = 10  # Number of x values to examine in the bifurcation diagram
 
@@ -696,6 +710,8 @@ if __name__ == "__main__":
         raise ValueError("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise ValueError("You cannot discard more timesteps than you are simulating.")
+    if "num_transient_steps_pre" in cfg and "max_sim_steps" in cfg and cfg["num_transient_steps_pre"] > cfg["max_sim_steps"]:
+        raise Exception("You cannot discard more timesteps than you are simulating in the pre-computing phase.")
 
     stats_to_save_plot = ["mo_se", "att"]
 

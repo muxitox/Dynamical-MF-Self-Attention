@@ -4,8 +4,7 @@ SEED_LIST=(1)
 NUM_FEAT_PATTERNS_LIST=(3)
 POSITIONAL_EMBEDDING_SIZE_LIST=(2)
 INI_TOKEN_IDX_LIST=(0)
-CFG_PATH_PRE="cfgs/cont_diagram_pre_inf_0_zoom-in_less_steps.yaml"
-CFG_PATH_POST="cfgs/cont_diagram_post_inf_0.yaml"
+CFG_PATH="cfgs/cont_diagram_pre_inf_0_zoom-in.yaml"
 NUM_BIFURCATION_VALUES=501
 INI_WORKER_ID=501 # Number between 1 and NUM_BIFURCATION_VALUES
 
@@ -49,8 +48,8 @@ for SEED in "${SEED_LIST[@]}"; do
                 jobid=$(sbatch --output=$LOG_PATH.out \
                                 --error=$LOG_PATH.err \
                                 slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                                $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $INI_WORKER_ID | awk '{print $4}')
+                                $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH  \
+                                $EXP_DIR $DONE_DIR $CHAIN $INI_WORKER_ID | awk '{print $4}')
 
                 echo We will create a dependency on job $jobid to finish
 
@@ -76,8 +75,8 @@ for SEED in "${SEED_LIST[@]}"; do
                         --mem=4G \
                         --dependency=afterok:$jobid \
                         slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                        $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_L
+                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH  \
+                        $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_L
                 else
                   echo Creating lock file "$DONE_DIR/$CHAIN.done"
                   touch "$DONE_DIR/$CHAIN.done"
@@ -102,8 +101,8 @@ for SEED in "${SEED_LIST[@]}"; do
                         --mem=4G \
                         --dependency=afterok:$jobid \
                         slurm_parallel/continuation_diagrams_out_inf_run.sh $SEED $NUM_FEAT_PATTERNS \
-                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH_PRE  \
-                        $CFG_PATH_POST $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_R
+                        $POSITIONAL_EMBEDDING_SIZE $NUM_BIFURCATION_VALUES $INI_TOKEN_IDX $CFG_PATH  \
+                        $EXP_DIR $DONE_DIR $CHAIN $WORKER_ID_R
 
 
                   else
