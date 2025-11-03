@@ -68,7 +68,7 @@ if __name__ == "__main__":
         raise Exception("The positional embedding cannot cover the whole context size.")
     if cfg["num_transient_steps"] > cfg["max_sim_steps"]:
         raise Exception("You cannot discard more timesteps than you are simulating.")
-    if "num_transient_steps_pre" in cfg and "max_sim_steps" in cfg and cfg["num_transient_steps_pre"] > cfg["max_sim_steps"]:
+    if "num_transient_steps_pre" in cfg and "max_sim_steps_pre" in cfg and cfg["num_transient_steps_pre"] > cfg["max_sim_steps_pre"]:
         raise Exception("You cannot discard more timesteps than you are simulating in the pre-computing phase.")
 
     stats_to_save_plot = ["mo", "mo_se", "att"]
