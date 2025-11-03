@@ -348,7 +348,7 @@ def filter_bifurcation_diagram(beta_list_to_plot, beta_idx_to_filter, min_beta_i
     # print("plot time", end - start)
 
 
-def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
+def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot, pre_compute=False):
     """
 
     :return:
@@ -356,8 +356,6 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot):
 
     # Continuation diagram
     continuation_diagram = "continuation_diagram" in cfg.keys() and cfg["continuation_diagram"]
-    # Pre-compute seeds before the parallel continuation diagram phase
-    pre_compute = "pre_compute" in cfg.keys() and cfg["pre_compute"]
 
     # Save initial job for the continuation diagram
     if pre_compute and cfg["chain"]==0:
