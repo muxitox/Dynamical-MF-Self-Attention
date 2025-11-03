@@ -26,5 +26,5 @@ bifurcation_mode: out # One of ["betas", "out", "att", "pe"]
 inf_mode: True # If True, loads inf. Hopfield Transformer. Otherwise, loads finite Hopfield Transformer.
 load_chpt: False # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
 chpt_path: "results_betas_ft/beta3.0/seed-1-transient_steps-100000-max_sim_steps-175000.npz" # Make sure the checkpoint is that of an experiment with the same variables size
-compute_lyapunov: False  # If true, computes the Lyapunov exponents for the non-transient data points
+compute_lyapunov: True  # If true, computes the Lyapunov exponents for the non-transient data points (not in the pre-run)
 continuation_diagram: True # If true, it computes the continuation diagram. Need to send a job with pre_compute=True to compute the initial seeds.
