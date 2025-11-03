@@ -5,7 +5,7 @@ min_bifurcation_value: 1.264468 # Min x value in the bifurcation diagram. Substi
 max_bifurcation_value: 1.26543 # Max x value in the bifurcation diagram. Substitutes placeholder
 epsilon_pe: 0.02
 num_transient_steps: 0
-max_sim_steps: 75000
+max_sim_steps: 150000
 num_transient_steps_pre: 100000
 max_sim_steps_pre: 100100
 ini_token_from_w: 1  # Set the mode of how to set the initial token. 0 random. 1, 2, 3, 4: one of the features of W^{o,v,q,k}
