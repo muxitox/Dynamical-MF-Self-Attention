@@ -363,6 +363,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot, pre_
 
     # Save config if you are in the pre-compute phase of the continuation diagram or if you are the job 0 in
     # a bifurcation diagram
+    file = open(f"{exp_dir}/cfg.yaml", "w")
     if  (pre_compute and cfg["chain"]==0) or (not continuation_diagram and worker_id == 0):
         yaml.dump(cfg, file)
         file.close()
