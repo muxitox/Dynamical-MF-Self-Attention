@@ -460,8 +460,6 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot, pre_
     # If continuation_diagram and not pre_compute, then we are in the post phase
     if (pre_compute and cfg["chain"]!=0)  or  (continuation_diagram and not pre_compute):
 
-        print(cfg["chain"]!=0, pre_compute, (pre_compute and cfg["chain"]!=0))
-        print(continuation_diagram, not pre_compute, (continuation_diagram and not pre_compute))
         if pre_compute:
             # If we are pre-computing the initial conditions for the continuation diagram
             # Load checkpoint from the previous execution
