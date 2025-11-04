@@ -388,7 +388,7 @@ def runner(worker_values_list, worker_id, cfg, exp_dir, stats_to_save_plot, pre_
 
     max_sim_steps = cfg["max_sim_steps"]
     if pre_compute:
-        max_sim_steps = cfg["num_transient_steps_pre"]
+        max_sim_steps = cfg["max_sim_steps_pre"]
 
     # Create path for stats and checkpoint saving
     folder_path_stats = exp_dir + "/stats/"
