@@ -2,7 +2,7 @@
 #SBATCH --job-name="transformer-mf"
 #SBATCH -D /home/apoc/projects/Dynamical-MF-Self-Attention
 #SBATCH -N 1 -c 1
-#SBATCH -p large -t 12:00:00
+#SBATCH -p large -t 20:00:00
 #SBATCH --mem=4G
 
 
