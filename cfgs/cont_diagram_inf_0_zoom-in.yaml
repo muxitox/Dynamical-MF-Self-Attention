@@ -1,8 +1,8 @@
 semantic_embedding_size: 99 # In the inf case, this is only to create the weight matrices from which to compute correlations
 beta_o: -1  # Placeholder
 beta_att: 2.2  # Write it as float
-min_bifurcation_value: 1.264468 # Min x value in the bifurcation diagram. Substitutes placeholder
-max_bifurcation_value: 1.26543 # Max x value in the bifurcation diagram. Substitutes placeholder
+min_bifurcation_value: 1.3 # Min x value in the bifurcation diagram. Substitutes placeholder
+max_bifurcation_value: 1.55 # Max x value in the bifurcation diagram. Substitutes placeholder
 epsilon_pe: 0.02
 num_transient_steps: 0
 max_sim_steps: 150000
@@ -25,6 +25,6 @@ save_not_plot: True    # True save. False plot.
 bifurcation_mode: out # One of ["betas", "out", "att", "pe"]
 inf_mode: True # If True, loads inf. Hopfield Transformer. Otherwise, loads finite Hopfield Transformer.
 load_chpt: True # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
-chpt_path: "chpt/continuation/zoom-2_beta_idx-55_value_1.26543_window_chpt_rightmost1.npz"
+chpt_path: "chpt/continuation/pe5_original_beta_idx-259_value_1.554_window_chpt.npz"
 compute_lyapunov: True  # If true, computes the Lyapunov exponents for the non-transient data points (not in the pre-run)
 continuation_diagram: True # If true, it computes the continuation diagram. Need to send a job with pre_compute=True to compute the initial seeds.
