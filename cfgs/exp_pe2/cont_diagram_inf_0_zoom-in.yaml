@@ -1,0 +1,30 @@
+semantic_embedding_size: 99 # In the inf case, this is only to create the weight matrices from which to compute correlations
+beta_o: -1  # Placeholder
+beta_att: 2.2  # Write it as float
+min_bifurcation_value: 1.3 # Min x value in the bifurcation diagram. Substitutes placeholder
+max_bifurcation_value: 1.55 # Max x value in the bifurcation diagram. Substitutes placeholder
+epsilon_pe: 0.02
+num_transient_steps: 0
+max_sim_steps: 150000
+num_transient_steps_pre: 100000
+max_sim_steps_pre: 100512
+ini_token_from_w: 1  # Set the mode of how to set the initial token. 0 random. 1, 2, 3, 4: one of the features of W^{o,v,q,k}
+reorder_weights: False  # Feature not used in the experiments
+normalize_weights_str_o: "N"  # Define the output normalization
+normalize_weights_str_att: "N**2*np.sqrt(M)"  # Defines attention normalization
+scaling_o: 1
+scaling_att: 100  # beta_att * scaling_att equals gamma in the paper
+filtering_range: 0.001  # Error range for the 0 intersection plane
+compute_inf_normalization: True  # Compute normalization constraints in infinity
+correlations_from_weights: 3  # 0 Use gaussian corrs; 1 Create from weight matrices; 2 Uniform means; 3 Random segments
+gaussian_scale: "0.5"  # Only applicable if correlations_from_weights=0
+pe_mode: 0             # Choose how to initialize the PE. 0 -> set it randomly.
+num_segments_corrs: 3  # Only applicable if correlations_from_weights=3
+save_non_transient: False  # If true, save points from the transient. Not recommended for long trajectories.
+save_not_plot: True    # True save. False plot.
+bifurcation_mode: out # One of ["betas", "out", "att", "pe"]
+inf_mode: True # If True, loads inf. Hopfield Transformer. Otherwise, loads finite Hopfield Transformer.
+load_chpt: True # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
+chpt_path: "chpt/continuation/pe5_original_beta_idx-259_value_1.554_window_chpt.npz"
+compute_lyapunov: True  # If true, computes the Lyapunov exponents for the non-transient data points (not in the pre-run)
+continuation_diagram: True # If true, it computes the continuation diagram. Need to send a job with pre_compute=True to compute the initial seeds.
