@@ -16,7 +16,7 @@ then
 fi
 
 
-EXP_DIR_BASE=results_continuation/exp_pe2
+EXP_DIR_BASE=results_continuation/exp_pe5
 
 for SEED in "${SEED_LIST[@]}"; do
     for NUM_FEAT_PATTERNS in "${NUM_FEAT_PATTERNS_LIST[@]}"; do
