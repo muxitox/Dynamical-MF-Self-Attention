@@ -53,7 +53,10 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         except:
             raise Exception("The exec_str for the gaussian_scale is not well defined")
 
-        self.create_W_matrices(correlations_from_weights, num_segments_corrs)
+        if correlations_from_weights == 4:
+            self.create_W_matrices_manually()
+        else:
+            self.create_W_matrices(correlations_from_weights, num_segments_corrs)
         self.define_correlations(correlations_from_weights)
 
         # Create variables to save results
@@ -71,6 +74,23 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         self.S_i = np.zeros((self.num_saved_steps, self.lyapunov_size))
         self.S_i_sum = np.zeros((self.num_saved_steps, self.lyapunov_size))
         self.S_inf_flag = np.zeros(self.lyapunov_size)
+
+
+    def create_W_matrices_manually(self):
+
+        self.W =  np.random.randint(2, size=(self.num_feat_patterns, self.embedding_size)) * 2 - 1
+
+        self.Wq = np.copy(self.W)
+        self.Wk = np.roll(self.W, -1, 0)
+        self.Wv =  np.copy(self.Wk)
+        self.Wo =  np.copy(self.Wk)
+
+        self.W_dict = {}
+        self.features_names = ["o", "v", "q", "k"]
+        self.W_dict["o"] = self.Wo
+        self.W_dict["v"] = self.Wv
+        self.W_dict["q"] = self.Wq
+        self.W_dict["k"] = self.Wk
 
 
     def create_W_matrices(self, correlations_from_weights, num_segments_corrs):
@@ -166,11 +186,12 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
 
     def define_correlations(self, correlations_from_weights):
 
-        if correlations_from_weights == 1 or correlations_from_weights == 3:  # Compute correlations from created matrices
+        if correlations_from_weights == 1 or correlations_from_weights == 3 or correlations_from_weights == 4:  # Compute correlations from created matrices
 
             # Create correlations from matrices for comparison
             self.define_pair_correlations_from_weights()
-            self.define_quad_correlations_from_weights()
+            if self.num_feat_patterns == 3:
+                self.define_quad_correlations_from_weights()
 
         elif correlations_from_weights == 0:  # Normal weights and 4 correlations come from individual corrs
             sc = self.gaussian_scale
