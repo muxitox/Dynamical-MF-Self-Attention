@@ -249,6 +249,68 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
     plt.close()
 
 
+def plot_save_statistics_1_fig(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
+                         save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=False,
+                         show_1_feat=None):
+
+    # Plot show_max_num_patterns subfigures if defined
+    if (show_max_num_patterns is not None):
+        num_feat_patterns = min(num_feat_patterns, show_max_num_patterns)
+
+    # Define the feats to plot
+    feat_list = np.arange(num_feat_patterns)
+
+    # Set params for figsize. Create fig and axes.
+    nrows = (num_feat_patterns + 1) // 2
+
+    col_size = 8
+    row_size = 3
+
+    fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True)
+
+    # X domain
+    num_plotting_steps_arange = np.arange(num_plotting_steps) + min_num_step
+
+    # Strings for the labels
+    latex_str = feat_name_to_latex(stat_name)
+
+    # For each feature
+    for feat_id in range(0, num_feat_patterns):
+
+        feat = feat_list[feat_id]
+
+        # Plot trajectory
+        label = fr"$\alpha={feat+1}$"
+        ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], c=colors[feat+1], label=label)
+
+        # Labelling
+        if num_feat_patterns == 3:
+            ax.set_xlabel(r"$t$")
+        elif feat > num_feat_patterns - 3:
+            ax.set_xlabel(r"$t$")
+
+        # Rotate labels
+        kwargs = {}
+        kwargs["rotation"] = "horizontal"
+        kwargs["verticalalignment"] = "center"
+        labelpad = 34
+        ax.set_ylabel(fr"${latex_str}_{{\alpha,t}}$", labelpad=labelpad, **kwargs)
+
+        ax.set_xlim(num_plotting_steps_arange[0], num_plotting_steps_arange[-1])
+
+        ax.legend()
+
+    # fig.tight_layout(pad=0.1)
+    if title is not None:
+        ax.set_title(title)
+
+    if save_not_plot:
+        fig.savefig(save_path, bbox_inches='tight')
+    else:
+        plt.show()
+    plt.close()
+
+
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
                          save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=False,
                          show_1_feat=None):
@@ -635,12 +697,13 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     """
 
     # Load Lyapunov exponents
-    valid_S, num_valid_dims = load_lyapunov(folder_path, num_feat_patterns, context_size, x_list, min_bidx)
+    valid_S, num_valid_dims, x_list = load_lyapunov(folder_path, num_feat_patterns, context_size, x_list, min_bidx)
 
+    # TODO: review this code, make valid_S and x_list the same size
 
     # Create some thresholds to separate regimes. 0: quasi, 1:chaotic, -1: periodic
     zero_threshold = 0.0001
-    regimes = np.zeros(len(x_list))
+    regimes = np.zeros(len(valid_S))
     regimes[:] = np.nan
     regimes[valid_S[:,0] > zero_threshold] = 1  # Chaos
     regimes[(valid_S[:, 0] > zero_threshold) & (valid_S[:, 1] > zero_threshold)] = 2  # Hyperchaos
@@ -656,31 +719,46 @@ def plot_bifurcation_lyapunov(x_list, num_feat_patterns, context_size, folder_pa
     regime_labels = {-1: "Period", 0: "Quasi", 1: "Chaos", 2: "HyperChaos", 3: "DoubleQuasi"}
 
     # Plot the 2 first lyapunov exponents evolution along with the x_values.
-    plt.plot(x_list, valid_S[:,:2])
-    plt.axhline(0, color="gray", linestyle="--", alpha=0.3)  # horizontal line at y=0
+    fig, ax = plt.subplots(constrained_layout=True)
+    ax.plot(x_list, valid_S[:,:2])
+    ax.axhline(0, color="gray", linestyle="--", alpha=0.3)  # horizontal line at y=0
     segments = np.split(x_list, boundaries)
     regimes = np.split(regimes, boundaries)
 
+    ax.set_ylabel(r"$\lambda$")
+    ax.set_xlabel(r"$\beta$")
 
     # Shade background by regime
     previous_regimes = []
     for seg, reg in zip(segments, regimes):
         if reg[0] in previous_regimes:
-            plt.axvspan(seg[0], seg[-1], color=regime_colors[reg[0]], alpha=0.3)
+            ax.axvspan(seg[0], seg[-1], color=regime_colors[reg[0]], alpha=0.3)
         else:
-            plt.axvspan(seg[0], seg[-1], color=regime_colors[reg[0]], alpha=0.3, label=regime_labels[reg[0]])
+            ax.axvspan(seg[0], seg[-1], color=regime_colors[reg[0]], alpha=0.3, label=regime_labels[reg[0]])
             previous_regimes.append(reg[0])
 
     show_cutting_points = True
     if show_cutting_points:
-        # x_cutting_points_idxs = [18, 47, 50, 75, 95, 118, 166, 235, 300, 363, 375, 382, 390, 415, 455, 485]
-        x_cutting_points_idxs = [18, 47, 50, 95, 118, 166, 235, 300, 363, 375, 382, 390, 455, 485]
+
+        # for pe 2, zoom2
+        # x_cutting_points_idxs = [18, 47, 50, 95, 118, 166, 235, 277, 300, 386, 409, 410, 455, 485]
+
+        # for pe5
+        x_cutting_points_idxs = [210, 258] # For pe 5 general
+        x_cutting_points_idxs = [190, 300] # For pe 5 zoom1
+
+        print(x_list[x_cutting_points_idxs])
+
         x_cutting_points = x_list[x_cutting_points_idxs]
-        plt.vlines(x_cutting_points, np.min(valid_S[:,:2]) * 1.2, np.max(valid_S[:,:2]) * 1.2, color="black", alpha=0.3)
-        plt.ylim(np.min(valid_S[:,:2]) * 1.1, np.max(valid_S[:,:2]) * 1.1 )
+        ax.vlines(x_cutting_points, np.min(valid_S[:,:2]) * 1.2, np.max(valid_S[:,:2]) * 1.2, color="black", alpha=0.3)
+        ax.set_ylim(np.min(valid_S[:,:2]) * 1.1, np.max(valid_S[:,:2]) * 1.1 )
 
     plt.legend()
-    plt.show()
+
+    if save_not_plot:
+        fig.savefig(save_basepath + "/lyapunov_evolution_regimes.png")
+    else:
+        plt.show()
 
     col_size = 5
     row_size = 4

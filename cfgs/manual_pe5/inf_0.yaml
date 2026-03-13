@@ -1,4 +1,4 @@
-semantic_embedding_size: 99 # In the inf case, this is only to create the weight matrices from which to compute correlations
+semantic_embedding_size: 0 # In the inf case, this is only to create the weight matrices from which to compute correlations
 beta_o: -1  # Placeholder
 beta_att: 2.2  # Write it as float
 min_bifurcation_value: 0.0 # Min x value in the bifurcation diagram. Substitutes placeholder

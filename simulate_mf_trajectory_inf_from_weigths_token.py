@@ -2,7 +2,7 @@ import numpy as np
 from models.HopfieldSelfAttentionNNMFInfNPE import HopfieldSelfAttentionNNMFInfNPE
 from models.Embedding import Embedding
 from plotting.plotting import (plot_save_statistics, plot_save_plane, plot_save_fft, plot_save_autocorrelation,
-                               plot_lyapunov_graphs, create_row_array)
+                               plot_lyapunov_graphs, create_row_array, plot_save_statistics_1_fig)
 import matplotlib.pyplot as plt
 import os
 import yaml
@@ -54,8 +54,8 @@ if __name__ == "__main__":
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1  # Seed for the correlations
-    num_feat_patterns = 2                                   # Number of patterns
-    beta_list = [1]    # Different values of beta to simulate
+    num_feat_patterns = 3                                   # Number of patterns
+    beta_list = [10]    # Different values of beta to simulate
     scaling_o = cfg["scaling_o"]  # Not scaled
     beta_att = cfg["beta_att"]
     scaling_att = cfg["scaling_att"]                        # Beta_att * scaling_att make gamma from the paper
@@ -101,9 +101,9 @@ if __name__ == "__main__":
 
         print(f"Simulating MF Self-Attention NN for beta {beta}...")
         # Choose as initial token one of the encoded features
-        ini_token = HT.Wq[0, :HT.embedding_size]
+        ini_token_idx = 1
         start = time.time()
-        HT.simulate_from_token(ini_token, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
+        HT.simulate_from_correlations(ini_token_idx, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
         end = time.time()
         print("Done.")
         print("Execution time = ", (end - start)/60, " minutes")
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         # Loop over the different stats if required
         for stat_name in stats_to_show:
             show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
-            plot_windows = [250]  # Different plotting windows for the trajectories
+            plot_windows = [70]  # Different plotting windows for the trajectories
             for plot_window in plot_windows:
                 offset = 0  # Offset the trajectory to visit different points
                 # Define the steps to show
@@ -164,7 +164,7 @@ if __name__ == "__main__":
                 print(HT.mf_statistics[stat_name][rg, :])
 
                 # Plot the trajectory
-                plot_save_statistics(HT.mf_statistics[stat_name][rg, :], stat_name, num_feat_patterns,
+                plot_save_statistics_1_fig(HT.mf_statistics[stat_name][rg, :], stat_name, num_feat_patterns,
                                      len(rg), min_num_step=0,
                                      show_max_num_patterns=num_feat_patterns,
                                      save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,

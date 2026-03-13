@@ -54,10 +54,12 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
             raise Exception("The exec_str for the gaussian_scale is not well defined")
 
         if correlations_from_weights == 4:
-            self.create_W_matrices_manually()
+            self.create_correlations_manually()
+            # self.create_weights_manually()
         else:
             self.create_W_matrices(correlations_from_weights, num_segments_corrs)
-        self.define_correlations(correlations_from_weights)
+
+            self.define_correlations(correlations_from_weights)
 
         # Create variables to save results
         self.statistics_names = ["mo", "mo_se", "mv", "mq", "mk", "att"]
@@ -75,15 +77,49 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         self.S_i_sum = np.zeros((self.num_saved_steps, self.lyapunov_size))
         self.S_inf_flag = np.zeros(self.lyapunov_size)
 
+    def correlation_matrix(self, order_o, order_alpha):
+        """
+        Compute C^{o,alpha}_{b,a} = <W^o_{i,b} W^alpha_{i,a}>_i
+        under iid ±1 spins in the thermodynamic limit.
 
-    def create_W_matrices_manually(self):
+        Parameters
+        ----------
+        order_o : array-like (M,)
+            Pattern order used by W^o
+        order_alpha : array-like (M,)
+            Pattern order used by W^alpha
 
-        self.W =  np.random.randint(2, size=(self.num_feat_patterns, self.embedding_size)) * 2 - 1
+        Returns
+        -------
+        C : ndarray (M, M)
+            Correlation matrix
+        """
+        order_o = np.asarray(order_o)
+        order_alpha = np.asarray(order_alpha)
 
-        self.Wq = np.copy(self.W)
-        self.Wk = np.roll(self.W, -1, 0)
-        self.Wv =  np.copy(self.Wk)
-        self.Wo =  np.copy(self.Wk)
+        return (order_o[:, None] == order_alpha[None, :]).astype(float)
+
+    def compute_correlations_inf(self, pattern_orders):
+        """
+        pattern_orders: dict with keys {'o','v','k','q'}
+                        each value is a permutation of pattern indices
+        """
+
+        order_o = pattern_orders['o']
+
+        C = {}
+        for alpha, order in pattern_orders.items():
+            C[f"{alpha}"] = self.correlation_matrix(order_o, order)
+
+        return C
+
+    def create_correlations_manually(self):
+
+        # Set up PE
+        self.Wq[:, -self.pe_bit_size:] = 0
+        self.Wk[:, -self.pe_bit_size:] = 0
+        self.Wv[:, -self.pe_bit_size:] = 0
+        self.Wo[:, -self.pe_bit_size:] = 0
 
         self.W_dict = {}
         self.features_names = ["o", "v", "q", "k"]
@@ -91,6 +127,38 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         self.W_dict["v"] = self.Wv
         self.W_dict["q"] = self.Wq
         self.W_dict["k"] = self.Wk
+
+        # Set up correlations
+
+        order = np.arange(self.num_feat_patterns)
+        order_shift = np.roll(order, -1)
+        orders = {
+            "q": order,
+            "k": order,
+            "v": order_shift,
+            "o": order,
+        }
+
+        # Create class variable to then initialize the mean fields
+        self.orders = orders
+
+        self.even_corr = self.compute_correlations_inf(orders)
+
+        # Create matrix of signs to compute the signs of the attention
+        if self.num_feat_patterns == 1:
+            self.sign_matrix = np.ones((1, 1))  # Create empty dimension in order to allow matrix indexing later
+        elif self.num_feat_patterns == 2:
+            self.sign_matrix = np.array([[1, 1], [1, -1]])
+        elif self.num_feat_patterns == 3:
+            # We are not considering the 4th order correlation in the attention, so we only need the signs of the 4 combinations of 3 patterns (a,b,c), (a,b), (a,c) and (b,c)
+            self.sign_matrix = np.array([[1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1]])
+
+
+        # Pre-compute the signs of the correlations
+        # Per every pattern a, we have j combinations of correlations with other patterns (a,)
+        self.corr_signed = {}
+        for alpha in self.even_corr.keys():
+            self.corr_signed[alpha] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr[alpha])
 
 
     def create_W_matrices(self, correlations_from_weights, num_segments_corrs):
@@ -276,14 +344,11 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         self.even_corr["q"] = self.even_corr_o_q
         self.even_corr["k"] = self.even_corr_o_k
 
-
         # Pre-compute the signs of the correlations
         # Per every pattern a, we have j combinations of correlations with other patterns (a,)
         self.corr_signed = {}
-        self.corr_signed["o"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_o)
-        self.corr_signed["v"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_v)
-        self.corr_signed["q"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_q)
-        self.corr_signed["k"] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr_o_k)
+        for alpha in self.even_corr.keys():
+            self.corr_signed[alpha] = np.einsum("jb,ba->ja", self.sign_matrix, self.even_corr[alpha])
 
 
     def set_beta_o(self, beta_o):
@@ -391,11 +456,23 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         return mv, mq, mk
 
     def create_mf_window_from_means(self, x0, ponder_pe=True):
-        mv, mq, mk = self.compute_means_from_data(x0, t=0)
+        mv, mq, mk = self.compute_means_from_data(x0, t=0, ponder_pe=ponder_pe)
 
         mv = mv[np.newaxis, :]
         mq = mq[np.newaxis, :]
         mk = mk[np.newaxis, :]
+
+        return mv, mq, mk
+
+    def init_mean_field(self, order, x0_idx):
+        order = np.asarray(order)
+        return (order == x0_idx).astype(float)
+
+    def create_mf_window_from_correlation_idxs(self, x0_idx, ponder_pe=True):
+        # TODO: have into account the PE in the initial condition?
+        mv = self.init_mean_field(self.orders["v"], x0_idx)[np.newaxis, :]
+        mq = self.init_mean_field(self.orders["q"], x0_idx)[np.newaxis, :]
+        mk = self.init_mean_field(self.orders["k"], x0_idx)[np.newaxis, :]
 
         return mv, mq, mk
 
@@ -440,7 +517,7 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
 
         # effective_context_size = min(self.context_size, self.t + 1)
 
-        # Put in common queries and keys
+        # Put in common queries and keys. mq[0] to unsqueeze the first dimension
         mqk = anp.einsum('b,tb -> t', mq[0], mk_window,
                          optimize=True)
 
@@ -637,6 +714,25 @@ class HopfieldSelfAttentionNNMFInfNPE(SelfAttentionNNBase):
         self.t = 0
         # Initialize attention with the info from the initial token
         mv, mq, mk = self.create_mf_window_from_means(x0)
+        # Create empty array for appending attention values
+        att_t_d = np.array([]).reshape(0, self.num_feat_patterns)
+        # Create attention
+        att_t_d = self.attention(att_t_d, mv, mq, mk)
+        # Initialize rotating PE
+        p_t_d = self.PE.initialize_rotating_pe()
+
+        self.simulate(att_t_d, p_t_d, max_steps, compute_lyapunov)
+
+
+    def simulate_from_correlations(self, x0_idx, max_steps, compute_lyapunov=False):
+        """
+        Given that we are initializing the system with correlations between patterns forminc cycles, x0_idx is the index
+        of the pattern we are choosing as initial token.
+        """
+
+        self.t = 0
+        # Initialize attention with the info from the initial token
+        mv, mq, mk = self.create_mf_window_from_correlation_idxs(x0_idx)
         # Create empty array for appending attention values
         att_t_d = np.array([]).reshape(0, self.num_feat_patterns)
         # Create attention
