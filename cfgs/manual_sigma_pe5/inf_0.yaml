@@ -1,0 +1,16 @@
+beta_o: -1  # Placeholder
+beta_att: -1  # Write it as float
+min_bifurcation_value: 0.0 # Min x value in the bifurcation diagram. Substitutes placeholder
+max_bifurcation_value: 3.0 # Max x value in the bifurcation diagram. Substitutes placeholder
+epsilon_pe: 0.00
+num_transient_steps: 0
+max_sim_steps: 5000
+num_transient_steps_pre: 0
+max_sim_steps_pre: 0
+filtering_range: 0.001  # Error range for the 0 intersection plane
+save_non_transient: False  # If true, save points from the transient. Not recommended for long trajectories.
+save_not_plot: True    # True save. False plot.
+load_chpt: False # If True, loads the checkpoint indicated below in "chpt_path". Otherwise, initializes the token following "ini_token_from_w"
+chpt_path: "" # Make sure the checkpoint is that of an experiment with the same variables size
+compute_lyapunov: False  # If true, computes the Lyapunov exponents for the non-transient data points (not in the pre-run)
+continuation_diagram: False # If true, it computes the continuation diagram. Need to send a job with pre_compute=True to compute the initial seeds.
