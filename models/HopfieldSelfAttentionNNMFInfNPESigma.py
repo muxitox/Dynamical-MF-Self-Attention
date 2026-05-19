@@ -5,6 +5,11 @@ from autograd import jacobian
 from utils import signed_binary_encoding
 from models.PositionalEncoding import PositionalEncoding
 
+from models.sigma_configs import (set_orders_manually_3_no_duplicity, set_orders_manually_4_duplicity_loop_1,
+                                   set_orders_manually_4_duplicity_loop_2, set_orders_manually_4_duplicity_loop_3,
+                                  set_orders_manually_4_duplicity_loop_no_pe, set_orders_manually_4_no_duplicity,
+                                   set_orders_manually_6_duplicity_loop, set_orders_manually_4_cycle_0_1_2_1)
+
 
 class HopfieldSelfAttentionNNMFInfNPESigma:
 
@@ -12,6 +17,7 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
                  positional_embedding_bitsize, vocab, context_size,
                  max_sim_steps=512, min_saved_step=0,
                  epsilon_pe=0.95,
+                 seed_W=0,
                  jacobian=True):
 
 
@@ -23,6 +29,8 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
         self.max_sim_steps = max_sim_steps
         self.min_saved_step = min_saved_step
         self.num_saved_steps = max_sim_steps - min_saved_step
+
+        self.seed_W = seed_W
 
         if num_feat_patterns < num_feat_patterns_se:
             raise ValueError("num_feat_patterns must be >= num_feat_patterns_se")
@@ -50,6 +58,9 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
         self.mf_statistics = {}
         for name_i in self.statistics_names:
             self.mf_statistics[name_i] = np.zeros((self.num_saved_steps, num_feat_patterns))
+        self.mf_statistics["m_tilde"] = np.zeros((self.num_saved_steps, 4, num_feat_patterns_se))
+        self.mf_statistics["m_tilde_proj"] = np.zeros((self.num_saved_steps, 4, num_feat_patterns))
+        self.mf_statistics["m_pos"] = np.zeros((self.num_saved_steps, 4, num_feat_patterns))
 
         self.compute_jacobian = jacobian
 
@@ -85,119 +96,10 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
 
         return out
 
-    def set_orders_manually_4_duplicity(self):
 
-        # Set SE order of patterns
-        order_in_B = np.arange(self.num_feat_patterns)
-        # order_out_B = np.roll(order_in_B, 1)
+    def create_correlations_manually(self, ini_m_idx=0):
 
-        # order_in = np.array([0, 1, 2, 3])
-        # order_out = np.array([1, 2, 3, 0]) # shift -1
-        order_out_B = np.array([3, 0, 1, 2])  # shift +1
-
-        orders_B = np.stack([
-            order_in_B,  # q
-            order_in_B,  # k
-            order_out_B,  # v
-            order_in_B,  # o
-        ], axis=0)  # shape: (C, M)
-
-        order_P = np.array([0, 1, 2, 1])
-        orders_P = np.stack([
-            order_P,  # q
-            order_P,  # k
-            order_P,  # v
-            order_P,  # o
-        ], axis=0)  # shape: (C, M)
-
-        order_in_pe = np.copy(order_in_B)
-        # order_out_pe = np.copy(order_out)
-        order_out_pe = np.array([2, 0, 3, 1])
-        # Set up PE
-        pe_in = signed_binary_encoding(order_in_pe, self.pe_bit_size)
-        pe_out = signed_binary_encoding(order_out_pe, self.pe_bit_size)
-
-        return orders_B, orders_P, pe_in, pe_out
-
-    def set_orders_manually_4_no_duplicity(self):
-
-        # Set SE order of patterns
-        order_in_B = np.arange(self.num_feat_patterns)
-        # order_out_B = np.roll(order_in_B, 1)
-
-        # order_in = np.array([0, 1, 2, 3])
-        # order_out = np.array([1, 2, 3, 0]) # shift -1
-        order_out_B = np.array([3, 0, 1, 2])  # shift +1
-
-        orders_B = np.stack([
-            order_in_B,  # q
-            order_in_B,  # k
-            order_out_B,  # v
-            order_in_B,  # o
-        ], axis=0)  # shape: (C, M)
-
-        order_P = np.array([0, 1, 2, 3])
-        orders_P = np.stack([
-            order_P,  # q
-            order_P,  # k
-            order_P,  # v
-            order_P,  # o
-        ], axis=0)  # shape: (C, M)
-
-        order_in_pe = np.copy(order_in_B)
-        # order_out_pe = np.copy(order_out)
-        order_out_pe = np.array([2, 0, 3, 1])
-        # Set up PE
-        pe_in = signed_binary_encoding(order_in_pe, self.pe_bit_size)
-        pe_out = signed_binary_encoding(order_out_pe, self.pe_bit_size)
-
-        return orders_B, orders_P, pe_in, pe_out
-
-    def set_orders_manually_3_no_duplicity(self):
-
-        # Set SE order of patterns
-        order_in_B = np.arange(self.num_feat_patterns)
-        # order_out_B = np.roll(order_in_B, 1)
-
-        # order_in = np.array([0, 1, 2, 3])
-        # order_out = np.array([1, 2, 3, 0]) # shift -1
-        order_out_B = np.array([2, 0, 1])  # shift +1
-
-        orders_B = np.stack([
-            order_in_B,  # q
-            order_in_B,  # k
-            order_out_B,  # v
-            order_in_B,  # o
-        ], axis=0)  # shape: (C, M)
-
-        order_P = np.array([0, 1, 2])
-        orders_P = np.stack([
-            order_P,  # q
-            order_P,  # k
-            order_P,  # v
-            order_P,  # o
-        ], axis=0)  # shape: (C, M)
-
-        order_in_pe = np.copy(order_in_B)
-        # order_out_pe = np.copy(order_out)
-        order_out_pe = order_out_B
-        # Set up PE
-        pe_in = signed_binary_encoding(order_in_pe, self.pe_bit_size)
-        pe_out = signed_binary_encoding(order_out_pe, self.pe_bit_size)
-
-        return orders_B, orders_P, pe_in, pe_out
-
-
-    def create_correlations_manually(self):
-
-        self.orders_B, orders_P, pe_in, pe_out = self.set_orders_manually_4_duplicity()
-
-        # Create W matrix to group all features together for the vectorized computation of the mean-field values
-        self.W = np.zeros((len(self.features_names), self.num_feat_patterns, self.pe_bit_size))
-        self.W[self.feature_to_idx["o"]] = pe_in
-        self.W[self.feature_to_idx["v"]] = pe_in
-        self.W[self.feature_to_idx["q"]] = pe_out
-        self.W[self.feature_to_idx["k"]] = pe_in
+        self.orders_B, orders_P, self.W = set_orders_manually_4_duplicity_loop_3(self, ini_m_idx=ini_m_idx)
 
         # Create the B_alpha matrices to indicate the order of the mean-field patterns for the vectorized computation of the mean-field values
         self.B_alpha = self.build_B_P_from_orders(self.orders_B, self.num_feat_patterns)
@@ -205,14 +107,23 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
         # Pre-compute sigma
         self.sigma = signed_binary_encoding(np.arange(2 ** self.num_feat_patterns_se), self.num_feat_patterns_se)  # (2^M, M)
 
-        P_alpha = self.build_B_P_from_orders(orders_P, self.num_feat_patterns_se)
+        # (C, K, M)
+        self.P_alpha = self.build_B_P_from_orders(orders_P, self.num_feat_patterns_se)
 
         # ---- 2. project all sigma ----
         # sigma: (2^M, M)
         # P: (C, K, M)
         # (C, 2^M, K)
-        self.sigma_proj_alpha = np.einsum('nm,ckm->cnk', self.sigma, P_alpha)
-        print()
+        self.sigma_proj_alpha = np.einsum('nm,ckm->cnk', self.sigma, self.P_alpha)
+
+    def reconfigure_pe_for_ini_m_idx(self, ini_m_idx):
+        """
+        Reconfigure the PE (positional encoding) based on the initial pattern index.
+        This ensures the cycle dynamics are properly aligned with the starting position.
+        
+        Call this before simulate() if ini_m_idx changes.
+        """
+        self.create_correlations_manually(ini_m_idx=ini_m_idx)
 
 
     def set_beta_o(self, beta_o):
@@ -261,7 +172,7 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
                 self.mf_statistics["att"][index_t] = copy.deepcopy(att._value)
 
 
-    def save_mf_stats(self, mo, mo_se, mv, mq, mk):
+    def save_mf_stats(self, mo, mo_se, mv, mq, mk, m_tilde, m_tilde_proj, m_pos):
         # Save stats in an array if the time threshold is surpassed
         if self.t >= self.min_saved_step:
 
@@ -272,12 +183,19 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
                 self.mf_statistics["mv"][index_t] = copy.deepcopy(mv)
                 self.mf_statistics["mq"][index_t] = copy.deepcopy(mq)
                 self.mf_statistics["mk"][index_t] = copy.deepcopy(mk)
+                self.mf_statistics["m_tilde"][index_t] = copy.deepcopy(m_tilde)
+                self.mf_statistics["m_tilde_proj"][index_t] = copy.deepcopy(m_tilde_proj)
+                self.mf_statistics["m_pos"][index_t] = copy.deepcopy(m_pos)
             else:
                 self.mf_statistics["mo"][index_t] = copy.deepcopy(mo._value)
                 self.mf_statistics["mo_se"][index_t] = copy.deepcopy(mo_se._value)
                 self.mf_statistics["mv"][index_t] = copy.deepcopy(mv._value)
                 self.mf_statistics["mq"][index_t] = copy.deepcopy(mq._value)
                 self.mf_statistics["mk"][index_t] = copy.deepcopy(mk._value)
+                self.mf_statistics["m_tilde"][index_t] = copy.deepcopy(m_tilde._value)
+                self.mf_statistics["m_tilde_proj"][index_t] = copy.deepcopy(m_tilde_proj._value)
+                self.mf_statistics["m_pos"][index_t] = copy.deepcopy(m_pos._value)
+
 
 
 
@@ -364,15 +282,13 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
         dot = np.einsum('cnk,dk->cdn', sigma_proj_alpha, h)
 
         # ---- 4. nonlinearity ----
+        # (C, D, 2^M)
         tanh_vals = np.tanh(self.beta_o * dot)
 
         # ---- 5. weighted uniform sum ----
-        # (C, D, K)
-        tilde_m = np.einsum('cdn,cnk->cdk', tanh_vals, sigma_proj_alpha) / (2 ** M)
+        # (C, D, M)
+        tilde_m = np.einsum('cdn,nk->cdk', tanh_vals, self.sigma) / (2 ** M)
 
-        tanh_vals_1 = tanh_vals[0]
-        sigma_proj_alpha_1 = sigma_proj_alpha[0]
-        tilde_m_1 = np.einsum('dn,nk->dk', tanh_vals_1, sigma_proj_alpha_1) / (2 ** M)
         return tilde_m
 
     def compute_mfs(self, att_t_d, p_t_d):
@@ -389,9 +305,11 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
         # ---- shared nonlinear core ----
         tilde_m = self.compute_tilde_m_no_trick(att_t_d)  # (C, D, K)
 
+        tilde_m_proj = np.einsum('cdm,ckm->cdk', tilde_m, self.P_alpha)
+
         # ---- FIRST TERM (vectorized over features) ----
         # (C, D, K)
-        term1_all = np.einsum('cij,cdj->cdi', self.B_alpha, tilde_m)
+        term1_all = np.einsum('cij,cdj->cdi', self.B_alpha, tilde_m_proj)
 
         # ---- SECOND TERM ----
         # (C, D, K)
@@ -414,7 +332,7 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
         # ---- extract o_se (no recomputation) ----
         o_se = term1_all[self.feature_to_idx["o"], 0:1]
 
-        self.save_mf_stats(m_next["o"], o_se, m_next["v"][0], m_next["q"], m_next["k"][0])
+        self.save_mf_stats(m_next["o"], o_se, m_next["v"][0], m_next["q"], m_next["k"][0], tilde_m[:,0],  term1_all[:,0], term2_all[:,0])
 
         return m_next["v"], m_next["q"], m_next["k"]
 
@@ -489,6 +407,10 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
         self.S /= self.num_saved_steps
 
     def simulate(self, m0_idx, max_steps, compute_lyapunov=True):
+
+        # Reconfigure PE to align with the initial pattern index
+        # This ensures the cycle dynamics are properly aligned from the start
+        self.reconfigure_pe_for_ini_m_idx(m0_idx)
 
         self.t = 0
         # Initialize attention with the info from the initial token

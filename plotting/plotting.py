@@ -16,6 +16,8 @@ for i_color in range(9):
     colors += [tuple(color)]
 colors += [(1.0, 1.0, 1.0, 1.0)]  # White
 
+linestyle = ["-", "--", "-.", ":"]
+linestyle2 = ["-", "-", "-", "-.", ":", "--"]
 
 # Avoid loading latex in HPC (not installed there)
 if "Ubuntu" in platform.version():
@@ -249,9 +251,9 @@ def plot_2_statistics(stat1, stat2, stat_name, num_feat_patterns, num_plotting_s
     plt.close()
 
 
-def plot_save_statistics_1_fig(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
-                         save_not_plot=False, save_path=None, min_num_step=0, title=None, plot_hilbert=False,
-                         show_1_feat=None):
+def plot_save_statistics_1_fig(ax, stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,
+                         min_num_step=0, title=None
+                ):
 
     # Plot show_max_num_patterns subfigures if defined
     if (show_max_num_patterns is not None):
@@ -259,14 +261,6 @@ def plot_save_statistics_1_fig(stat1, stat_name, num_feat_patterns, num_plotting
 
     # Define the feats to plot
     feat_list = np.arange(num_feat_patterns)
-
-    # Set params for figsize. Create fig and axes.
-    nrows = (num_feat_patterns + 1) // 2
-
-    col_size = 8
-    row_size = 3
-
-    fig, ax = plt.subplots(1, 1, figsize=(col_size, row_size), constrained_layout=True)
 
     # X domain
     num_plotting_steps_arange = np.arange(num_plotting_steps) + min_num_step
@@ -280,8 +274,8 @@ def plot_save_statistics_1_fig(stat1, stat_name, num_feat_patterns, num_plotting
         feat = feat_list[feat_id]
 
         # Plot trajectory
-        label = fr"$\alpha={feat+1}$"
-        ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], c=colors[feat+1], label=label)
+        label = fr"$\alpha={feat}$"
+        ax.plot(num_plotting_steps_arange, stat1[:num_plotting_steps, feat], c=colors[feat+1], label=label, linestyle=linestyle2[feat])
 
         # Labelling
         if num_feat_patterns == 3:
@@ -298,17 +292,11 @@ def plot_save_statistics_1_fig(stat1, stat_name, num_feat_patterns, num_plotting
 
         ax.set_xlim(num_plotting_steps_arange[0], num_plotting_steps_arange[-1])
 
-        ax.legend()
+        ax.legend(loc="upper right")
 
     # fig.tight_layout(pad=0.1)
     if title is not None:
         ax.set_title(title)
-
-    if save_not_plot:
-        fig.savefig(save_path, bbox_inches='tight')
-    else:
-        plt.show()
-    plt.close()
 
 
 def plot_save_statistics(stat1, stat_name, num_feat_patterns, num_plotting_steps, show_max_num_patterns=None,

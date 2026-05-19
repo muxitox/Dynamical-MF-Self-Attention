@@ -45,23 +45,27 @@ if __name__ == "__main__":
     folder_base_savepath= "results/manual_weights_ft/"
 
     # Instantiate vocabulary
-    positional_embedding_size = 5  # Number of bits dedicated to the positional embedding
+    positional_embedding_size = 2  # Number of bits dedicated to the positional embedding
     context_size = 2 ** positional_embedding_size  # Context size
     vocab = Embedding(0, positional_embedding_size)  # Vocabulary helper class
     vocab.initialize_pos_encoder()  # Initiate some functionalities
+    epsilon_pe = 0.5                                # epsilon in the paper
+
 
     # Create variables for the Hopfield Transformer (HT)
     seed = 1  # Seed for the correlations
     num_feat_patterns_se = 3                                # Number of semantic patterns
     num_feat_patterns = 4                                   # Number of patterns
-    beta_list = [10]    # Different values of beta to simulate
-    gamma_att = 10
+    beta_list = [100]    # Different values of beta to simulate
+    gamma_att = 100
     num_transient_steps = cfg["num_transient_steps"]        # Num. of transient steps
     max_sim_steps = cfg["max_sim_steps"]                    # Max. simulated steps
     saved_steps = max_sim_steps - num_transient_steps
 
+    # Choose as initial token one of the encoded features
+    ini_m_idx = 0
+    seed_W = 0 # 3, 4
 
-    epsilon_pe = cfg["epsilon_pe"]                                # epsilon in the paper
 
 
     compute_lyapunov = False                        # True if you want to compute the Lyapunov exponents
@@ -79,15 +83,13 @@ if __name__ == "__main__":
                                                   num_feat_patterns_se=num_feat_patterns_se,
                  positional_embedding_bitsize=positional_embedding_size, vocab=vocab, context_size=context_size,
                  max_sim_steps=max_sim_steps, min_saved_step=num_transient_steps,
-                 epsilon_pe=epsilon_pe,
+                 epsilon_pe=epsilon_pe, seed_W=seed_W,
                  jacobian=True)
 
         # Reset/initialize the structures for saving data
         HT.reset_data()
 
         print(f"Simulating MF Self-Attention NN for beta {beta_o}...")
-        # Choose as initial token one of the encoded features
-        ini_m_idx = 0
         start = time.time()
         HT.simulate(ini_m_idx, max_steps=max_sim_steps, compute_lyapunov=compute_lyapunov)
         end = time.time()
@@ -110,22 +112,32 @@ if __name__ == "__main__":
             save_context(cw, folder_path, seed, num_transient_steps, max_sim_steps)
 
         if show_title:
-            title = fr"$\beta$ = {round(beta_o, 5)}"
+            title = fr"$\beta$ = {round(beta_o, 5)}, $\gamma$ = {round(gamma_att, 5)}"
         else:
             title = None
         # Select what statistic to show. One of either ["mo", "mo_se", "mv", "mq", "mk"]
-        stats_to_show = ["mo_se", "att"]
+        # stats_to_show = ["mo_se", "m_tilde", "m_pos", "att"]
+        stats_to_show = ["mo_se", "att", "m_tilde", "m_tilde", "m_tilde_proj", "m_tilde_proj", "m_pos", "m_pos", "mo", "mv"]
+        n_stats_to_show = len(stats_to_show)
 
         # Select format for image saving
         # image_format = ".jpeg"
         image_format = ".pdf"
 
+        col_size = 4
+        row_size = 3
 
-        # Loop over the different stats if required
-        for stat_name in stats_to_show:
-            show_1_feat = 0  # Defines that it's only going to show 1 feature and what's its index
-            plot_windows = [25]  # Different plotting windows for the trajectories
-            for plot_window in plot_windows:
+        nrows = int(np.ceil(n_stats_to_show / 2))
+
+        plot_windows = [10]  # Different plotting windows for the trajectories
+        for plot_window in plot_windows:
+
+            fig, ax = plt.subplots(nrows, 2, figsize=(col_size, row_size), constrained_layout=True)
+            ax = ax.flatten()
+
+            # Loop over the different stats if required
+            for i, stat_name in zip(range(n_stats_to_show), stats_to_show):
+
                 offset = 0  # Offset the trajectory to visit different points
                 # Define the steps to show
                 plot_range = [offset, offset + plot_window]  # Define the steps to plot
@@ -140,14 +152,30 @@ if __name__ == "__main__":
                                        "-plot_window-" + str(plot_window) + image_format)
                 create_dir(plot_save_path_traj)
 
-                print(HT.mf_statistics[stat_name][rg, :])
+                if stat_name == "m_tilde" or stat_name == "m_tilde_proj" or stat_name == "m_pos":
+                    i_mod = i % 2
+
+                    if i_mod == 0:
+                        # o
+                        selected_stats = HT.mf_statistics[stat_name][rg, 0, :]
+                        stat_name += "_o"
+                    else:
+                        # v
+                        selected_stats = HT.mf_statistics[stat_name][rg, 2, :]
+                        stat_name += "_v"
+
+
+                else:
+                    selected_stats = HT.mf_statistics[stat_name][rg, :] 
+
 
                 # Plot the trajectory
-                plot_save_statistics_1_fig(HT.mf_statistics[stat_name][rg, :], stat_name, num_feat_patterns,
+                plot_save_statistics_1_fig(ax[i], selected_stats, stat_name, selected_stats.shape[-1],
                                      len(rg), min_num_step=0,
-                                     show_max_num_patterns=num_feat_patterns,
-                                     save_not_plot=save_not_plot, save_path=plot_save_path_traj, title=title,
-                                     plot_hilbert=False, show_1_feat=show_1_feat)
+                                     show_max_num_patterns=num_feat_patterns)
+
+            plt.suptitle(title)
+            plt.show()
 
             # # FFT Path
             # plot_save_path_fft = (folder_path + f"/fft-seed-{str(seed)}-{stat_name}" + "-transient_steps-" +
@@ -182,59 +210,63 @@ if __name__ == "__main__":
 
         print("Done.")
 
-        # Define the statistics you want to plot against each other
-        # In this case the feature mo with only the semantic information
-        stats_to_plot = [["mo_se", "mo_se"], ["att", "att"]]
-        # Define the index of the features you want to compare against each other
-        feat_idx = [[0, 1], [0, 2]]
+        plot_plane = False
 
-        for plot_i in range(len(stats_to_plot)):
+        if plot_plane:
 
-            # Define path for saving the plane
-            plot_save_path_plane = (
-                    folder_path + f"/plane-seed-{str(seed)}" + "-transient_steps-" + str(num_transient_steps)
-                    + "-" + stats_to_plot[plot_i][0] + "_" + str(feat_idx[plot_i][0])
-                    + "-" + stats_to_plot[plot_i][1] + "_" + str(feat_idx[plot_i][1]) + image_format)
+            # Define the statistics you want to plot against each other
+            # In this case the feature mo with only the semantic information
+            stats_to_plot = [["mo_se", "mo_se"], ["att", "att"]]
+            # Define the index of the features you want to compare against each other
+            feat_idx = [[0, 1], [0, 2]]
 
-            # Set larger dots for the periodic trajectory
-            larger_dots = False
-            dpi = None
+            for plot_i in range(len(stats_to_plot)):
 
-            # Create figure
-            ncols = 1
-            fig, ax = create_row_array(ncols, dpi)
+                # Define path for saving the plane
+                plot_save_path_plane = (
+                        folder_path + f"/plane-seed-{str(seed)}" + "-transient_steps-" + str(num_transient_steps)
+                        + "-" + stats_to_plot[plot_i][0] + "_" + str(feat_idx[plot_i][0])
+                        + "-" + stats_to_plot[plot_i][1] + "_" + str(feat_idx[plot_i][1]) + image_format)
 
-            # Load statistics
-            stat_results_beta_0 = HT.mf_statistics[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][0]]
-            stat_results_beta_1 = HT.mf_statistics[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][1]]
-            # Plot plane
-            plot_save_plane(stat_results_beta_0,
-                            stat_results_beta_1, max_sim_steps - num_transient_steps, feat_idx[plot_i], ax,
-                            tag_names=stats_to_plot[plot_i], title=title, larger_dots=larger_dots)
+                # Set larger dots for the periodic trajectory
+                larger_dots = False
+                dpi = None
 
-            if save_not_plot:
-                fig.savefig(plot_save_path_plane, bbox_inches='tight')
-            else:
-                plt.show()
-            plt.close()
+                # Create figure
+                ncols = 1
+                fig, ax = create_row_array(ncols, dpi)
 
-        lowres_lya = False
-        image_format_lya = image_format
-        if lowres_lya:
-            image_format_lya = ".jpg"
+                # Load statistics
+                stat_results_beta_0 = HT.mf_statistics[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][0]]
+                stat_results_beta_1 = HT.mf_statistics[stats_to_plot[plot_i][0]][:, feat_idx[plot_i][1]]
+                # Plot plane
+                plot_save_plane(stat_results_beta_0,
+                                stat_results_beta_1, max_sim_steps - num_transient_steps, feat_idx[plot_i], ax,
+                                tag_names=stats_to_plot[plot_i], title=title, larger_dots=larger_dots)
 
-        if compute_lyapunov:
-            # Reorder in descending order, filter out components associated to Positional Encoding rotations (last components)
-            sorted_S = np.sort(HT.S[:HT.num_feat_patterns * HT.context_size])[::-1]
+                if save_not_plot:
+                    fig.savefig(plot_save_path_plane, bbox_inches='tight')
+                else:
+                    plt.show()
+                plt.close()
 
-            print("Sorted Lyapunov exponents in descencing order", sorted_S)
-            plot_save_path_lya = (
-                    folder_path + f"/lyapunov-{str(seed)}" + "-transient_steps-" + str(
-                num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps) + image_format_lya)
-            # Plot lyapunov related statistics
+            lowres_lya = False
+            image_format_lya = image_format
+            if lowres_lya:
+                image_format_lya = ".jpg"
 
-            plot_lyapunov_graphs(HT.S_i_sum, cfg, beta_o,
-                                 save_not_plot=save_not_plot, save_path=plot_save_path_lya)
+            if compute_lyapunov:
+                # Reorder in descending order, filter out components associated to Positional Encoding rotations (last components)
+                sorted_S = np.sort(HT.S[:HT.num_feat_patterns * HT.context_size])[::-1]
 
-            print("Inf flag")
-            print(HT.S_inf_flag)
+                print("Sorted Lyapunov exponents in descencing order", sorted_S)
+                plot_save_path_lya = (
+                        folder_path + f"/lyapunov-{str(seed)}" + "-transient_steps-" + str(
+                    num_transient_steps) + "-max_sim_steps-" + str(max_sim_steps) + image_format_lya)
+                # Plot lyapunov related statistics
+
+                plot_lyapunov_graphs(HT.S_i_sum, cfg, beta_o,
+                                     save_not_plot=save_not_plot, save_path=plot_save_path_lya)
+
+                print("Inf flag")
+                print(HT.S_inf_flag)

@@ -18,20 +18,25 @@ def bitfield(n, size):  # Transform positive integer into bit array
 
 def feat_name_to_latex(feat_name):
 
-    if feat_name == "mo":
-        latex_str = "m^o"
-    elif feat_name == "mo_se":
-        latex_str = "m^o"
-    elif feat_name == "mv":
-        latex_str = "m^v"
-    elif feat_name == "mk":
-        latex_str = "m^k"
-    elif feat_name == "mq":
-        latex_str = "m^q"
-    elif feat_name == "att":
-        latex_str = "A"
-    else:
+    feat_dict = {}
+    feat_dict["mo"] = "m^o"
+    feat_dict["mo_se"] = "m^{o_{SE}}"
+    feat_dict["mv"] = "m^v"
+    feat_dict["mk"] = "m^k"
+    feat_dict["mq"] = "m^q"
+    feat_dict["att"] = "A"
+    feat_dict["m_tilde_o"] = r"\tilde{m}^o"
+    feat_dict["m_tilde_v"] = r"\tilde{m}^v"
+    feat_dict["m_tilde_proj_o"] = r"\tilde{m}^{o_{SE}}"
+    feat_dict["m_tilde_proj_v"] = r"\tilde{m}^{v_{SE}}"
+    feat_dict["m_pos_o"] = "m^{o_{PE}}"
+    feat_dict["m_pos_v"] = "m^{v_{PE}}"
+
+    try:
+        latex_str = feat_dict[feat_name]
+    except KeyError:
         raise Exception(f"{feat_name} not supported")
+
 
     return latex_str
 
@@ -123,3 +128,58 @@ def load_lyapunov(folder_path, num_feat_patterns, context_size, x_list, min_bidx
     num_valid_dims = valid_S.shape[1]
 
     return valid_S, num_valid_dims, x_list[start_index:]
+
+# def build_sign_matrix(N):
+#     """
+#     Building $$\text{bit}_k(n) = \left\lfloor \frac{n}{2^k} \right\rfloor \bmod 2$$ But we're using &1 instead of mod 2
+#     for efficiency. The first column is all +1s, and the rest of the columns are generated from the binary representation
+#     of numbers from 0 to 2^(N-1)-1, where 0 maps to +1 and 1 maps to -1.
+#     """
+#     if N < 1:
+#         raise ValueError("N must be >= 1")
+#
+#     # Generate all binary configs of length N-1 (0/1)
+#     configs = np.arange(2**(N-1))[:, None] >> np.arange(N-1)[::-1]
+#     configs = configs & 1  # shape: (2^(N-1), N-1)
+#
+#     # Map {0,1} → {+1,-1}
+#     signs = 1 - 2 * configs  # 0→1, 1→-1
+#
+#     # Add first column of +1s
+#     first_col = np.ones((2**(N-1), 1), dtype=int)
+#
+#     return np.hstack([first_col, signs])
+
+def signed_binary_encoding(indices, N):
+    indices = np.asarray(indices)
+
+    # Extract bits (MSB → LSB)
+    bits = (indices[:, None] >> np.arange(N-1, -1, -1)[None, :]) & 1
+
+    # Map {0,1} → {-1, +1}
+    return 2 * bits - 1
+
+
+def build_sign_matrix(N):
+    """
+    Returns shape (2^(N-1), N)
+    First column fixed to +1
+    Remaining columns enumerate all configurations
+
+
+    Implemented using $$\text{bit}_k(n) = \left\lfloor \frac{n}{2^k} \right\rfloor \bmod 2$$ But we're using &1 
+    instead of mod 2 for efficiency. 
+    """
+    if N == 1:
+        return np.ones((1, 1), dtype=int)
+
+    # All configurations for remaining N-1 bits
+    indices = np.arange(2**(N-1))
+
+    # Use encoding (shape: (N-1, 2^(N-1)))
+    rest = signed_binary_encoding(indices, N-1)
+
+    # Add first column of +1
+    first_col = np.ones((rest.shape[0], 1), dtype=int)
+
+    return np.hstack([first_col, rest])
