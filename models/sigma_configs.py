@@ -144,6 +144,50 @@ def set_orders_manually_4_duplicity_loop_3(self, ini_m_idx=None):
 
     return orders_B, orders_P, W
 
+
+def set_orders_manually_4_duplicity_loop_4(self, ini_m_idx=None):
+    # Designing to try to get a loop if ini_m_idx=0 (not used but hardcoded for the moment)
+
+    # Set SE order of patterns
+    # order_in_B = np.arange(self.num_feat_patterns)
+    # order_out_B = np.roll(order_in_B, 1)
+
+    order_in_B = np.array([0, 1, 2, 3])
+    # order_out_B = np.array([1, 2, 1, 0]) # 0 → 1, 1 → 2, 2 → 1, 3 → 0 Both should be equivalent?
+    order_out_B = np.array([1, 2, 3, 0]) # 0 → 1, 1 → 2, 2 → 3, 3 → 0
+
+    orders_B = np.stack([
+        order_in_B,  # q
+        order_in_B,  # k
+        order_out_B,  # v
+        order_in_B,  # o
+    ], axis=0)  # shape: (C, M)
+
+    order_P = np.array([0, 1, 2, 1])
+    orders_P = np.stack([
+        order_P,  # q
+        order_P,  # k
+        order_P,  # v
+        order_P,  # o
+    ], axis=0)  # shape: (C, M)
+
+    order_in_pe = np.array([3, 0, 1, 2])
+    order_out_pe = np.array([2, 3, 0, 1])
+
+
+    # Set up PE
+    pe_in = signed_binary_encoding(order_in_pe, self.pe_bit_size)
+    pe_out = signed_binary_encoding(order_out_pe, self.pe_bit_size)
+
+    # Create W matrix to group all features together for the vectorized computation of the mean-field values
+    W = np.zeros((len(self.features_names), self.num_feat_patterns, self.pe_bit_size))
+    W[self.feature_to_idx["q"]] = pe_in
+    W[self.feature_to_idx["k"]] = pe_in
+    W[self.feature_to_idx["v"]] = pe_out
+    W[self.feature_to_idx["o"]] = pe_in
+
+    return orders_B, orders_P, W
+
 def set_orders_manually_4_duplicity_loop_no_pe(self, ini_m_idx=None):
     # This one is only like a 3 feat loop, but they are not alterned. You have to set epsilon_pe to 0
 

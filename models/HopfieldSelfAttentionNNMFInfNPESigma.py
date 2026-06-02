@@ -7,6 +7,7 @@ from models.PositionalEncoding import PositionalEncoding
 
 from models.sigma_configs import (set_orders_manually_3_no_duplicity, set_orders_manually_4_duplicity_loop_1,
                                    set_orders_manually_4_duplicity_loop_2, set_orders_manually_4_duplicity_loop_3,
+                                    set_orders_manually_4_duplicity_loop_4,
                                   set_orders_manually_4_duplicity_loop_no_pe, set_orders_manually_4_no_duplicity,
                                    set_orders_manually_6_duplicity_loop, set_orders_manually_4_cycle_0_1_2_1)
 
@@ -99,7 +100,7 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
 
     def create_correlations_manually(self, ini_m_idx=0):
 
-        self.orders_B, orders_P, self.W = set_orders_manually_4_duplicity_loop_3(self, ini_m_idx=ini_m_idx)
+        self.orders_B, orders_P, self.W = set_orders_manually_4_duplicity_loop_4(self, ini_m_idx=ini_m_idx)
 
         # Create the B_alpha matrices to indicate the order of the mean-field patterns for the vectorized computation of the mean-field values
         self.B_alpha = self.build_B_P_from_orders(self.orders_B, self.num_feat_patterns)
@@ -313,10 +314,10 @@ class HopfieldSelfAttentionNNMFInfNPESigma:
 
         # ---- SECOND TERM ----
         # (C, D, K)
-        term2_all = np.einsum('cki,di->cdk', self.W, p_t_d[:self.effective_context_size]) / N_P
+        term2_all = np.maximum(0, np.einsum('cki,di->cdk', self.W, p_t_d[:self.effective_context_size]) / N_P)
 
         # ---- COMBINE ----
-        m_all = self.epsilon_se * term1_all + self.epsilon_pe * term2_all  # (F, D, M)
+        m_all = self.epsilon_se * term1_all +  self.epsilon_pe * term2_all  # (F, D, M)
 
         # ---- SPLIT FEATURES ----
         m_next = {}
